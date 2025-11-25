@@ -5,6 +5,7 @@ import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../providers/dashboard_provider.dart';
 import '../widgets/chat_widgets.dart';
+import '../widgets/shad_card.dart';
 
 class ChatView extends StatefulWidget {
   const ChatView({super.key});
@@ -26,7 +27,9 @@ class _ChatViewState extends State<ChatView> {
         children: [
           SizedBox(
             width: 280,
-            child: Column(
+            child: ShadCard(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
@@ -69,17 +72,15 @@ class _ChatViewState extends State<ChatView> {
                   icon: const Icon(Icons.add),
                   label: const Text('New conversation'),
                 ),
-              ],
+                ],
+              ),
             ),
           ),
           const SizedBox(width: AppSpacing.xl),
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppColors.surfaceAlt,
-                borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: AppColors.border),
-              ),
+            child: ShadCard(
+              padding: EdgeInsets.zero,
+              borderRadius: BorderRadius.circular(32),
               child: Column(
                 children: [
                   Container(
@@ -122,14 +123,17 @@ class _ChatViewState extends State<ChatView> {
                         const Spacer(),
                         IconButton(
                           onPressed: () {},
+                          color: AppColors.textMuted,
                           icon: const Icon(Icons.call),
                         ),
                         IconButton(
                           onPressed: () {},
+                          color: AppColors.textMuted,
                           icon: const Icon(Icons.videocam_rounded),
                         ),
                         IconButton(
                           onPressed: () {},
+                          color: AppColors.textMuted,
                           icon: const Icon(Icons.more_horiz),
                         ),
                       ],
@@ -152,6 +156,7 @@ class _ChatViewState extends State<ChatView> {
                       children: [
                         IconButton(
                           onPressed: () {},
+                          color: AppColors.textMuted,
                           icon: const Icon(Icons.attach_file),
                         ),
                         Expanded(

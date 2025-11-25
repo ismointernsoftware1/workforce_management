@@ -5,6 +5,7 @@ import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../providers/dashboard_provider.dart';
 import '../widgets/team_member_card.dart';
+import '../widgets/shad_card.dart';
 
 class TeamView extends StatelessWidget {
   const TeamView({super.key});
@@ -107,19 +108,14 @@ class TeamView extends StatelessWidget {
     required IconData icon,
   }) {
     return Expanded(
-      child: Container(
+      child: ShadCard(
         padding: const EdgeInsets.all(AppSpacing.lg),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.border),
-        ),
         child: Row(
           children: [
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.12),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(icon, color: AppColors.primary),

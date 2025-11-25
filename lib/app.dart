@@ -32,7 +32,7 @@ class WorkforceApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Workforce Management',
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.dark,
+        theme: AppTheme.light,
         home: const DashboardView(),
       ),
     );

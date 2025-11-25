@@ -91,7 +91,7 @@ class _TopBar extends StatelessWidget {
           IconButton(
             onPressed: () {},
             icon: const Icon(Icons.notifications_none_rounded),
-            color: AppColors.textPrimary,
+            color: AppColors.textMuted,
           ),
           const SizedBox(width: AppSpacing.md),
           Container(
@@ -100,7 +100,7 @@ class _TopBar extends StatelessWidget {
               vertical: AppSpacing.sm,
             ),
             decoration: BoxDecoration(
-              color: AppColors.surfaceAlt,
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(30),
               border: Border.all(color: AppColors.border),
             ),

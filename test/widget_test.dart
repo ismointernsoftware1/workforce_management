@@ -20,13 +20,14 @@ void main() {
   testWidgets(
     'Dashboard renders navigation tabs',
     (WidgetTester tester) async {
-      final binding = TestWidgetsFlutterBinding.ensureInitialized();
-      binding.window.physicalSizeTestValue = const Size(1920, 1080);
-      binding.window.devicePixelRatioTestValue = 1.0;
+      TestWidgetsFlutterBinding.ensureInitialized();
+      final view = tester.view;
+      view.physicalSize = const Size(1920, 1080);
+      view.devicePixelRatio = 1.0;
 
       addTearDown(() {
-        binding.window.clearPhysicalSizeTestValue();
-        binding.window.clearDevicePixelRatioTestValue();
+        view.resetPhysicalSize();
+        view.resetDevicePixelRatio();
       });
 
       await tester.pumpWidget(

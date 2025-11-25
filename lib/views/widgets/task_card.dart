@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/task_model.dart';
+import 'shad_card.dart';
 
 class TaskCard extends StatelessWidget {
   const TaskCard({
@@ -49,14 +50,9 @@ class TaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateFormatter = DateFormat('MM/dd/yyyy');
-    return Container(
+    return ShadCard(
       margin: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
-      ),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -175,7 +171,7 @@ class _InfoBadge extends StatelessWidget {
         vertical: AppSpacing.sm,
       ),
       decoration: BoxDecoration(
-        color: color ?? AppColors.surface,
+        color: color ?? AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(30),
         border: Border.all(color: AppColors.border),
       ),
@@ -217,13 +213,13 @@ class _StatusDropdown extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(40),
         border: Border.all(color: AppColors.border),
       ),
       child: DropdownButton<String>(
         value: statusLabel,
-        dropdownColor: AppColors.surfaceAlt,
+        dropdownColor: AppColors.surface,
         underline: const SizedBox.shrink(),
         icon: const Icon(Icons.expand_more_rounded),
         items: const [

@@ -96,11 +96,21 @@ class TasksView extends StatelessWidget {
                   label: Text(filter),
                   selected: isSelected,
                   onSelected: (_) => provider.changeTaskFilter(filter),
-                  selectedColor: AppColors.primary,
+                  selectedColor: AppColors.primarySoft,
+                  backgroundColor: AppColors.surface,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    side: BorderSide(
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.border,
+                    ),
+                  ),
                   labelStyle: TextStyle(
                     color: isSelected
-                        ? AppColors.background
+                        ? AppColors.primary
                         : AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
                   ),
                 );
               },
