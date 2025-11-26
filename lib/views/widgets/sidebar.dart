@@ -56,6 +56,8 @@ class Sidebar extends StatelessWidget {
         return Icons.people_alt_rounded;
       case DashboardTab.chat:
         return Icons.chat_bubble_rounded;
+      case DashboardTab.expenses:
+        return Icons.receipt_long;
     }
   }
 
@@ -67,6 +69,8 @@ class Sidebar extends StatelessWidget {
         return 'Team';
       case DashboardTab.chat:
         return 'Chat';
+      case DashboardTab.expenses:
+        return 'Expenses';
     }
   }
 }

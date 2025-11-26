@@ -1,8 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+
+import 'task_attachment.dart';
+import 'task_location.dart';
+import 'task_approval.dart';
 
 enum TaskPriority { low, medium, high }
 
 enum TaskStatus { pending, inProgress, completed }
+
+enum TaskApprovalType { none, single, multiple }
 
 class SubTask {
   const SubTask({
@@ -40,6 +47,15 @@ class TaskModel {
     required this.assignedTo,
     required this.status,
     required this.subTasks,
+    this.createdBy,
+    this.createdAt,
+    this.updatedAt,
+    this.attachments = const [],
+    this.location,
+    this.approvalType = TaskApprovalType.none,
+    this.approvals = const [],
+    this.templateId,
+    this.hasLocation = false,
   });
 
   final String id;
@@ -50,6 +66,17 @@ class TaskModel {
   final String assignedTo;
   final TaskStatus status;
   final List<SubTask> subTasks;
+  
+  // New fields for enhanced features
+  final String? createdBy;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+  final List<TaskAttachment> attachments;
+  final TaskLocation? location;
+  final TaskApprovalType approvalType;
+  final List<TaskApproval> approvals;
+  final String? templateId;
+  final bool hasLocation;
 
   factory TaskModel.fromSnapshot(DocumentSnapshot<Map<String, dynamic>> snap) {
     final data = snap.data() ?? <String, dynamic>{};
@@ -57,9 +84,16 @@ class TaskModel {
   }
 
   factory TaskModel.fromMap(Map<String, dynamic> data, {String? id}) {
+    // Handle case where title might be missing or null
+    final title = data['title'] as String? ?? '';
+    if (title.isEmpty && id != null && id.isNotEmpty) {
+      // If title is missing, use a default or log warning
+      debugPrint('Warning: Task $id has no title field');
+    }
+    
     return TaskModel(
       id: id ?? data['id'] as String? ?? '',
-      title: data['title'] as String? ?? '',
+      title: title,
       description: data['description'] as String? ?? '',
       priority: _priorityFrom(data['priority']),
       dueDate: (data['dueDate'] is Timestamp)
@@ -71,6 +105,29 @@ class TaskModel {
       subTasks: ((data['subTasks'] as List<dynamic>?) ?? [])
           .map((sub) => SubTask.fromMap(Map<String, dynamic>.from(sub)))
           .toList(),
+      createdBy: data['createdBy'] as String?,
+      createdAt: data['createdAt'] != null
+          ? (data['createdAt'] is Timestamp)
+              ? (data['createdAt'] as Timestamp).toDate()
+              : DateTime.tryParse(data['createdAt']?.toString() ?? '')
+          : null,
+      updatedAt: data['updatedAt'] != null
+          ? (data['updatedAt'] is Timestamp)
+              ? (data['updatedAt'] as Timestamp).toDate()
+              : DateTime.tryParse(data['updatedAt']?.toString() ?? '')
+          : null,
+      attachments: ((data['attachments'] as List<dynamic>?) ?? [])
+          .map((att) => TaskAttachment.fromMap(Map<String, dynamic>.from(att)))
+          .toList(),
+      location: data['location'] != null
+          ? TaskLocation.fromMap(Map<String, dynamic>.from(data['location']))
+          : null,
+      approvalType: _approvalTypeFrom(data['approvalType']),
+      approvals: ((data['approvals'] as List<dynamic>?) ?? [])
+          .map((app) => TaskApproval.fromMap(Map<String, dynamic>.from(app)))
+          .toList(),
+      templateId: data['templateId'] as String?,
+      hasLocation: data['hasLocation'] as bool? ?? false,
     );
   }
 
@@ -82,6 +139,15 @@ class TaskModel {
         'assignedTo': assignedTo,
         'status': status.name,
         'subTasks': subTasks.map((sub) => sub.toMap()).toList(),
+        if (createdBy != null) 'createdBy': createdBy,
+        if (createdAt != null) 'createdAt': Timestamp.fromDate(createdAt!),
+        if (updatedAt != null) 'updatedAt': Timestamp.fromDate(updatedAt!),
+        'attachments': attachments.map((att) => att.toMap()).toList(),
+        if (location != null && !location!.isEmpty) 'location': location!.toMap(),
+        'approvalType': approvalType.name,
+        'approvals': approvals.map((app) => app.toMap()).toList(),
+        if (templateId != null) 'templateId': templateId,
+        'hasLocation': hasLocation,
       };
 
   TaskModel copyWith({
@@ -93,6 +159,15 @@ class TaskModel {
     String? assignedTo,
     TaskStatus? status,
     List<SubTask>? subTasks,
+    String? createdBy,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    List<TaskAttachment>? attachments,
+    TaskLocation? location,
+    TaskApprovalType? approvalType,
+    List<TaskApproval>? approvals,
+    String? templateId,
+    bool? hasLocation,
   }) {
     return TaskModel(
       id: id ?? this.id,
@@ -103,6 +178,15 @@ class TaskModel {
       assignedTo: assignedTo ?? this.assignedTo,
       status: status ?? this.status,
       subTasks: subTasks ?? this.subTasks,
+      createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      attachments: attachments ?? this.attachments,
+      location: location ?? this.location,
+      approvalType: approvalType ?? this.approvalType,
+      approvals: approvals ?? this.approvals,
+      templateId: templateId ?? this.templateId,
+      hasLocation: hasLocation ?? this.hasLocation,
     );
   }
 }
@@ -120,6 +204,14 @@ TaskStatus _statusFrom(dynamic raw) {
   return TaskStatus.values.firstWhere(
     (s) => s.name.toLowerCase() == value,
     orElse: () => TaskStatus.pending,
+  );
+}
+
+TaskApprovalType _approvalTypeFrom(dynamic raw) {
+  final value = raw?.toString().toLowerCase() ?? 'none';
+  return TaskApprovalType.values.firstWhere(
+    (t) => t.name.toLowerCase() == value,
+    orElse: () => TaskApprovalType.none,
   );
 }
 
