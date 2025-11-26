@@ -188,6 +188,21 @@ class FirebaseService {
         .toList(growable: false);
   }
 
+  Future<List<TeamMember>> fetchMembers() async {
+    final snapshot = await _usersCol.orderBy('name').get();
+    return snapshot.docs.map((doc) {
+      final data = doc.data();
+      return TeamMember(
+        id: doc.id,
+        name: data['name'] as String? ?? '',
+        email: data['email'] as String? ?? '',
+        role: data['role'] as String? ?? '',
+        department: data['department'] as String? ?? '',
+        isOnline: (data['status'] as String? ?? 'Active') == 'Active',
+      );
+    }).toList(growable: false);
+  }
+
   Future<List<Conversation>> fetchConversations() async {
     final snapshot =
         await _conversationsCol.orderBy('updatedAt', descending: true).get();
@@ -274,6 +289,8 @@ class FirebaseService {
 
   Future<void> deleteUser(String userId) async {
     await _usersCol.doc(userId).delete();
+  }
+
   // ============= EXPENSE METHODS =============
 
   Future<List<ExpenseModel>> fetchExpenses({String? employeeId}) async {

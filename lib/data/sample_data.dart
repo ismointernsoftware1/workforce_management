@@ -2,6 +2,7 @@ import 'package:intl/intl.dart';
 
 import '../models/chat_models.dart';
 import '../models/task_model.dart';
+import '../models/team_member.dart';
 import '../models/user_model.dart';
 
 class SampleData {
@@ -170,5 +171,32 @@ class SampleData {
 
   static String formatDueDate(DateTime date) =>
       DateFormat('MM/dd/yyyy').format(date);
+
+  static List<TeamMember> members() => [
+        TeamMember(
+          id: 'member-1',
+          name: 'Alice Johnson',
+          role: 'Senior Engineer',
+          email: 'alice@company.com',
+          department: 'Engineering',
+          isOnline: true,
+        ),
+        TeamMember(
+          id: 'member-2',
+          name: 'Bob Smith',
+          role: 'Product Manager',
+          email: 'bob@company.com',
+          department: 'Product',
+          isOnline: true,
+        ),
+        TeamMember(
+          id: 'member-3',
+          name: 'Carol Davis',
+          role: 'Sales Executive',
+          email: 'carol@company.com',
+          department: 'Sales',
+          isOnline: false,
+        ),
+      ];
 }
 
