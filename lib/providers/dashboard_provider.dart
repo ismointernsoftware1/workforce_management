@@ -6,7 +6,8 @@ import '../controllers/team_controller.dart';
 import '../data/sample_data.dart';
 import '../models/chat_models.dart';
 import '../models/task_model.dart';
-import '../models/team_member.dart';
+import '../models/user_model.dart';
+import '../models/team_model.dart';
 
 enum DashboardTab { tasks, team, chat }
 
@@ -28,7 +29,9 @@ class DashboardProvider extends ChangeNotifier {
   String? lastError;
 
   List<TaskModel> tasks = const [];
-  List<TeamMember> members = const [];
+  List<UserModel> allUsers = const [];
+  List<UserModel> users = const [];
+  List<Team> teams = const [];
   List<Conversation> conversations = const [];
   String? selectedConversationId;
 
@@ -48,21 +51,21 @@ class DashboardProvider extends ChangeNotifier {
       if (tasks.isEmpty) {
         tasks = SampleData.tasks();
       }
-      members = await _teamController.fetchMembers();
-      if (members.isEmpty) {
-        members = SampleData.members();
-      }
+      allUsers = await _teamController.fetchUsers();
+      users = allUsers;
       conversations = await _chatController.fetchConversations();
       if (conversations.isEmpty) {
         conversations = SampleData.conversations();
       }
+      teams = await _teamController.fetchTeams();
       selectedConversationId =
           conversations.isNotEmpty ? conversations.first.id : null;
       lastError = null;
     } catch (error) {
       lastError = error.toString();
       tasks = SampleData.tasks();
-      members = SampleData.members();
+      allUsers = const [];
+      users = const [];
       conversations = SampleData.conversations();
       selectedConversationId =
           conversations.isNotEmpty ? conversations.first.id : null;
@@ -160,6 +163,95 @@ class DashboardProvider extends ChangeNotifier {
       );
     } catch (_) {
       // keep optimistic UI even if network fails
+    }
+  }
+
+  Future<void> addUser(UserModel user) async {
+    try {
+      await _teamController.addUser(user);
+      await refreshUsers();
+    } catch (error) {
+      lastError = error.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> updateUser(UserModel user) async {
+    try {
+      await _teamController.updateUser(user);
+      await refreshUsers();
+    } catch (error) {
+      lastError = error.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> deleteUser(String userId) async {
+    try {
+      await _teamController.deleteUser(userId);
+      await refreshUsers();
+    } catch (error) {
+      lastError = error.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> refreshUsers() async {
+    allUsers = await _teamController.fetchUsers();
+    users = allUsers;
+    notifyListeners();
+  }
+
+  Future<void> addTeam(Team team) async {
+    try {
+      await _teamController.createTeam(team);
+      await refreshTeams();
+    } catch (error) {
+      lastError = error.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> refreshTeams() async {
+    teams = await _teamController.fetchTeams();
+    notifyListeners();
+  }
+
+  Future<void> updateTeamMembers(
+      String teamId, List<String> memberIds) async {
+    try {
+      await _teamController.updateTeamMembers(teamId, memberIds);
+      await refreshTeams();
+    } catch (error) {
+      lastError = error.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> updateTeam(Team team) async {
+    try {
+      await _teamController.updateTeam(team);
+      await refreshTeams();
+    } catch (error) {
+      lastError = error.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> deleteTeam(String teamId) async {
+    try {
+      await _teamController.deleteTeam(teamId);
+      await refreshTeams();
+    } catch (error) {
+      lastError = error.toString();
+      notifyListeners();
+      rethrow;
     }
   }
 }

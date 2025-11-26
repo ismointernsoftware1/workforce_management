@@ -2,7 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/chat_models.dart';
 import '../models/task_model.dart';
-import '../models/team_member.dart';
+import '../models/team_model.dart';
+import '../models/user_model.dart';
 
 class FirebaseService {
   FirebaseService({FirebaseFirestore? firestore})
@@ -14,10 +15,12 @@ class FirebaseService {
 
   CollectionReference<Map<String, dynamic>> get _tasksCol =>
       _firestore!.collection('tasks');
-  CollectionReference<Map<String, dynamic>> get _teamCol =>
-      _firestore!.collection('team');
+  CollectionReference<Map<String, dynamic>> get _usersCol =>
+      _firestore!.collection('users');
   CollectionReference<Map<String, dynamic>> get _conversationsCol =>
       _firestore!.collection('conversations');
+  CollectionReference<Map<String, dynamic>> get _teamsCol =>
+      _firestore!.collection('teams');
 
   Future<List<TaskModel>> fetchTasks() async {
     final snapshot = await _tasksCol.orderBy('dueDate').get();
@@ -32,10 +35,10 @@ class FirebaseService {
     await _tasksCol.doc(taskId).update({'status': status.name});
   }
 
-  Future<List<TeamMember>> fetchMembers() async {
-    final snapshot = await _teamCol.orderBy('name').get();
+  Future<List<UserModel>> fetchUsers() async {
+    final snapshot = await _usersCol.orderBy('name').get();
     return snapshot.docs
-        .map((doc) => TeamMember.fromMap(doc.data(), id: doc.id))
+        .map((doc) => UserModel.fromMap(doc.data(), id: doc.id))
         .toList(growable: false);
   }
 
@@ -75,6 +78,56 @@ class FirebaseService {
       'preview': message.body,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+  }
+
+  Future<List<Team>> fetchTeams() async {
+    final snapshot = await _teamsCol.orderBy('createdAt', descending: true).get();
+    return snapshot.docs
+        .map((doc) => Team.fromMap(doc.data(), id: doc.id))
+        .toList(growable: false);
+  }
+
+  Future<void> createTeam(Team team) async {
+    final docRef = _teamsCol.doc();
+    await docRef.set({
+      ...team.toMap(),
+      'id': docRef.id,
+    });
+  }
+
+  Future<void> updateTeamMembers(
+      String teamId, List<String> memberIds) async {
+    await _teamsCol.doc(teamId).update({'memberIds': memberIds});
+  }
+
+  Future<void> updateTeam(Team team) async {
+    await _teamsCol.doc(team.id).update({
+      'name': team.name,
+      'description': team.description,
+    });
+  }
+
+  Future<void> deleteTeam(String teamId) async {
+    await _teamsCol.doc(teamId).delete();
+  }
+
+  Future<void> addUser(UserModel user) async {
+    final docRef = _usersCol.doc();
+    await docRef.set({
+      ...user.toMap(),
+      'id': docRef.id,
+    });
+  }
+
+  Future<void> updateUser(UserModel user) async {
+    if (user.id.isEmpty) {
+      throw Exception('User ID is required to update');
+    }
+    await _usersCol.doc(user.id).update(user.toMap());
+  }
+
+  Future<void> deleteUser(String userId) async {
+    await _usersCol.doc(userId).delete();
   }
 }
 

@@ -2,7 +2,7 @@ import 'package:intl/intl.dart';
 
 import '../models/chat_models.dart';
 import '../models/task_model.dart';
-import '../models/team_member.dart';
+import '../models/user_model.dart';
 
 class SampleData {
   static List<TaskModel> tasks() {
@@ -48,38 +48,61 @@ class SampleData {
     ];
   }
 
-  static List<TeamMember> members() => const [
-        TeamMember(
-          id: 'member-1',
-          name: 'John Doe',
-          email: 'john@company.com',
-          role: 'Manager',
-          department: 'Operations',
-          isOnline: true,
-        ),
-        TeamMember(
-          id: 'member-2',
-          name: 'Jane Smith',
-          email: 'jane@company.com',
-          role: 'Team Lead',
-          department: 'Sales',
-          isOnline: true,
-        ),
-        TeamMember(
-          id: 'member-3',
-          name: 'Bob Johnson',
-          email: 'bob@company.com',
-          role: 'Employee',
-          department: 'Support',
-          isOnline: false,
-        ),
-        TeamMember(
-          id: 'member-4',
-          name: 'Alice Brown',
+  static List<UserModel> users() => [
+        UserModel(
+          id: 'user-1',
+          name: 'Alice Johnson',
+          role: 'Senior Engineer',
+          department: 'Engineering',
           email: 'alice@company.com',
-          role: 'Designer',
+          status: 'Active',
+          joinDate: DateTime(2022, 01, 15),
+          manager: 'Marcus Lee',
+          accountType: 'Member',
+        ),
+        UserModel(
+          id: 'user-2',
+          name: 'Bob Smith',
+          role: 'Product Manager',
           department: 'Product',
-          isOnline: true,
+          email: 'bob@company.com',
+          status: 'Active',
+          joinDate: DateTime(2022, 03, 20),
+          manager: 'Emma Davis',
+          accountType: 'Member',
+        ),
+        UserModel(
+          id: 'user-3',
+          name: 'Carol Davis',
+          role: 'Sales Executive',
+          department: 'Sales',
+          email: 'carol@company.com',
+          status: 'On leave',
+          joinDate: DateTime(2021, 11, 10),
+          manager: 'Victor Chen',
+          accountType: 'Member',
+        ),
+        UserModel(
+          id: 'user-4',
+          name: 'David Wilson',
+          role: 'Marketing Manager',
+          department: 'Marketing',
+          email: 'david@company.com',
+          status: 'Active',
+          joinDate: DateTime(2023, 02, 01),
+          manager: 'Sophia Patel',
+          accountType: 'Member',
+        ),
+        UserModel(
+          id: 'user-5',
+          name: 'Eva Martinez',
+          role: 'HR Specialist',
+          department: 'Human Resources',
+          email: 'eva@company.com',
+          status: 'Active',
+          joinDate: DateTime(2022, 06, 15),
+          manager: 'Marcus Lee',
+          accountType: 'Member',
         ),
       ];
 
