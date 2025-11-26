@@ -6,8 +6,9 @@ import '../controllers/team_controller.dart';
 import '../data/sample_data.dart';
 import '../models/chat_models.dart';
 import '../models/task_model.dart';
-import '../models/user_model.dart';
+import '../models/team_member.dart';
 import '../models/team_model.dart';
+import '../models/user_model.dart';
 
 enum DashboardTab { tasks, team, chat, expenses }
 
@@ -32,6 +33,7 @@ class DashboardProvider extends ChangeNotifier {
   List<UserModel> allUsers = const [];
   List<UserModel> users = const [];
   List<Team> teams = const [];
+  List<TeamMember> members = const [];
   List<Conversation> conversations = const [];
   String? selectedConversationId;
 
@@ -46,55 +48,99 @@ class DashboardProvider extends ChangeNotifier {
   Future<void> initialize() async {
     isLoading = true;
     notifyListeners();
-    
-    // Fetch tasks independently - don't let other failures affect tasks
+
+    await Future.wait([
+      _loadTasks(),
+      refreshUsers(),
+      refreshTeams(),
+      refreshConversations(),
+      refreshMembers(),
+    ]);
+
+    isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> _loadTasks() async {
     try {
       tasks = await _taskController.fetchTasks();
       if (tasks.isEmpty) {
         tasks = SampleData.tasks();
       }
-      allUsers = await _teamController.fetchUsers();
-      users = allUsers;
-      print('Fetched ${tasks.length} tasks from Firestore');
       lastError = null;
     } catch (error) {
-      print('Error fetching tasks: $error');
-      tasks = [];
+      tasks = SampleData.tasks();
       lastError = error.toString();
     }
-    
-    // Fetch members independently
+  }
+
+  Future<void> refreshTasks() async {
+    await _loadTasks();
+    notifyListeners();
+  }
+
+  Future<void> refreshUsers() async {
+    try {
+      allUsers = await _teamController.fetchUsers();
+      users = allUsers;
+      lastError = null;
+    } catch (error) {
+      allUsers = [];
+      users = [];
+      lastError = error.toString();
+    }
+    notifyListeners();
+  }
+
+  Future<void> refreshMembers() async {
     try {
       members = await _teamController.fetchMembers();
       if (members.isEmpty) {
-        members = SampleData.members();
+        members = allUsers
+            .map(
+              (user) => TeamMember(
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                department: user.department,
+                isOnline: user.status == 'Active',
+              ),
+            )
+            .toList();
       }
     } catch (error) {
-      print('Error fetching members: $error');
       members = SampleData.members();
+      lastError = error.toString();
     }
-    
-    // Fetch conversations independently
+    notifyListeners();
+  }
+
+  Future<void> refreshTeams() async {
+    try {
+      teams = await _teamController.fetchTeams();
+      lastError = null;
+    } catch (error) {
+      lastError = error.toString();
+    }
+    notifyListeners();
+  }
+
+  Future<void> refreshConversations() async {
     try {
       conversations = await _chatController.fetchConversations();
       if (conversations.isEmpty) {
         conversations = SampleData.conversations();
       }
-      teams = await _teamController.fetchTeams();
       selectedConversationId =
           conversations.isNotEmpty ? conversations.first.id : null;
+      lastError = null;
     } catch (error) {
-      lastError = error.toString();
-      tasks = SampleData.tasks();
-      allUsers = const [];
-      users = const [];
-      print('Error fetching conversations: $error');
       conversations = SampleData.conversations();
       selectedConversationId =
           conversations.isNotEmpty ? conversations.first.id : null;
+      lastError = error.toString();
     }
-    
-    isLoading = false;
     notifyListeners();
   }
 
@@ -152,54 +198,27 @@ class DashboardProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> sendMessage(String text) async {
-    if (text.trim().isEmpty || selectedConversationId == null) return;
-    final conversationIndex = conversations.indexWhere(
-      (c) => c.id == selectedConversationId,
-    );
-    if (conversationIndex == -1) return;
-    final message = ChatMessage(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      sender: 'You',
-      body: text.trim(),
-      sentAt: DateTime.now(),
-      isMine: true,
-    );
-    final updatedMessages = [
-      ...conversations[conversationIndex].messages,
-      message,
-    ];
-    conversations[conversationIndex] = Conversation(
-      id: conversations[conversationIndex].id,
-      topic: conversations[conversationIndex].topic,
-      preview: message.body,
-      updatedAt: message.sentAt,
-      unreadCount: conversations[conversationIndex].unreadCount,
-      members: conversations[conversationIndex].members,
-      messages: updatedMessages,
-    );
-    notifyListeners();
-    try {
-      await _chatController.sendMessage(
-        selectedConversationId!,
-        message,
-      );
-    } catch (_) {
-      // keep optimistic UI even if network fails
+  Future<void> filterUsers(String query) async {
+    if (query.trim().isEmpty) {
+      users = allUsers;
+    } else {
+      final lower = query.toLowerCase();
+      users = allUsers
+          .where(
+            (user) =>
+                user.name.toLowerCase().contains(lower) ||
+                user.email.toLowerCase().contains(lower),
+          )
+          .toList();
     }
+    notifyListeners();
   }
 
   Future<void> addUser(UserModel user) async {
     try {
       await _teamController.addUser(user);
       await refreshUsers();
-  Future<String> addTask(TaskModel task) async {
-    try {
-      final taskId = await _taskController.createTask(task);
-      // Refresh tasks from Firestore
-      tasks = await _taskController.fetchTasks();
-      notifyListeners();
-      return taskId;
+      await refreshMembers();
     } catch (error) {
       lastError = error.toString();
       notifyListeners();
@@ -211,12 +230,7 @@ class DashboardProvider extends ChangeNotifier {
     try {
       await _teamController.updateUser(user);
       await refreshUsers();
-  Future<void> updateTask(TaskModel task) async {
-    try {
-      await _taskController.updateTask(task);
-      // Refresh tasks from Firestore
-      tasks = await _taskController.fetchTasks();
-      notifyListeners();
+      await refreshMembers();
     } catch (error) {
       lastError = error.toString();
       notifyListeners();
@@ -228,58 +242,18 @@ class DashboardProvider extends ChangeNotifier {
     try {
       await _teamController.deleteUser(userId);
       await refreshUsers();
-  Future<void> updateTaskWithAudit(TaskModel task, {String? actionBy, String? actionByName}) async {
-    try {
-      await _taskController.updateTaskWithAudit(task, actionBy: actionBy, actionByName: actionByName);
-      // Refresh tasks from Firestore
-      tasks = await _taskController.fetchTasks();
-      notifyListeners();
+      await refreshMembers();
     } catch (error) {
       lastError = error.toString();
       notifyListeners();
       rethrow;
     }
-  }
-
-  Future<void> refreshUsers() async {
-    allUsers = await _teamController.fetchUsers();
-    users = allUsers;
-    notifyListeners();
   }
 
   Future<void> addTeam(Team team) async {
     try {
       await _teamController.createTeam(team);
       await refreshTeams();
-  Future<void> deleteTask(String taskId) async {
-    try {
-      await _taskController.deleteTask(taskId);
-      // Refresh tasks from Firestore
-      tasks = await _taskController.fetchTasks();
-      notifyListeners();
-    } catch (error) {
-      lastError = error.toString();
-      notifyListeners();
-      rethrow;
-    }
-  }
-
-  Future<void> refreshTeams() async {
-    teams = await _teamController.fetchTeams();
-    notifyListeners();
-  }
-
-  Future<void> updateTeamMembers(
-      String teamId, List<String> memberIds) async {
-    try {
-      await _teamController.updateTeamMembers(teamId, memberIds);
-      await refreshTeams();
-  Future<void> updateTaskStatus(String taskId, TaskStatus status) async {
-    try {
-      await _taskController.updateStatus(taskId, status);
-      // Refresh tasks from Firestore
-      tasks = await _taskController.fetchTasks();
-      notifyListeners();
     } catch (error) {
       lastError = error.toString();
       notifyListeners();
@@ -306,16 +280,86 @@ class DashboardProvider extends ChangeNotifier {
       lastError = error.toString();
       notifyListeners();
       rethrow;
-  Future<void> refreshTasks() async {
+    }
+  }
+
+  Future<void> updateTeamMembers(
+    String teamId,
+    List<String> memberIds,
+  ) async {
     try {
-      tasks = await _taskController.fetchTasks();
-      print('Refreshed: Fetched ${tasks.length} tasks from Firestore');
-      lastError = null;
-      notifyListeners();
+      await _teamController.updateTeamMembers(teamId, memberIds);
+      await refreshTeams();
     } catch (error) {
       lastError = error.toString();
-      print('Error refreshing tasks: $error');
       notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> addTask(TaskModel task) async {
+    try {
+      await _taskController.createTask(task);
+      await refreshTasks();
+    } catch (error) {
+      lastError = error.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> updateTask(TaskModel task) async {
+    try {
+      await _taskController.updateTask(task);
+      await refreshTasks();
+    } catch (error) {
+      lastError = error.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> updateTaskWithAudit(
+    TaskModel task, {
+    String? actionBy,
+    String? actionByName,
+  }) async {
+    try {
+      await _taskController.updateTaskWithAudit(
+        task,
+        actionBy: actionBy,
+        actionByName: actionByName,
+      );
+      await refreshTasks();
+    } catch (error) {
+      lastError = error.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> deleteTask(String taskId) async {
+    try {
+      await _taskController.deleteTask(taskId);
+      await refreshTasks();
+    } catch (error) {
+      lastError = error.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> updateTaskStatus(
+    String taskId,
+    TaskStatus status,
+  ) async {
+    try {
+      await _taskController.updateStatus(taskId, status);
+      await refreshTasks();
+    } catch (error) {
+      lastError = error.toString();
+      notifyListeners();
+      rethrow;
     }
   }
 
@@ -323,8 +367,46 @@ class DashboardProvider extends ChangeNotifier {
     try {
       return await _taskController.getAuditLogs(taskId);
     } catch (error) {
-      print('Error fetching audit logs: $error');
+      lastError = error.toString();
       return [];
+    }
+  }
+
+  Future<void> sendMessage(String text) async {
+    if (text.trim().isEmpty || selectedConversationId == null) return;
+
+    final conversationIndex = conversations.indexWhere(
+      (c) => c.id == selectedConversationId,
+    );
+    if (conversationIndex == -1) return;
+
+    final message = ChatMessage(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      sender: 'You',
+      body: text.trim(),
+      sentAt: DateTime.now(),
+      isMine: true,
+    );
+
+    final updatedMessages = [
+      ...conversations[conversationIndex].messages,
+      message,
+    ];
+    conversations[conversationIndex] = Conversation(
+      id: conversations[conversationIndex].id,
+      topic: conversations[conversationIndex].topic,
+      preview: message.body,
+      updatedAt: message.sentAt,
+      unreadCount: conversations[conversationIndex].unreadCount,
+      members: conversations[conversationIndex].members,
+      messages: updatedMessages,
+    );
+    notifyListeners();
+
+    try {
+      await _chatController.sendMessage(selectedConversationId!, message);
+    } catch (_) {
+      // keep optimistic UI even if sending fails
     }
   }
 }
