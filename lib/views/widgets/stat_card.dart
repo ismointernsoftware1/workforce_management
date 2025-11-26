@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../components/shadcn/shadcn.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
-import 'shad_card.dart';
 
 class StatCard extends StatelessWidget {
   const StatCard({

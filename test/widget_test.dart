@@ -53,10 +53,12 @@ class _FakeFirebaseService extends FirebaseService {
   }
 
   @override
-  Future<void> addTask(TaskModel task) async {}
+  Future<String> addTask(TaskModel task) async {
+    return 'fake-task-id';
+  }
 
   @override
-  Future<void> updateTaskStatus(String taskId, TaskStatus status) async {}
+  Future<void> updateTaskStatus(String taskId, TaskStatus status, {String? actionBy, String? actionByName}) async {}
 
   @override
   Future<List<TeamMember>> fetchMembers() async {
@@ -70,4 +72,18 @@ class _FakeFirebaseService extends FirebaseService {
 
   @override
   Future<void> sendMessage(String conversationId, ChatMessage message) async {}
+
+  @override
+  Future<void> updateTask(TaskModel task, {String? actionBy, String? actionByName}) async {}
+
+  @override
+  Future<void> deleteTask(String taskId, {String? actionBy, String? actionByName}) async {}
+
+  @override
+  Future<void> addAuditLog(String taskId, Map<String, dynamic> logData) async {}
+
+  @override
+  Future<List<Map<String, dynamic>>> getAuditLogs(String taskId) async {
+    return [];
+  }
 }

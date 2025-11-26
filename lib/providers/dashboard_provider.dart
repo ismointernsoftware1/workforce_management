@@ -9,7 +9,7 @@ import '../models/task_model.dart';
 import '../models/user_model.dart';
 import '../models/team_model.dart';
 
-enum DashboardTab { tasks, team, chat }
+enum DashboardTab { tasks, team, chat, expenses }
 
 class DashboardProvider extends ChangeNotifier {
   DashboardProvider({
@@ -46,6 +46,8 @@ class DashboardProvider extends ChangeNotifier {
   Future<void> initialize() async {
     isLoading = true;
     notifyListeners();
+    
+    // Fetch tasks independently - don't let other failures affect tasks
     try {
       tasks = await _taskController.fetchTasks();
       if (tasks.isEmpty) {
@@ -53,6 +55,27 @@ class DashboardProvider extends ChangeNotifier {
       }
       allUsers = await _teamController.fetchUsers();
       users = allUsers;
+      print('Fetched ${tasks.length} tasks from Firestore');
+      lastError = null;
+    } catch (error) {
+      print('Error fetching tasks: $error');
+      tasks = [];
+      lastError = error.toString();
+    }
+    
+    // Fetch members independently
+    try {
+      members = await _teamController.fetchMembers();
+      if (members.isEmpty) {
+        members = SampleData.members();
+      }
+    } catch (error) {
+      print('Error fetching members: $error');
+      members = SampleData.members();
+    }
+    
+    // Fetch conversations independently
+    try {
       conversations = await _chatController.fetchConversations();
       if (conversations.isEmpty) {
         conversations = SampleData.conversations();
@@ -60,19 +83,19 @@ class DashboardProvider extends ChangeNotifier {
       teams = await _teamController.fetchTeams();
       selectedConversationId =
           conversations.isNotEmpty ? conversations.first.id : null;
-      lastError = null;
     } catch (error) {
       lastError = error.toString();
       tasks = SampleData.tasks();
       allUsers = const [];
       users = const [];
+      print('Error fetching conversations: $error');
       conversations = SampleData.conversations();
       selectedConversationId =
           conversations.isNotEmpty ? conversations.first.id : null;
-    } finally {
-      isLoading = false;
-      notifyListeners();
     }
+    
+    isLoading = false;
+    notifyListeners();
   }
 
   List<TaskModel> get filteredTasks {
@@ -170,6 +193,13 @@ class DashboardProvider extends ChangeNotifier {
     try {
       await _teamController.addUser(user);
       await refreshUsers();
+  Future<String> addTask(TaskModel task) async {
+    try {
+      final taskId = await _taskController.createTask(task);
+      // Refresh tasks from Firestore
+      tasks = await _taskController.fetchTasks();
+      notifyListeners();
+      return taskId;
     } catch (error) {
       lastError = error.toString();
       notifyListeners();
@@ -181,6 +211,12 @@ class DashboardProvider extends ChangeNotifier {
     try {
       await _teamController.updateUser(user);
       await refreshUsers();
+  Future<void> updateTask(TaskModel task) async {
+    try {
+      await _taskController.updateTask(task);
+      // Refresh tasks from Firestore
+      tasks = await _taskController.fetchTasks();
+      notifyListeners();
     } catch (error) {
       lastError = error.toString();
       notifyListeners();
@@ -192,6 +228,12 @@ class DashboardProvider extends ChangeNotifier {
     try {
       await _teamController.deleteUser(userId);
       await refreshUsers();
+  Future<void> updateTaskWithAudit(TaskModel task, {String? actionBy, String? actionByName}) async {
+    try {
+      await _taskController.updateTaskWithAudit(task, actionBy: actionBy, actionByName: actionByName);
+      // Refresh tasks from Firestore
+      tasks = await _taskController.fetchTasks();
+      notifyListeners();
     } catch (error) {
       lastError = error.toString();
       notifyListeners();
@@ -209,6 +251,12 @@ class DashboardProvider extends ChangeNotifier {
     try {
       await _teamController.createTeam(team);
       await refreshTeams();
+  Future<void> deleteTask(String taskId) async {
+    try {
+      await _taskController.deleteTask(taskId);
+      // Refresh tasks from Firestore
+      tasks = await _taskController.fetchTasks();
+      notifyListeners();
     } catch (error) {
       lastError = error.toString();
       notifyListeners();
@@ -226,6 +274,12 @@ class DashboardProvider extends ChangeNotifier {
     try {
       await _teamController.updateTeamMembers(teamId, memberIds);
       await refreshTeams();
+  Future<void> updateTaskStatus(String taskId, TaskStatus status) async {
+    try {
+      await _taskController.updateStatus(taskId, status);
+      // Refresh tasks from Firestore
+      tasks = await _taskController.fetchTasks();
+      notifyListeners();
     } catch (error) {
       lastError = error.toString();
       notifyListeners();
@@ -252,6 +306,25 @@ class DashboardProvider extends ChangeNotifier {
       lastError = error.toString();
       notifyListeners();
       rethrow;
+  Future<void> refreshTasks() async {
+    try {
+      tasks = await _taskController.fetchTasks();
+      print('Refreshed: Fetched ${tasks.length} tasks from Firestore');
+      lastError = null;
+      notifyListeners();
+    } catch (error) {
+      lastError = error.toString();
+      print('Error refreshing tasks: $error');
+      notifyListeners();
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getTaskAuditLogs(String taskId) async {
+    try {
+      return await _taskController.getAuditLogs(taskId);
+    } catch (error) {
+      print('Error fetching audit logs: $error');
+      return [];
     }
   }
 }

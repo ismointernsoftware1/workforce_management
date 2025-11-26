@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../components/shadcn/shadcn.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../providers/dashboard_provider.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/task_card.dart';
+import 'add_task_view.dart';
+import 'task_templates_view.dart';
 
 class TasksView extends StatelessWidget {
   const TasksView({super.key});
@@ -13,49 +16,75 @@ class TasksView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DashboardProvider>();
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minWidth: constraints.maxWidth,
+              maxWidth: constraints.maxWidth,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+          Text(
             'Tasks & Workflow',
             style: TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+              letterSpacing: -0.5,
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          const Text(
+          Text(
             'Manage your team\'s tasks and deadlines',
-            style: TextStyle(color: AppColors.textMuted),
+            style: TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 15,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: AppSpacing.xl),
           Row(
             children: [
               Expanded(
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Add a new task...',
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.add, color: AppColors.primary),
-                      onPressed: () {},
-                    ),
-                  ),
+                child: ShadInput(
+                  hintText: 'Search tasks...',
+                  prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
+                  onTap: () {},
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.xl,
-                    vertical: AppSpacing.md,
-                  ),
-                ),
-                onPressed: () {},
-                icon: const Icon(Icons.add),
-                label: const Text('Add Task'),
+              ShadButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const TaskTemplatesView(),
+                    ),
+                  );
+                },
+                variant: ShadButtonVariant.outline,
+                size: ShadButtonSize.md,
+                icon: const Icon(Icons.content_copy, size: 20),
+                child: const Text('Templates'),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              ShadButton(
+                onPressed: () async {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const AddTaskView(),
+                    ),
+                  );
+                  // Refresh tasks after returning from add task page
+                  await provider.refreshTasks();
+                },
+                variant: ShadButtonVariant.default_,
+                size: ShadButtonSize.md,
+                icon: const Icon(Icons.add, size: 20),
+                child: const Text('Add Task'),
               ),
             ],
           ),
@@ -89,60 +118,113 @@ class TasksView extends StatelessWidget {
           const SizedBox(height: AppSpacing.xl),
           Wrap(
             spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
             children: DashboardProvider.taskFilters.map(
               (filter) {
                 final isSelected = provider.taskFilter == filter;
-                return ChoiceChip(
-                  label: Text(filter),
-                  selected: isSelected,
-                  onSelected: (_) => provider.changeTaskFilter(filter),
-                  selectedColor: AppColors.primarySoft,
-                  backgroundColor: AppColors.surface,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                    side: BorderSide(
-                      color: isSelected
-                          ? AppColors.primary
-                          : AppColors.border,
-                    ),
-                  ),
-                  labelStyle: TextStyle(
-                    color: isSelected
-                        ? AppColors.primary
-                        : AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
+                return ShadButton(
+                  onPressed: () => provider.changeTaskFilter(filter),
+                  variant: isSelected
+                      ? ShadButtonVariant.default_
+                      : ShadButtonVariant.outline,
+                  size: ShadButtonSize.sm,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isSelected)
+                        const Icon(
+                          Icons.check_rounded,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      if (isSelected) const SizedBox(width: AppSpacing.xs),
+                      Text(filter),
+                    ],
                   ),
                 );
               },
             ).toList(),
           ),
           const SizedBox(height: AppSpacing.md),
-          ...provider.filteredTasks.map(
-            (task) => TaskCard(task: task),
-          ),
+          if (provider.filteredTasks.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.xl * 2),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.task_alt_outlined,
+                      size: 64,
+                      color: AppColors.textMuted.withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Text(
+                      'No tasks found',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      provider.taskFilter == 'All'
+                          ? 'Get started by creating your first task'
+                          : 'No ${provider.taskFilter.toLowerCase()} tasks',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                    if (provider.taskFilter == 'All') ...[
+                      const SizedBox(height: AppSpacing.xl),
+                      ShadButton(
+                        onPressed: () async {
+                          await Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const AddTaskView(),
+                            ),
+                          );
+                          await provider.refreshTasks();
+                        },
+                        variant: ShadButtonVariant.default_,
+                        icon: const Icon(Icons.add, size: 20),
+                        child: const Text('Add Your First Task'),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            )
+          else
+            ...provider.filteredTasks.map(
+              (task) => Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                child: TaskCard(task: task),
+              ),
+            ),
         ],
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 
   static Widget _coloredBadge(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
+    ShadBadgeVariant variant;
+    if (color == AppColors.success) {
+      variant = ShadBadgeVariant.default_;
+    } else if (color == AppColors.warning) {
+      variant = ShadBadgeVariant.secondary;
+    } else {
+      variant = ShadBadgeVariant.secondary;
+    }
+    
+    return ShadBadge(
+      label: label,
+      variant: variant,
     );
   }
 }
