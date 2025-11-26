@@ -279,18 +279,42 @@ class FirebaseService {
   Future<List<ExpenseModel>> fetchExpenses({String? employeeId}) async {
     try {
       QuerySnapshot<Map<String, dynamic>> snapshot;
-      if (employeeId != null) {
-        snapshot = await _expensesCol
-            .where('employeeId', isEqualTo: employeeId)
-            .orderBy('expenseDate', descending: true)
-            .get();
-      } else {
-        snapshot = await _expensesCol.orderBy('expenseDate', descending: true).get();
+      try {
+        if (employeeId != null) {
+          snapshot = await _expensesCol
+              .where('employeeId', isEqualTo: employeeId)
+              .orderBy('expenseDate', descending: true)
+              .get();
+        } else {
+          snapshot = await _expensesCol.orderBy('expenseDate', descending: true).get();
+        }
+      } catch (e) {
+        // If orderBy fails (e.g., missing index), fetch without ordering
+        print('Warning: OrderBy failed for expenses, fetching without ordering: $e');
+        if (employeeId != null) {
+          snapshot = await _expensesCol
+              .where('employeeId', isEqualTo: employeeId)
+              .get();
+        } else {
+          snapshot = await _expensesCol.get();
+        }
       }
       
-      return snapshot.docs
-          .map((doc) => ExpenseModel.fromSnapshot(doc))
-          .toList();
+      print('Found ${snapshot.docs.length} expense documents in Firestore');
+      final expenses = <ExpenseModel>[];
+      for (var doc in snapshot.docs) {
+        try {
+          final expense = ExpenseModel.fromSnapshot(doc);
+          expenses.add(expense);
+        } catch (e, stackTrace) {
+          // Log error but don't crash - skip problematic documents
+          print('Error parsing expense document ${doc.id}: $e');
+          print('Stack trace: $stackTrace');
+          print('Document data: ${doc.data()}');
+        }
+      }
+      print('Successfully parsed ${expenses.length} expenses');
+      return expenses;
     } catch (e) {
       print('Error fetching expenses: $e');
       rethrow;

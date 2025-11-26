@@ -8,6 +8,7 @@ enum ShadAlertVariant {
   destructive,
   success,
   warning,
+  info,
 }
 
 class ShadAlert extends StatelessWidget {
@@ -111,6 +112,13 @@ class ShadAlert extends StatelessWidget {
           titleColor: AppColors.warning,
           descriptionColor: AppColors.textSecondary,
         );
+      case ShadAlertVariant.info:
+        return _AlertStyle(
+          backgroundColor: AppColors.primarySoft,
+          borderColor: AppColors.primary.withValues(alpha: 0.3),
+          titleColor: AppColors.primary,
+          descriptionColor: AppColors.textSecondary,
+        );
     }
   }
 
@@ -134,6 +142,10 @@ class ShadAlert extends StatelessWidget {
       case ShadAlertVariant.warning:
         iconData = Icons.warning_amber_rounded;
         iconColor = AppColors.warning;
+        break;
+      case ShadAlertVariant.info:
+        iconData = Icons.info_outline_rounded;
+        iconColor = AppColors.primary;
         break;
     }
 

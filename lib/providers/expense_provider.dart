@@ -145,6 +145,18 @@ class ExpenseProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> updateExpenseStatus(String expenseId, ExpenseStatus status) async {
+    try {
+      await _expenseController.updateExpenseStatus(expenseId, status);
+      expenses = await _expenseController.fetchExpenses();
+      notifyListeners();
+    } catch (error) {
+      lastError = error.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
   Future<bool> checkDuplicateReceipt(String fileHash, String employeeId) async {
     try {
       return await _expenseController.checkDuplicateReceipt(fileHash, employeeId);

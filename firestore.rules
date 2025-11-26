@@ -1,41 +1,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Tasks collection - allow all read and write operations
-    match /tasks/{taskId} {
-      allow read, write: if true;
-      
-      // Audit logs subcollection
-      match /auditLogs/{logId} {
-        allow read, write: if true;
-      }
-    }
-    
-    // Team collection - allow all read and write operations
-    match /team/{memberId} {
-      allow read, write: if true;
-    }
-    
-    // Conversations collection - allow all read and write operations
-    match /conversations/{conversationId} {
-      allow read, write: if true;
-      match /messages/{messageId} {
-        allow read, write: if true;
-      }
-    }
-    
-    // Expenses collection - allow all read and write operations
-    match /expenses/{expenseId} {
-      allow read, write: if true;
-    }
-    
-    // Reimbursements collection - allow all read and write operations
-    match /reimbursements/{reimbursementId} {
-      allow read, write: if true;
-    }
-    
-    // Expense Categories collection - allow all read and write operations
-    match /expenseCategories/{categoryId} {
+    // Allow all read and write operations for all documents and collections
+    match /{document=**} {
       allow read, write: if true;
     }
   }

@@ -10,16 +10,39 @@ import '../widgets/task_card.dart';
 import 'add_task_view.dart';
 import 'task_templates_view.dart';
 
-class TasksView extends StatelessWidget {
+class TasksView extends StatefulWidget {
   const TasksView({super.key});
+
+  @override
+  State<TasksView> createState() => _TasksViewState();
+}
+
+class _TasksViewState extends State<TasksView> {
+  @override
+  void initState() {
+    super.initState();
+    // Refresh tasks when view becomes visible
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshTasks();
+    });
+  }
+
+  Future<void> _refreshTasks() async {
+    if (!mounted) return;
+    final provider = context.read<DashboardProvider>();
+    // Always refresh to ensure latest data is loaded
+    await provider.refreshTasks();
+  }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DashboardProvider>();
+    final isMobile = MediaQuery.of(context).size.width < 768;
+    
     return LayoutBuilder(
       builder: (context, constraints) {
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.xl),
+          padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.xl),
           child: ConstrainedBox(
             constraints: BoxConstraints(
               minWidth: constraints.maxWidth,
@@ -31,7 +54,7 @@ class TasksView extends StatelessWidget {
           Text(
             'Tasks & Workflow',
             style: TextStyle(
-              fontSize: 32,
+              fontSize: isMobile ? 24 : 32,
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
               letterSpacing: -0.5,
@@ -42,7 +65,7 @@ class TasksView extends StatelessWidget {
             'Manage your team\'s tasks and deadlines',
             style: TextStyle(
               color: AppColors.textMuted,
-              fontSize: 15,
+              fontSize: isMobile ? 13 : 15,
               height: 1.4,
             ),
           ),
@@ -89,32 +112,53 @@ class TasksView extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.xl),
-          Row(
-            children: [
-              Expanded(
-                child: StatCard(
-                  title: 'Total',
-                  value: provider.totalTasks.toString(),
+          isMobile
+              ? Column(
+                  children: [
+                    StatCard(
+                      title: 'Total',
+                      value: provider.totalTasks.toString(),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    StatCard(
+                      title: 'In Progress',
+                      value: provider.inProgressCount.toString(),
+                      badge: _coloredBadge('Active', AppColors.warning),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    StatCard(
+                      title: 'Completed',
+                      value: provider.completedCount.toString(),
+                      badge: _coloredBadge('Done', AppColors.success),
+                    ),
+                  ],
+                )
+              : Row(
+                  children: [
+                    Expanded(
+                      child: StatCard(
+                        title: 'Total',
+                        value: provider.totalTasks.toString(),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: StatCard(
+                        title: 'In Progress',
+                        value: provider.inProgressCount.toString(),
+                        badge: _coloredBadge('Active', AppColors.warning),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: StatCard(
+                        title: 'Completed',
+                        value: provider.completedCount.toString(),
+                        badge: _coloredBadge('Done', AppColors.success),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: StatCard(
-                  title: 'In Progress',
-                  value: provider.inProgressCount.toString(),
-                  badge: _coloredBadge('Active', AppColors.warning),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: StatCard(
-                  title: 'Completed',
-                  value: provider.completedCount.toString(),
-                  badge: _coloredBadge('Done', AppColors.success),
-                ),
-              ),
-            ],
-          ),
           const SizedBox(height: AppSpacing.xl),
           Wrap(
             spacing: AppSpacing.sm,
