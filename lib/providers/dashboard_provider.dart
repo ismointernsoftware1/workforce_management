@@ -6,7 +6,8 @@ import '../controllers/team_controller.dart';
 import '../data/sample_data.dart';
 import '../models/chat_models.dart';
 import '../models/task_model.dart';
-import '../models/team_member.dart';
+import '../models/user_model.dart';
+import '../models/team_model.dart';
 
 enum DashboardTab { tasks, team, chat, expenses }
 
@@ -28,7 +29,9 @@ class DashboardProvider extends ChangeNotifier {
   String? lastError;
 
   List<TaskModel> tasks = const [];
-  List<TeamMember> members = const [];
+  List<UserModel> allUsers = const [];
+  List<UserModel> users = const [];
+  List<Team> teams = const [];
   List<Conversation> conversations = const [];
   String? selectedConversationId;
 
@@ -47,6 +50,11 @@ class DashboardProvider extends ChangeNotifier {
     // Fetch tasks independently - don't let other failures affect tasks
     try {
       tasks = await _taskController.fetchTasks();
+      if (tasks.isEmpty) {
+        tasks = SampleData.tasks();
+      }
+      allUsers = await _teamController.fetchUsers();
+      users = allUsers;
       print('Fetched ${tasks.length} tasks from Firestore');
       lastError = null;
     } catch (error) {
@@ -72,9 +80,14 @@ class DashboardProvider extends ChangeNotifier {
       if (conversations.isEmpty) {
         conversations = SampleData.conversations();
       }
+      teams = await _teamController.fetchTeams();
       selectedConversationId =
           conversations.isNotEmpty ? conversations.first.id : null;
     } catch (error) {
+      lastError = error.toString();
+      tasks = SampleData.tasks();
+      allUsers = const [];
+      users = const [];
       print('Error fetching conversations: $error');
       conversations = SampleData.conversations();
       selectedConversationId =
@@ -176,6 +189,10 @@ class DashboardProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> addUser(UserModel user) async {
+    try {
+      await _teamController.addUser(user);
+      await refreshUsers();
   Future<String> addTask(TaskModel task) async {
     try {
       final taskId = await _taskController.createTask(task);
@@ -190,6 +207,10 @@ class DashboardProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> updateUser(UserModel user) async {
+    try {
+      await _teamController.updateUser(user);
+      await refreshUsers();
   Future<void> updateTask(TaskModel task) async {
     try {
       await _taskController.updateTask(task);
@@ -203,6 +224,10 @@ class DashboardProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> deleteUser(String userId) async {
+    try {
+      await _teamController.deleteUser(userId);
+      await refreshUsers();
   Future<void> updateTaskWithAudit(TaskModel task, {String? actionBy, String? actionByName}) async {
     try {
       await _taskController.updateTaskWithAudit(task, actionBy: actionBy, actionByName: actionByName);
@@ -216,6 +241,16 @@ class DashboardProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> refreshUsers() async {
+    allUsers = await _teamController.fetchUsers();
+    users = allUsers;
+    notifyListeners();
+  }
+
+  Future<void> addTeam(Team team) async {
+    try {
+      await _teamController.createTeam(team);
+      await refreshTeams();
   Future<void> deleteTask(String taskId) async {
     try {
       await _taskController.deleteTask(taskId);
@@ -229,6 +264,16 @@ class DashboardProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> refreshTeams() async {
+    teams = await _teamController.fetchTeams();
+    notifyListeners();
+  }
+
+  Future<void> updateTeamMembers(
+      String teamId, List<String> memberIds) async {
+    try {
+      await _teamController.updateTeamMembers(teamId, memberIds);
+      await refreshTeams();
   Future<void> updateTaskStatus(String taskId, TaskStatus status) async {
     try {
       await _taskController.updateStatus(taskId, status);
@@ -242,6 +287,25 @@ class DashboardProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> updateTeam(Team team) async {
+    try {
+      await _teamController.updateTeam(team);
+      await refreshTeams();
+    } catch (error) {
+      lastError = error.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> deleteTeam(String teamId) async {
+    try {
+      await _teamController.deleteTeam(teamId);
+      await refreshTeams();
+    } catch (error) {
+      lastError = error.toString();
+      notifyListeners();
+      rethrow;
   Future<void> refreshTasks() async {
     try {
       tasks = await _taskController.fetchTasks();

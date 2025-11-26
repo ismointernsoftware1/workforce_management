@@ -41,6 +41,9 @@ class WorkforceApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         home: const DashboardView(),
+        routes: {
+          '/dashboard': (context) => const DashboardView(),
+        },
       ),
     );
   }
