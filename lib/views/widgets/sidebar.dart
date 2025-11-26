@@ -28,22 +28,29 @@ class Sidebar extends StatelessWidget {
           right: BorderSide(color: AppColors.border),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _SidebarHeader(onTabChanged: onTabChanged),
-          const SizedBox(height: AppSpacing.xl),
-          ...DashboardTab.values.map(
-            (tab) => _SidebarItem(
-              label: _labelFor(tab),
-              icon: _iconFor(tab),
-              isActive: activeTab == tab,
-              onTap: () => onTabChanged(tab),
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SidebarHeader(onTabChanged: onTabChanged),
+            const SizedBox(height: AppSpacing.xl),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: DashboardTab.values.map(
+                    (tab) => _SidebarItem(
+                      label: _labelFor(tab),
+                      icon: _iconFor(tab),
+                      isActive: activeTab == tab,
+                      onTap: () => onTabChanged(tab),
+                    ),
+                  ).toList(),
+                ),
+              ),
             ),
-          ),
-          const Spacer(),
-          const _CurrentUserTile(),
-        ],
+            const _CurrentUserTile(),
+          ],
+        ),
       ),
     );
   }

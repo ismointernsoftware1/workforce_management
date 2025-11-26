@@ -58,6 +58,9 @@ class _AddExpenseViewState extends State<AddExpenseView> {
   @override
   void initState() {
     super.initState();
+    // Initialize rate with default value
+    _rateController.text = MileageService.defaultMileageRate.toStringAsFixed(2);
+    
     // Ensure categories are loaded when view opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<ExpenseProvider>();
@@ -274,37 +277,17 @@ class _AddExpenseViewState extends State<AddExpenseView> {
       ),
       backgroundColor: AppColors.background,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.xl),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.xl,
+          AppSpacing.md,
+          AppSpacing.xl,
+          AppSpacing.xl,
+        ),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Section
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Submit Expense',
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                      height: 1.2,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'Fill in the details to submit your expense',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.xl),
 
               // Expense Type Selection
               ShadSelect<ExpenseType>(
@@ -563,37 +546,55 @@ class _MileageCalculator extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Mileage Details',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-                letterSpacing: -0.3,
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.primarySoft,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                'Rate: \$${MileageService.defaultMileageRate.toStringAsFixed(2)}/mile',
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-          ],
+        Text(
+          'Mileage Details',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+            letterSpacing: -0.3,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        
+        // Rate input
+        ShadInput(
+          controller: rateController,
+          label: 'Rate (\$/mile)',
+          hintText: '0.65',
+          prefixIcon: const Icon(Icons.attach_money, color: AppColors.primary),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          onChanged: (_) => onAmountCalculated(),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Please enter rate';
+            }
+            final rate = double.tryParse(value);
+            if (rate == null || rate <= 0) {
+              return 'Please enter a valid rate';
+            }
+            return null;
+          },
+        ),
+        
+        // Rate input
+        ShadInput(
+          controller: rateController,
+          label: 'Rate (\$/mile)',
+          hintText: '0.65',
+          prefixIcon: const Icon(Icons.attach_money, color: AppColors.primary),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          onChanged: (_) => onAmountCalculated(),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Please enter rate';
+            }
+            final rate = double.tryParse(value);
+            if (rate == null || rate <= 0) {
+              return 'Please enter a valid rate';
+            }
+            return null;
+          },
         ),
         const SizedBox(height: AppSpacing.md),
         

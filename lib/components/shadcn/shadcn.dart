@@ -8,4 +8,7 @@ export 'shad_card.dart';
 export 'shad_dialog.dart';
 export 'shad_input.dart';
 export 'shad_select.dart';
+export 'shad_table.dart';
+export 'shad_tooltip.dart';
+export 'shad_toast.dart';
 

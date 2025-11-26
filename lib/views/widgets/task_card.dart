@@ -88,29 +88,35 @@ class TaskCard extends StatelessWidget {
                 color: _priorityColor,
               ),
               const SizedBox(width: AppSpacing.sm),
-              ShadButton(
-                onPressed: () async {
-                  await Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => EditTaskView(task: task),
-                    ),
-                  );
-                  if (context.mounted) {
-                    await Provider.of<DashboardProvider>(context, listen: false)
-                        .refreshTasks();
-                  }
-                },
-                variant: ShadButtonVariant.ghost,
-                size: ShadButtonSize.icon,
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                child: const SizedBox.shrink(),
+              ShadTooltip(
+                message: 'Edit Task',
+                child: ShadButton(
+                  onPressed: () async {
+                    await Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => EditTaskView(task: task),
+                      ),
+                    );
+                    if (context.mounted) {
+                      await Provider.of<DashboardProvider>(context, listen: false)
+                          .refreshTasks();
+                    }
+                  },
+                  variant: ShadButtonVariant.ghost,
+                  size: ShadButtonSize.icon,
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  child: const SizedBox.shrink(),
+                ),
               ),
-              ShadButton(
-                onPressed: () => _showDeleteConfirmation(context),
-                variant: ShadButtonVariant.ghost,
-                size: ShadButtonSize.icon,
-                icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.danger),
-                child: const SizedBox.shrink(),
+              ShadTooltip(
+                message: 'Delete Task',
+                child: ShadButton(
+                  onPressed: () => _showDeleteConfirmation(context),
+                  variant: ShadButtonVariant.ghost,
+                  size: ShadButtonSize.icon,
+                  icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.danger),
+                  child: const SizedBox.shrink(),
+                ),
               ),
             ],
           ),

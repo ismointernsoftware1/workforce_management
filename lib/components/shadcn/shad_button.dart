@@ -53,7 +53,7 @@ class ShadButton extends StatelessWidget {
           icon!,
           const SizedBox(width: AppSpacing.sm),
         ],
-        child,
+        Flexible(child: child),
       ],
     );
 
@@ -63,11 +63,17 @@ class ShadButton extends StatelessWidget {
 
     final button = _buildButton(buttonStyle, sizeStyle, buttonChild, isDisabled);
 
+    Widget wrappedButton = AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
+      child: button,
+    );
+
     if (width != null) {
-      return SizedBox(width: width, child: button);
+      return SizedBox(width: width, child: wrappedButton);
     }
 
-    return button;
+    return wrappedButton;
   }
 
   Widget _buildButton(

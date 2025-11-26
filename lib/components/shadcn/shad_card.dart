@@ -30,7 +30,9 @@ class ShadCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
       margin: margin,
       decoration: BoxDecoration(
         color: backgroundColor ?? AppColors.surface,
