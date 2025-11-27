@@ -55,43 +55,52 @@ class AttachmentPicker extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        // File Upload Area (Drag and Drop Style)
+        GestureDetector(
+          onTap: enabled ? () => _pickFiles(context) : null,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl * 2, horizontal: AppSpacing.lg),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: AppColors.border,
+                width: 2,
+                style: BorderStyle.solid,
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
-                  'Attachments',
+                Icon(
+                  Icons.cloud_upload_outlined,
+                  size: 48,
+                  color: AppColors.textMuted,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'Drop items here (or)',
                   style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                    letterSpacing: -0.3,
+                    fontSize: 14,
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'Add files related to this task',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textMuted,
-                  ),
+                const SizedBox(height: AppSpacing.md),
+                ShadButton(
+                  onPressed: enabled ? () => _pickFiles(context) : null,
+                  variant: ShadButtonVariant.default_,
+                  size: ShadButtonSize.md,
+                  child: const Text('Browse files'),
+                  disabled: !enabled,
                 ),
               ],
             ),
-            ShadButton(
-              onPressed: enabled ? () => _pickFiles(context) : null,
-              variant: ShadButtonVariant.outline,
-              size: ShadButtonSize.sm,
-              icon: const Icon(Icons.attach_file, size: 18),
-              child: const Text('Add Files'),
-              disabled: !enabled,
-            ),
-          ],
+          ),
         ),
         if (attachments.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.lg),
           ...attachments.asMap().entries.map((entry) {
             final index = entry.key;
             final attachment = entry.value;
@@ -183,4 +192,5 @@ class AttachmentPicker extends StatelessWidget {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 }
+
 

@@ -20,10 +20,9 @@ class DashboardView extends StatefulWidget {
 }
 
 class _DashboardViewState extends State<DashboardView> {
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  
   // Breakpoint for mobile vs desktop
   static const double mobileBreakpoint = 768.0;
+  bool _sidebarOpen = true; // Sidebar open by default on web
 
   @override
   Widget build(BuildContext context) {
@@ -31,27 +30,16 @@ class _DashboardViewState extends State<DashboardView> {
       builder: (context, provider, _) {
         // Check if we're on mobile (width < 768px)
         final isMobile = MediaQuery.of(context).size.width < mobileBreakpoint;
+        // On web, sidebar can be toggled
+        final showSidebar = isMobile ? false : _sidebarOpen;
         
         return Scaffold(
-          key: _scaffoldKey,
           backgroundColor: AppColors.background,
-          drawer: isMobile
-              ? Drawer(
-                  width: 280,
-                  child: Sidebar(
-                    activeTab: provider.activeTab,
-                    onTabChanged: (tab) {
-                      provider.changeTab(tab);
-                      _scaffoldKey.currentState?.closeDrawer();
-                    },
-                  ),
-                )
-              : null,
           body: SafeArea(
             child: Row(
               children: [
-                // Sidebar - only show on desktop
-                if (!isMobile)
+                // Sidebar - show on desktop when open, or use drawer on mobile
+                if (showSidebar)
                   Sidebar(
                     activeTab: provider.activeTab,
                     onTabChanged: provider.changeTab,
@@ -63,14 +51,26 @@ class _DashboardViewState extends State<DashboardView> {
                       _TopBar(
                         activeTab: provider.activeTab,
                         isMobile: isMobile,
-                        onMenuTap: () => _scaffoldKey.currentState?.openDrawer(),
+                        onMenuTap: () {
+                          if (isMobile) {
+                            _showMobileSidebar(context, provider);
+                          } else {
+                            // Toggle sidebar on web
+                            setState(() {
+                              _sidebarOpen = !_sidebarOpen;
+                            });
+                          }
+                        },
+                        showHamburger: true, // Always show hamburger
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       ],
                       if (provider.isLoading)
                         const Expanded(
                           child: Center(
-                            child: CircularProgressIndicator(),
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                            ),
                           ),
                         )
                       else
@@ -91,6 +91,27 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 
+  void _showMobileSidebar(BuildContext context, DashboardProvider provider) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        alignment: Alignment.centerLeft,
+        insetPadding: EdgeInsets.zero,
+        backgroundColor: Colors.transparent,
+        child: SizedBox(
+          width: 280,
+          child: Sidebar(
+            activeTab: provider.activeTab,
+            onTabChanged: (tab) {
+              provider.changeTab(tab);
+              Navigator.of(context).pop();
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTab(DashboardProvider provider) {
     switch (provider.activeTab) {
       case DashboardTab.tasks:
@@ -105,16 +126,58 @@ class _DashboardViewState extends State<DashboardView> {
   }
 }
 
-class _TopBar extends StatelessWidget {
+class _TopBar extends StatefulWidget {
   const _TopBar({
     required this.activeTab,
     required this.isMobile,
     required this.onMenuTap,
+    this.showHamburger = false,
   });
 
   final DashboardTab activeTab;
   final bool isMobile;
   final VoidCallback onMenuTap;
+  final bool showHamburger;
+
+  @override
+  State<_TopBar> createState() => _TopBarState();
+}
+
+class _TopBarState extends State<_TopBar> {
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      // Notify the provider about the search query
+      final provider = Provider.of<DashboardProvider>(context, listen: false);
+      _performSearch(provider, _searchController.text);
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _performSearch(DashboardProvider provider, String query) {
+    switch (widget.activeTab) {
+      case DashboardTab.tasks:
+        // Search is handled in TasksView
+        break;
+      case DashboardTab.team:
+        provider.filterUsers(query);
+        break;
+      case DashboardTab.chat:
+        // Search is handled in ChatView
+        break;
+      case DashboardTab.expenses:
+        // Search is handled in ExpensesView
+        break;
+    }
+  }
 
   Future<void> _navigateToAddTask(BuildContext context) async {
     final provider = Provider.of<DashboardProvider>(context, listen: false);
@@ -131,78 +194,54 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? AppSpacing.md : AppSpacing.xl,
+        horizontal: widget.isMobile ? AppSpacing.md : AppSpacing.xl,
         vertical: AppSpacing.md,
       ),
-      child: activeTab == DashboardTab.chat
-          ? const SizedBox.shrink() // Hide top bar for chat tab
+      child: widget.activeTab == DashboardTab.chat
+          ? const SizedBox.shrink()
           : Row(
-        children: [
-          // Hamburger menu button for mobile
-          if (isMobile) ...[
-            ShadTooltip(
-              message: 'Menu',
-              child: ShadButton(
-                onPressed: onMenuTap,
-                variant: ShadButtonVariant.ghost,
-                size: ShadButtonSize.icon,
-                icon: const Icon(Icons.menu, size: 24, color: AppColors.textPrimary),
-                child: const SizedBox.shrink(),
-              ),
+              children: [
+                if (widget.isMobile || widget.showHamburger) ...[
+                  ShadTooltip(
+                    message: 'Menu',
+                    child: ShadButton(
+                      onPressed: widget.onMenuTap,
+                      variant: ShadButtonVariant.ghost,
+                      size: ShadButtonSize.icon,
+                      icon: const Icon(Icons.menu,
+                          size: 24, color: AppColors.textPrimary),
+                      child: const SizedBox.shrink(),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                ],
+                Expanded(
+                  child: ShadInput(
+                    controller: _searchController,
+                    hintText: 'Search...',
+                    prefixIcon:
+                        const Icon(Icons.search, color: AppColors.textMuted),
+                  ),
+                ),
+                if (widget.activeTab == DashboardTab.tasks) ...[
+                  SizedBox(
+                      width: widget.isMobile
+                          ? AppSpacing.sm
+                          : AppSpacing.md),
+                  ShadButton(
+                    onPressed: () => _navigateToAddTask(context),
+                    variant: ShadButtonVariant.default_,
+                    size: widget.isMobile
+                        ? ShadButtonSize.sm
+                        : ShadButtonSize.md,
+                    icon: const Icon(Icons.add, size: 20),
+                    child: widget.isMobile
+                        ? const SizedBox.shrink()
+                        : const Text('Add Task'),
+                  ),
+                ],
+              ],
             ),
-            const SizedBox(width: AppSpacing.sm),
-          ],
-          // Search bar - responsive width
-          Expanded(
-            child: ShadInput(
-              hintText: 'Search...',
-              prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
-            ),
-          ),
-          // Right side buttons - hide some on mobile
-          if (!isMobile) ...[
-            const SizedBox(width: AppSpacing.md),
-            ShadTooltip(
-              message: 'Notifications',
-              child: ShadButton(
-                onPressed: () {},
-                variant: ShadButtonVariant.ghost,
-                size: ShadButtonSize.icon,
-                icon: const Icon(Icons.notifications_none_rounded, size: 20),
-                child: const SizedBox.shrink(),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            ShadButton(
-              onPressed: () {},
-              variant: ShadButtonVariant.outline,
-              size: ShadButtonSize.sm,
-              icon: const Icon(Icons.filter_list_rounded, size: 18),
-              child: const Text('Filters'),
-            ),
-          ] else ...[
-            const SizedBox(width: AppSpacing.sm),
-            ShadButton(
-              onPressed: () {},
-              variant: ShadButtonVariant.ghost,
-              size: ShadButtonSize.icon,
-              icon: const Icon(Icons.notifications_none_rounded, size: 20),
-              child: const SizedBox.shrink(),
-            ),
-          ],
-          // Add Task button - responsive
-          if (activeTab == DashboardTab.tasks) ...[
-            SizedBox(width: isMobile ? AppSpacing.sm : AppSpacing.md),
-            ShadButton(
-              onPressed: () => _navigateToAddTask(context),
-              variant: ShadButtonVariant.default_,
-              size: isMobile ? ShadButtonSize.sm : ShadButtonSize.md,
-              icon: const Icon(Icons.add, size: 20),
-              child: isMobile ? const SizedBox.shrink() : const Text('Add Task'),
-            ),
-          ],
-        ],
-      ),
     );
   }
 }

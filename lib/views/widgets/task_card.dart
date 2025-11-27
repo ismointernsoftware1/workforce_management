@@ -57,10 +57,26 @@ class TaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateFormatter = DateFormat('MM/dd/yyyy');
-    return ShadCard(
+    return Container(
       margin: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      child: Column(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.border.withValues(alpha: 0.5),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.textPrimary.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -81,13 +97,15 @@ class TaskCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              _StatusDropdown(
-                task: task,
-                statusLabel: _statusLabel,
-                color: _priorityColor,
+              const SizedBox(width: AppSpacing.xs),
+              Flexible(
+                child: _StatusDropdown(
+                  task: task,
+                  statusLabel: _statusLabel,
+                  color: _priorityColor,
+                ),
               ),
-              const SizedBox(width: AppSpacing.sm),
+              const SizedBox(width: AppSpacing.xs),
               ShadTooltip(
                 message: 'Edit Task',
                 child: ShadButton(
@@ -229,6 +247,7 @@ class TaskCard extends StatelessWidget {
                   activeColor: AppColors.primary,
                   side: const BorderSide(color: AppColors.border),
                 ),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Text(
                     sub.label,
@@ -244,6 +263,7 @@ class TaskCard extends StatelessWidget {
             ),
           ),
         ],
+        ),
       ),
     );
   }
@@ -281,34 +301,20 @@ class TaskCard extends StatelessWidget {
       try {
         await provider.deleteTask(task.id);
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: ShadAlert(
-                title: 'Success',
-                description: 'Task deleted successfully',
-                variant: ShadAlertVariant.success,
-              ),
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              padding: const EdgeInsets.all(16),
-              behavior: SnackBarBehavior.floating,
-            ),
+          ShadToast.show(
+            context,
+            title: 'Success',
+            description: 'Task deleted successfully',
+            variant: ShadToastVariant.success,
           );
         }
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: ShadAlert(
-                title: 'Error',
-                description: 'Failed to delete task: ${e.toString()}',
-                variant: ShadAlertVariant.destructive,
-              ),
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              padding: const EdgeInsets.all(16),
-              behavior: SnackBarBehavior.floating,
-            ),
+          ShadToast.show(
+            context,
+            title: 'Error',
+            description: 'Failed to delete task: ${e.toString()}',
+            variant: ShadToastVariant.error,
           );
         }
       }
@@ -403,15 +409,12 @@ class _StatusDropdown extends StatelessWidget {
         borderRadius: BorderRadius.circular(40),
         border: Border.all(color: AppColors.border),
       ),
-      child: DropdownButton<String>(
+      child: ShadSelect<String>(
         value: statusLabel,
-        dropdownColor: AppColors.surface,
-        underline: const SizedBox.shrink(),
-        icon: const Icon(Icons.expand_more_rounded, size: 18),
         items: const [
-          DropdownMenuItem(value: 'Pending', child: Text('Pending')),
-          DropdownMenuItem(value: 'In Progress', child: Text('In Progress')),
-          DropdownMenuItem(value: 'Completed', child: Text('Completed')),
+          ShadSelectItem(value: 'Pending', label: 'Pending'),
+          ShadSelectItem(value: 'In Progress', label: 'In Progress'),
+          ShadSelectItem(value: 'Completed', label: 'Completed'),
         ],
         onChanged: (String? newStatus) async {
           if (newStatus == null) return;
@@ -436,23 +439,15 @@ class _StatusDropdown extends StatelessWidget {
             await provider.updateTaskStatus(task.id, status);
           } catch (e) {
             if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: ShadAlert(
-                    title: 'Error',
-                    description: 'Failed to update status: ${e.toString()}',
-                    variant: ShadAlertVariant.destructive,
-                  ),
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                  padding: const EdgeInsets.all(16),
-                  behavior: SnackBarBehavior.floating,
-                ),
+              ShadToast.show(
+                context,
+                title: 'Error',
+                description: 'Failed to update status: ${e.toString()}',
+                variant: ShadToastVariant.error,
               );
             }
           }
         },
-        style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
       ),
     );
   }

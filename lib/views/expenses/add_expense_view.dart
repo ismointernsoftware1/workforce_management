@@ -276,13 +276,16 @@ class _AddExpenseViewState extends State<AddExpenseView> {
         ),
       ),
       backgroundColor: AppColors.background,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.xl,
-          AppSpacing.md,
-          AppSpacing.xl,
-          AppSpacing.xl,
-        ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 768;
+          return SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              isMobile ? AppSpacing.md : AppSpacing.xl,
+              AppSpacing.md,
+              isMobile ? AppSpacing.md : AppSpacing.xl,
+              AppSpacing.xl,
+            ),
         child: Form(
           key: _formKey,
           child: Column(
@@ -517,12 +520,14 @@ class _AddExpenseViewState extends State<AddExpenseView> {
             ],
           ),
         ),
+          );
+        },
       ),
     );
   }
 }
 
-class _MileageCalculator extends StatelessWidget {
+class _MileageCalculator extends StatefulWidget {
   const _MileageCalculator({
     required this.distanceController,
     required this.rateController,
@@ -540,9 +545,14 @@ class _MileageCalculator extends StatelessWidget {
   final VoidCallback onAmountCalculated;
 
   @override
+  State<_MileageCalculator> createState() => _MileageCalculatorState();
+}
+
+class _MileageCalculatorState extends State<_MileageCalculator> {
+  final _mileageService = MileageService();
+
+  @override
   Widget build(BuildContext context) {
-    final mileageService = MileageService();
-    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -557,62 +567,24 @@ class _MileageCalculator extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.md),
         
-        // Rate input
+        // Rate input - Editable by user
         ShadInput(
-          controller: rateController,
-          label: 'Rate (\$/mile)',
+          controller: widget.rateController,
+          label: 'Rate per Mile (\$/mile) *',
           hintText: '0.65',
           prefixIcon: const Icon(Icons.attach_money, color: AppColors.primary),
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          onChanged: (_) => onAmountCalculated(),
+          onChanged: (_) {
+            setState(() {}); // Trigger rebuild to update calculation
+            widget.onAmountCalculated();
+          },
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
-              return 'Please enter rate';
+              return 'Please enter rate per mile';
             }
             final rate = double.tryParse(value);
             if (rate == null || rate <= 0) {
               return 'Please enter a valid rate';
-            }
-            return null;
-          },
-        ),
-        
-        // Rate input
-        ShadInput(
-          controller: rateController,
-          label: 'Rate (\$/mile)',
-          hintText: '0.65',
-          prefixIcon: const Icon(Icons.attach_money, color: AppColors.primary),
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          onChanged: (_) => onAmountCalculated(),
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return 'Please enter rate';
-            }
-            final rate = double.tryParse(value);
-            if (rate == null || rate <= 0) {
-              return 'Please enter a valid rate';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: AppSpacing.md),
-        
-        // Distance
-        ShadInput(
-          controller: distanceController,
-          label: 'Distance (miles) *',
-          hintText: '0.0',
-          prefixIcon: const Icon(Icons.straighten, color: AppColors.primary),
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          onChanged: (_) => onAmountCalculated(),
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return 'Please enter distance';
-            }
-            final distance = double.tryParse(value);
-            if (distance == null || distance <= 0) {
-              return 'Please enter a valid distance';
             }
             return null;
           },
@@ -621,7 +593,7 @@ class _MileageCalculator extends StatelessWidget {
 
         // Start Location
         ShadInput(
-          controller: startLocationController,
+          controller: widget.startLocationController,
           label: 'Start Location *',
           hintText: 'Enter starting location',
           prefixIcon: const Icon(Icons.location_on, color: AppColors.primary),
@@ -636,7 +608,7 @@ class _MileageCalculator extends StatelessWidget {
 
         // End Location
         ShadInput(
-          controller: endLocationController,
+          controller: widget.endLocationController,
           label: 'End Location *',
           hintText: 'Enter destination',
           prefixIcon: const Icon(Icons.location_on, color: AppColors.primary),
@@ -648,10 +620,34 @@ class _MileageCalculator extends StatelessWidget {
           },
         ),
         const SizedBox(height: AppSpacing.md),
+        
+        // Distance
+        ShadInput(
+          controller: widget.distanceController,
+          label: 'Distance (miles) *',
+          hintText: '0.0',
+          prefixIcon: const Icon(Icons.straighten, color: AppColors.primary),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          onChanged: (_) {
+            setState(() {}); // Trigger rebuild to update calculation
+            widget.onAmountCalculated();
+          },
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Please enter distance';
+            }
+            final distance = double.tryParse(value);
+            if (distance == null || distance <= 0) {
+              return 'Please enter a valid distance';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: AppSpacing.md),
 
         // Purpose
         ShadInput(
-          controller: purposeController,
+          controller: widget.purposeController,
           label: 'Purpose',
           hintText: 'Business purpose of trip',
           prefixIcon: const Icon(Icons.description, color: AppColors.primary),
@@ -659,14 +655,14 @@ class _MileageCalculator extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.md),
 
-        // Calculated Amount Display
+        // Calculated Amount Display with Breakdown
         Builder(
           builder: (context) {
-            final distance = double.tryParse(distanceController.text);
-            final rate = double.tryParse(rateController.text) ?? MileageService.defaultMileageRate;
+            final distance = double.tryParse(widget.distanceController.text);
+            final rate = double.tryParse(widget.rateController.text) ?? MileageService.defaultMileageRate;
             
-            if (distance != null && distance > 0) {
-              final totalAmount = mileageService.calculateMileageAmount(
+            if (distance != null && distance > 0 && rate > 0) {
+              final totalAmount = _mileageService.calculateMileageAmount(
                 distance: distance,
                 customRate: rate,
               );
@@ -678,24 +674,91 @@ class _MileageCalculator extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Total Reimbursement:',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
+                    // Calculation Breakdown
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isMobile = constraints.maxWidth < 400;
+                        if (isMobile) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Calculation:',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${distance.toStringAsFixed(2)} miles × \$${rate.toStringAsFixed(2)}/mile',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textMuted,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          );
+                        }
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                'Calculation:',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ),
+                            Flexible(
+                              child: Text(
+                                '${distance.toStringAsFixed(2)} miles × \$${rate.toStringAsFixed(2)}/mile',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textMuted,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.right,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
-                    Text(
-                      '\$${totalAmount.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
-                      ),
+                    const SizedBox(height: AppSpacing.sm),
+                    // Total Amount
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            'Total Reimbursement:',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(
+                          '\$${totalAmount.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

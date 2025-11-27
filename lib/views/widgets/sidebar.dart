@@ -112,11 +112,11 @@ class _SidebarHeader extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Text(
                   'Workforce',
                   style: TextStyle(
-                    color: AppColors.textPrimary,
+                    color: Colors.white,
                     fontWeight: FontWeight.w600,
                     fontSize: 18,
                   ),
@@ -125,7 +125,7 @@ class _SidebarHeader extends StatelessWidget {
                 Text(
                   'Management',
                   style: TextStyle(
-                    color: AppColors.textMuted,
+                    color: Colors.white.withValues(alpha: 0.7),
                     fontSize: 12,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -158,7 +158,7 @@ class _SidebarItem extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
       child: Material(
         color: isActive
-            ? AppColors.primary.withValues(alpha: 0.12)
+            ? AppColors.primary.withValues(alpha: 0.2)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
@@ -173,13 +173,13 @@ class _SidebarItem extends StatelessWidget {
               children: [
                 Icon(
                   icon,
-                  color: isActive ? AppColors.primary : AppColors.textMuted,
+                  color: isActive ? AppColors.primary : Colors.white.withValues(alpha: 0.7),
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   label,
                   style: TextStyle(
-                    color: isActive ? AppColors.textPrimary : AppColors.textMuted,
+                    color: isActive ? Colors.white : Colors.white.withValues(alpha: 0.7),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -312,8 +312,8 @@ class _CurrentUserTile extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.logout_rounded, size: 18),
             color: AppColors.textMuted,
-            onPressed: () => _handleLogout(context),
             tooltip: 'Sign Out',
+            onPressed: () => _handleLogout(context),
           ),
         ],
       ),

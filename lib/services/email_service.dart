@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
+
 import 'sendgrid_service.dart';
 
 /// Email service for sending invitation emails using SendGrid
@@ -62,7 +64,7 @@ class EmailService {
         });
       } catch (emailError) {
         // Log email error but keep invitation in database
-        print('Failed to send email via SendGrid: $emailError');
+        debugPrint('Failed to send email via SendGrid: $emailError');
         // Still update to indicate we tried
         await invitationRef.update({
           'emailSent': false,
@@ -92,7 +94,7 @@ class EmailService {
         );
       } catch (e) {
         // Log error but continue with other emails
-        print('Failed to send invitation to $email: $e');
+        debugPrint('Failed to send invitation to $email: $e');
         // Continue with next email
       }
     }

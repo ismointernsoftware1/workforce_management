@@ -64,12 +64,9 @@ class DashboardProvider extends ChangeNotifier {
   Future<void> _loadTasks() async {
     try {
       tasks = await _taskController.fetchTasks();
-      if (tasks.isEmpty) {
-        tasks = SampleData.tasks();
-      }
       lastError = null;
     } catch (error) {
-      tasks = SampleData.tasks();
+      tasks = const [];
       lastError = error.toString();
     }
   }

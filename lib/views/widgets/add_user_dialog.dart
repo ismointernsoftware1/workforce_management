@@ -128,9 +128,13 @@ class _AddUserDialogState extends State<AddUserDialog> {
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width > 900;
+    final isMobile = MediaQuery.of(context).size.width < 768;
 
     return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 120, vertical: 60),
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : (isWide ? 120 : 40),
+        vertical: isMobile ? 20 : 60,
+      ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       backgroundColor: const Color(0xFFF4F5FA),
       child: ConstrainedBox(
@@ -138,7 +142,7 @@ class _AddUserDialogState extends State<AddUserDialog> {
           maxWidth: isWide ? 900 : MediaQuery.of(context).size.width * 0.9,
         ),
         child: Padding(
-          padding: const EdgeInsets.all(32),
+          padding: EdgeInsets.all(isMobile ? 16 : 32),
           child: Form(
             key: _formKey,
             child: Column(
@@ -287,38 +291,85 @@ class _AddUserDialogState extends State<AddUserDialog> {
                   ],
                 ),
                 const SizedBox(height: 32),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: _isSaving
-                          ? null
-                          : () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: _isSaving ? null : _handleSave,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 32,
-                          vertical: 14,
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isMobile = constraints.maxWidth < 400;
+                    if (isMobile) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          ElevatedButton(
+                            onPressed: _isSaving ? null : _handleSave,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 14,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: _isSaving
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : Text(_isEditing ? 'Save Changes' : 'Add User'),
+                          ),
+                          const SizedBox(height: 12),
+                          TextButton(
+                            onPressed: _isSaving
+                                ? null
+                                : () => Navigator.of(context).pop(),
+                            child: const Text('Cancel'),
+                          ),
+                        ],
+                      );
+                    }
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Flexible(
+                          child: TextButton(
+                            onPressed: _isSaving
+                                ? null
+                                : () => Navigator.of(context).pop(),
+                            child: const Text('Cancel'),
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                        const SizedBox(width: 12),
+                        Flexible(
+                          child: ElevatedButton(
+                            onPressed: _isSaving ? null : _handleSave,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 14,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: _isSaving
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(_isEditing ? 'Save Changes' : 'Add User'),
+                                  ),
+                          ),
                         ),
-                      ),
-                      child: _isSaving
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(_isEditing ? 'Save Changes' : 'Add User'),
-                    ),
-                  ],
+                      ],
+                    );
+                  },
                 ),
               ],
             ),

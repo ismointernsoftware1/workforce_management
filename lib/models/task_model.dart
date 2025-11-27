@@ -66,8 +66,7 @@ class TaskModel {
   final String assignedTo;
   final TaskStatus status;
   final List<SubTask> subTasks;
-  
-  // New fields for enhanced features
+
   final String? createdBy;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -84,13 +83,11 @@ class TaskModel {
   }
 
   factory TaskModel.fromMap(Map<String, dynamic> data, {String? id}) {
-    // Handle case where title might be missing or null
     final title = data['title'] as String? ?? '';
     if (title.isEmpty && id != null && id.isNotEmpty) {
-      // If title is missing, use a default or log warning
       debugPrint('Warning: Task $id has no title field');
     }
-    
+
     return TaskModel(
       id: id ?? data['id'] as String? ?? '',
       title: title,
