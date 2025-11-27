@@ -190,68 +190,68 @@ class _TopBarState extends State<_TopBar> {
 
   @override
   Widget build(BuildContext context) {
+    final isChat = widget.activeTab == DashboardTab.chat;
+
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: widget.isMobile ? AppSpacing.md : AppSpacing.xl,
         vertical: AppSpacing.md,
       ),
       child: Row(
-              children: [
-                if (widget.isMobile || widget.showHamburger) ...[
-                  ShadTooltip(
-                    message: 'Menu',
-                    child: ShadButton(
-                      onPressed: widget.onMenuTap,
-                      variant: ShadButtonVariant.ghost,
-                      size: ShadButtonSize.icon,
-                      icon: const Icon(Icons.menu,
-                          size: 24, color: AppColors.textPrimary),
-                      child: const SizedBox.shrink(),
+        children: [
+          if (widget.isMobile || widget.showHamburger) ...[
+            ShadTooltip(
+              message: 'Menu',
+              child: ShadButton(
+                onPressed: widget.onMenuTap,
+                variant: ShadButtonVariant.ghost,
+                size: ShadButtonSize.icon,
+                icon: const Icon(
+                  Icons.menu,
+                  size: 24,
+                  color: AppColors.textPrimary,
+                ),
+                child: const SizedBox.shrink(),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+          ],
+          Expanded(
+            child: isChat
+                ? Text(
+                    'Chat',
+                    style: TextStyle(
+                      fontSize: widget.isMobile ? 20 : 26,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  )
+                : ShadInput(
+                    controller: _searchController,
+                    hintText: 'Search...',
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      color: AppColors.textMuted,
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                ],
-                Expanded(
-                  child: widget.activeTab == DashboardTab.chat
-                      ? Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'Chat',
-                            style: TextStyle(
-                              fontSize: widget.isMobile ? 20 : 24,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        )
-                      : ShadInput(
-                          controller: _searchController,
-                          hintText: 'Search...',
-                          prefixIcon: const Icon(
-                            Icons.search,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                ),
-                if (widget.activeTab == DashboardTab.tasks) ...[
-                  SizedBox(
-                      width: widget.isMobile
-                          ? AppSpacing.sm
-                          : AppSpacing.md),
-                  ShadButton(
-                    onPressed: () => _navigateToAddTask(context),
-                    variant: ShadButtonVariant.default_,
-                    size: widget.isMobile
-                        ? ShadButtonSize.sm
-                        : ShadButtonSize.md,
-                    icon: const Icon(Icons.add, size: 20),
-                    child: widget.isMobile
-                        ? const SizedBox.shrink()
-                        : const Text('Add Task'),
-                  ),
-                ],
-              ],
+          ),
+          if (!isChat && widget.activeTab == DashboardTab.tasks) ...[
+            SizedBox(
+              width: widget.isMobile ? AppSpacing.sm : AppSpacing.md,
             ),
+            ShadButton(
+              onPressed: () => _navigateToAddTask(context),
+              variant: ShadButtonVariant.default_,
+              size:
+                  widget.isMobile ? ShadButtonSize.sm : ShadButtonSize.md,
+              icon: const Icon(Icons.add, size: 20),
+              child: widget.isMobile
+                  ? const SizedBox.shrink()
+                  : const Text('Add Task'),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
