@@ -28,18 +28,29 @@ class UserModel {
   final String? userStatus;
 
   factory UserModel.fromMap(Map<String, dynamic> data, {String? id}) {
+    // Handle both Timestamp and DateTime for joinDate
+    DateTime joinDate = DateTime.now();
+    if (data['joinDate'] != null) {
+      if (data['joinDate'] is Timestamp) {
+        joinDate = (data['joinDate'] as Timestamp).toDate();
+      } else if (data['joinDate'] is DateTime) {
+        joinDate = data['joinDate'] as DateTime;
+      } else if (data['joinDate'] is int) {
+        joinDate = DateTime.fromMillisecondsSinceEpoch(data['joinDate'] as int);
+      }
+    }
+    
     return UserModel(
       id: id ?? (data['id'] as String? ?? ''),
-      name: data['name'] as String? ?? '',
-      role: data['role'] as String? ?? '',
-      department: data['department'] as String? ?? '',
-      email: data['email'] as String? ?? '',
-      status: data['status'] as String? ?? 'Active',
-      joinDate:
-          (data['joinDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      name: (data['name'] as String? ?? '').trim(),
+      role: (data['role'] as String? ?? 'Employee').trim(),
+      department: (data['department'] as String? ?? 'General').trim(),
+      email: (data['email'] as String? ?? '').trim(),
+      status: (data['status'] as String? ?? 'Active').trim(),
+      joinDate: joinDate,
       manager: data['manager'] as String?,
       team: data['team'] as String?,
-      accountType: data['accountType'] as String? ?? 'Member',
+      accountType: (data['accountType'] as String? ?? 'Member').trim(),
       userStatus: data['userStatus'] as String?,
     );
   }

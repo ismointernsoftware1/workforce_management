@@ -97,6 +97,14 @@ class AppTheme {
           side: const BorderSide(color: AppColors.border),
         ),
       ),
+      iconTheme: const IconThemeData(
+        color: AppColors.textPrimary,
+        size: 24,
+      ),
+      primaryIconTheme: const IconThemeData(
+        color: AppColors.primary,
+        size: 24,
+      ),
     );
   }
 }

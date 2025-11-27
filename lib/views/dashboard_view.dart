@@ -5,7 +5,7 @@ import '../components/shadcn/shadcn.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_spacing.dart';
 import '../providers/dashboard_provider.dart';
-import 'chat/chat_view.dart';
+import 'chat/realtime_chat_view.dart';
 import 'expenses/expenses_view.dart';
 import 'tasks/add_task_view.dart';
 import 'tasks/tasks_view.dart';
@@ -59,12 +59,14 @@ class _DashboardViewState extends State<DashboardView> {
                 Expanded(
                   child: Column(
                     children: [
+                      if (provider.activeTab != DashboardTab.chat) ...[
                       _TopBar(
                         activeTab: provider.activeTab,
                         isMobile: isMobile,
                         onMenuTap: () => _scaffoldKey.currentState?.openDrawer(),
                       ),
                       const SizedBox(height: AppSpacing.sm),
+                      ],
                       if (provider.isLoading)
                         const Expanded(
                           child: Center(
@@ -96,7 +98,7 @@ class _DashboardViewState extends State<DashboardView> {
       case DashboardTab.team:
         return const TeamView(key: ValueKey('team'));
       case DashboardTab.chat:
-        return const ChatView(key: ValueKey('chat'));
+        return const RealtimeChatView(key: ValueKey('chat'));
       case DashboardTab.expenses:
         return ExpensesView(key: ValueKey('expenses-${provider.activeTab}'));
     }
@@ -132,7 +134,9 @@ class _TopBar extends StatelessWidget {
         horizontal: isMobile ? AppSpacing.md : AppSpacing.xl,
         vertical: AppSpacing.md,
       ),
-      child: Row(
+      child: activeTab == DashboardTab.chat
+          ? const SizedBox.shrink() // Hide top bar for chat tab
+          : Row(
         children: [
           // Hamburger menu button for mobile
           if (isMobile) ...[

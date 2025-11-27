@@ -1,5 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 
+import '../firebase_options.dart';
 import '../models/chat_models.dart';
 import '../models/task_model.dart';
 import '../models/team_model.dart';
@@ -16,6 +19,7 @@ class FirebaseService {
   FirebaseService.stub() : _firestore = null;
 
   final FirebaseFirestore? _firestore;
+  FirebaseAuth? _secondaryAuth;
 
   CollectionReference<Map<String, dynamic>> get _tasksCol =>
       _firestore!.collection('tasks');
@@ -272,12 +276,37 @@ class FirebaseService {
     await _teamsCol.doc(teamId).delete();
   }
 
-  Future<void> addUser(UserModel user) async {
-    final docRef = _usersCol.doc();
-    await docRef.set({
-      ...user.toMap(),
-      'id': docRef.id,
-    });
+  Future<void> addUser(UserModel user, {String? password}) async {
+    // If password is provided, create Firebase Auth account first
+    String userId;
+    if (password != null && password.isNotEmpty) {
+      try {
+        final secondaryAuth = await _getSecondaryAuth();
+        final credential = await secondaryAuth.createUserWithEmailAndPassword(
+          email: user.email,
+          password: password,
+        );
+        userId = credential.user!.uid;
+        await credential.user?.updateDisplayName(user.name);
+
+        await _usersCol.doc(userId).set({
+          ...user.toMap(),
+          'id': userId,
+        });
+
+        await secondaryAuth.signOut();
+      } catch (e) {
+        throw Exception('Failed to create user account: $e');
+      }
+    } else {
+      // For users without password (legacy or manual creation), use Firestore-generated ID
+      final docRef = _usersCol.doc();
+      userId = docRef.id;
+      await docRef.set({
+        ...user.toMap(),
+        'id': userId,
+      });
+    }
   }
 
   Future<void> updateUser(UserModel user) async {
@@ -289,6 +318,22 @@ class FirebaseService {
 
   Future<void> deleteUser(String userId) async {
     await _usersCol.doc(userId).delete();
+  }
+  Future<FirebaseAuth> _getSecondaryAuth() async {
+    if (_secondaryAuth != null) return _secondaryAuth!;
+
+    try {
+      final app = Firebase.app('user_admin');
+      _secondaryAuth = FirebaseAuth.instanceFor(app: app);
+      return _secondaryAuth!;
+    } catch (_) {
+      final app = await Firebase.initializeApp(
+        name: 'user_admin',
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      _secondaryAuth = FirebaseAuth.instanceFor(app: app);
+      return _secondaryAuth!;
+    }
   }
 
   // ============= EXPENSE METHODS =============

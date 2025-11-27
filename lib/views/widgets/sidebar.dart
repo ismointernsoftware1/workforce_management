@@ -1,8 +1,11 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../providers/dashboard_provider.dart';
+import '../../services/auth_service.dart';
 
 class Sidebar extends StatelessWidget {
   const Sidebar({
@@ -48,7 +51,7 @@ class Sidebar extends StatelessWidget {
                 ),
               ),
             ),
-            const _CurrentUserTile(),
+            _CurrentUserTile(),
           ],
         ),
       ),
@@ -202,8 +205,67 @@ class _SidebarItem extends StatelessWidget {
 class _CurrentUserTile extends StatelessWidget {
   const _CurrentUserTile();
 
+  Future<void> _handleLogout(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign Out'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Sign Out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && context.mounted) {
+      try {
+        final authService = Provider.of<AuthService>(context, listen: false);
+        await authService.signOut();
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error signing out: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  String _getInitials(String? name, String? email) {
+    if (name != null && name.isNotEmpty) {
+      final parts = name.trim().split(' ');
+      if (parts.length >= 2) {
+        return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+      }
+      return name[0].toUpperCase();
+    }
+    if (email != null && email.isNotEmpty) {
+      return email[0].toUpperCase();
+    }
+    return 'U';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    
+    if (user == null) {
+      return const SizedBox.shrink();
+    }
+
+    final displayName = user.displayName ?? user.email?.split('@')[0] ?? 'User';
+    final email = user.email ?? '';
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -216,9 +278,9 @@ class _CurrentUserTile extends StatelessWidget {
           CircleAvatar(
             radius: 20,
             backgroundColor: AppColors.primary.withValues(alpha: 0.2),
-            child: const Text(
-              'JD',
-              style: TextStyle(
+            child: Text(
+              _getInitials(user.displayName, user.email),
+              style: const TextStyle(
                 color: AppColors.primary,
                 fontWeight: FontWeight.bold,
               ),
@@ -228,17 +290,17 @@ class _CurrentUserTile extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Text(
-                  'John Doe',
-                  style: TextStyle(
+                  displayName,
+                  style: const TextStyle(
                     fontWeight: FontWeight.w600,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  'Manager',
-                  style: TextStyle(
+                  email.isNotEmpty ? email : 'User',
+                  style: const TextStyle(
                     color: AppColors.textMuted,
                     fontSize: 12,
                   ),
@@ -250,7 +312,8 @@ class _CurrentUserTile extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.logout_rounded, size: 18),
             color: AppColors.textMuted,
-            onPressed: () {},
+            onPressed: () => _handleLogout(context),
+            tooltip: 'Sign Out',
           ),
         ],
       ),

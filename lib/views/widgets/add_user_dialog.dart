@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import '../../constants/app_colors.dart';
@@ -11,7 +13,7 @@ class AddUserDialog extends StatefulWidget {
     this.initialUser,
   });
 
-  final Future<void> Function(UserModel user) onSave;
+  final Future<void> Function(UserModel user, {String? password}) onSave;
   final UserModel? initialUser;
 
   @override
@@ -23,9 +25,11 @@ class _AddUserDialogState extends State<AddUserDialog> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _roleController = TextEditingController();
+  final _passwordController = TextEditingController();
   late DateTime _joinDate;
   late String _status;
   bool _isSaving = false;
+  bool _obscurePassword = true;
 
   bool get _isEditing => widget.initialUser != null;
 
@@ -38,6 +42,9 @@ class _AddUserDialogState extends State<AddUserDialog> {
     _roleController.text = user?.role ?? '';
     _joinDate = user?.joinDate ?? DateTime.now();
     _status = user?.status ?? 'Active';
+    if (!_isEditing) {
+      _passwordController.text = _generatePassword();
+    }
   }
 
   @override
@@ -45,33 +52,68 @@ class _AddUserDialogState extends State<AddUserDialog> {
     _nameController.dispose();
     _emailController.dispose();
     _roleController.dispose();
+    _passwordController.dispose();
     super.dispose();
+  }
+
+  String _generatePassword() {
+    const chars =
+        'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@#%&*?';
+    final rand = Random.secure();
+    return List.generate(10, (index) => chars[rand.nextInt(chars.length)])
+        .join();
   }
 
   Future<void> _handleSave() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSaving = true);
+    
+    // For new users, password is required
+    if (!_isEditing && _passwordController.text.trim().isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Password is required for new users'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+        setState(() => _isSaving = false);
+      }
+      return;
+    }
+    
     final user = UserModel(
       id: widget.initialUser?.id ?? '',
       name: _nameController.text.trim(),
       role: _roleController.text.trim(),
-      department: widget.initialUser?.department ?? '',
+      department: widget.initialUser?.department ?? 'General',
       email: _emailController.text.trim(),
       status: _status,
       joinDate: _joinDate,
       manager: widget.initialUser?.manager,
       team: widget.initialUser?.team,
     );
+    
     try {
-      await widget.onSave(user);
+      // Pass password for new users
+      final password = _isEditing ? null : _passwordController.text.trim();
+      await widget.onSave(user, password: password);
       if (context.mounted) {
         Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_isEditing 
+                ? 'User updated successfully' 
+                : 'User created successfully. They can now sign in with their email and password.'),
+            backgroundColor: AppColors.success,
+          ),
+        );
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to add user: $e'),
+            content: Text('Failed to ${_isEditing ? 'update' : 'add'} user: $e'),
             backgroundColor: AppColors.danger,
           ),
         );
@@ -164,6 +206,58 @@ class _AddUserDialogState extends State<AddUserDialog> {
                         },
                       ),
                     ),
+                    if (!_isEditing)
+                      SizedBox(
+                        width: isWide ? 400 : double.infinity,
+                        child: _buildTextField(
+                          controller: _passwordController,
+                          label: 'Password',
+                          obscureText: _obscurePassword,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Required';
+                            }
+                            if (value.length < 6) {
+                              return 'Password must be at least 6 characters';
+                            }
+                            return null;
+                          },
+                          suffixIcon: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                tooltip: 'Generate password',
+                                icon: const Icon(Icons.refresh),
+                                onPressed: () {
+                                  setState(() {
+                                    _passwordController.text =
+                                        _generatePassword();
+                                  });
+                                },
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  _obscurePassword
+                                      ? Icons.visibility_outlined
+                                      : Icons.visibility_off_outlined,
+                                ),
+                                onPressed: () {
+                                  setState(
+                                      () => _obscurePassword = !_obscurePassword);
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    if (!_isEditing)
+                      const Text(
+                        'Share this temporary password with the user; they should change it after first login.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
                     SizedBox(
                       width: isWide ? 400 : double.infinity,
                       child: DropdownButtonFormField<String>(
@@ -239,16 +333,19 @@ class _AddUserDialogState extends State<AddUserDialog> {
     required String label,
     String? Function(String?)? validator,
     TextInputType? keyboardType,
+    bool obscureText = false,
+    Widget? suffixIcon,
   }) {
     return TextFormField(
       controller: controller,
-      decoration: _inputDecoration(label),
+      decoration: _inputDecoration(label, suffixIcon: suffixIcon),
       validator: validator,
       keyboardType: keyboardType,
+      obscureText: obscureText,
     );
   }
 
-  InputDecoration _inputDecoration(String label) {
+  InputDecoration _inputDecoration(String label, {Widget? suffixIcon}) {
     return InputDecoration(
       labelText: label,
       filled: true,
@@ -269,6 +366,7 @@ class _AddUserDialogState extends State<AddUserDialog> {
         horizontal: AppSpacing.lg,
         vertical: AppSpacing.md,
       ),
+      suffixIcon: suffixIcon,
     );
   }
 }

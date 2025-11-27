@@ -96,5 +96,42 @@ class StorageService {
       throw Exception('Failed to delete receipt: $e');
     }
   }
+
+  // ============= CHAT ATTACHMENT METHODS =============
+
+  Future<String> uploadChatAttachment({
+    required String conversationId,
+    required Uint8List fileData,
+    required String fileName,
+  }) async {
+    try {
+      final fileExtension = fileName.split('.').last;
+      final uniqueFileName = '${_uuid.v4()}.$fileExtension';
+      final ref = _storage.ref().child('chat/$conversationId/attachments/$uniqueFileName');
+
+      UploadTask uploadTask;
+      if (kIsWeb) {
+        uploadTask = ref.putData(fileData);
+      } else {
+        uploadTask = ref.putData(fileData);
+      }
+
+      final snapshot = await uploadTask;
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+
+      return downloadUrl;
+    } catch (e) {
+      throw Exception('Failed to upload chat attachment: $e');
+    }
+  }
+
+  Future<void> deleteChatAttachment(String fileUrl) async {
+    try {
+      final ref = _storage.refFromURL(fileUrl);
+      await ref.delete();
+    } catch (e) {
+      throw Exception('Failed to delete chat attachment: $e');
+    }
+  }
 }
 

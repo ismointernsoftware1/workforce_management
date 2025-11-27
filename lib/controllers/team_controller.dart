@@ -12,7 +12,8 @@ class TeamController {
 
   Future<List<TeamMember>> fetchMembers() => _service.fetchMembers();
 
-  Future<void> addUser(UserModel user) => _service.addUser(user);
+  Future<void> addUser(UserModel user, {String? password}) => 
+      _service.addUser(user, password: password);
 
   Future<void> updateUser(UserModel user) => _service.updateUser(user);
 

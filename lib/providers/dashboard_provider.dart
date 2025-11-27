@@ -214,9 +214,9 @@ class DashboardProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addUser(UserModel user) async {
+  Future<void> addUser(UserModel user, {String? password}) async {
     try {
-      await _teamController.addUser(user);
+      await _teamController.addUser(user, password: password);
       await refreshUsers();
       await refreshMembers();
     } catch (error) {

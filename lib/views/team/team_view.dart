@@ -9,7 +9,6 @@ import '../../models/team_model.dart';
 import '../widgets/add_user_dialog.dart';
 import '../widgets/add_team_dialog.dart';
 import '../widgets/team_members_dialog.dart';
-import 'team_detail_page.dart';
 
 class TeamView extends StatefulWidget {
   const TeamView({super.key});
@@ -23,6 +22,7 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _teamSearchController = TextEditingController();
   String _statusFilter = 'All';
+  final Set<String> _expandedTeamIds = {};
 
   @override
   void initState() {
@@ -75,37 +75,37 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
               color: AppColors.textPrimary,
             ),
           ),
-          Row(
-            children: [
-              IconButton(
-                onPressed: () {
-                  if (_tabController.index == 0) {
-                    provider.refreshUsers();
-                  } else {
-                    provider.refreshTeams();
-                  }
-                },
-                icon: const Icon(Icons.refresh),
-                color: AppColors.textMuted,
-                tooltip: 'Refresh',
+              Row(
+                children: [
+                  IconButton(
+                    onPressed: () {
+                      if (_tabController.index == 0) {
+                        provider.refreshUsers();
+                      } else {
+                        provider.refreshTeams();
+                      }
+                    },
+                    icon: const Icon(Icons.refresh),
+                    color: AppColors.textMuted,
+                    tooltip: 'Refresh',
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  IconButton(
+                    onPressed: () {
+                      if (_tabController.index == 0) {
+                        _showAddUserDialog(context, provider);
+                      } else {
+                        _showAddTeamDialog(context, provider);
+                      }
+                    },
+                    icon: const Icon(Icons.add),
+                    color: AppColors.textMuted,
+                    tooltip: _tabController.index == 0
+                        ? 'Add User'
+                        : 'Create Team',
+                  ),
+                ],
               ),
-              const SizedBox(width: AppSpacing.sm),
-              IconButton(
-                onPressed: () {
-                  if (_tabController.index == 0) {
-                    _showAddUserDialog(context, provider);
-                  } else {
-                    _showAddTeamDialog(context, provider);
-                  }
-                },
-                icon: const Icon(Icons.add),
-                color: AppColors.textMuted,
-                tooltip: _tabController.index == 0
-                    ? 'Add User'
-                    : 'Create Team',
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -335,13 +335,14 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'All Teams',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
+              const Expanded(
+                child: Text(
+                  'All Teams',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               ElevatedButton.icon(
@@ -407,111 +408,140 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
                       ],
                     ),
                   )
-                : GridView.builder(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 4,
-                      mainAxisSpacing: AppSpacing.md,
-                      crossAxisSpacing: AppSpacing.md,
-                      childAspectRatio: 0.95,
-                    ),
+                : ListView.separated(
                     itemCount: filteredTeams.length,
+                    separatorBuilder: (_, __) =>
+                        const SizedBox(height: AppSpacing.md),
                     itemBuilder: (context, index) {
                       final team = filteredTeams[index];
                       final members = team.memberIds
                           .map((id) => usersById[id])
                           .whereType<UserModel>()
                           .toList();
-                      return InkWell(
-                        onTap: () => _openTeamDetail(context, team),
-                        child: Container(
-                          padding: const EdgeInsets.all(AppSpacing.md),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      team.name,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                  Row(
+                      final isExpanded = _expandedTeamIds.contains(team.id);
+                      return Container(
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      IconButton(
-                                        tooltip: 'Edit',
-                                        onPressed: () =>
-                                            _showEditTeamDialog(
-                                                context, provider, team),
-                                        icon: const Icon(Icons.edit, size: 18),
+                                      Text(
+                                        team.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
-                                      IconButton(
-                                        tooltip: 'Delete',
-                                        onPressed: () =>
-                                            _confirmDeleteTeam(
-                                                context, provider, team),
-                                        icon: const Icon(Icons.delete_outline,
-                                            size: 18),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${team.memberIds.length} members',
+                                        style: const TextStyle(
+                                          color: AppColors.textMuted,
+                                          fontSize: 12,
+                                        ),
                                       ),
+                                      if (team.description.isNotEmpty) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          team.description,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                              color: AppColors.textMuted),
+                                        ),
+                                      ],
                                     ],
                                   ),
-                                ],
-                              ),
-                              Text(
-                                '${team.memberIds.length} members',
-                                style: const TextStyle(
-                                  color: AppColors.textMuted,
-                                  fontSize: 11,
                                 ),
-                              ),
-                              if (team.description.isNotEmpty) ...[
-                                const SizedBox(height: AppSpacing.xs),
-                                Text(
-                                  team.description,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                      color: AppColors.textMuted),
+                                TextButton.icon(
+                                  onPressed: () =>
+                                      _showTeamMembersDialog(context, provider, team),
+                                  icon: const Icon(
+                                    Icons.person_add_alt_1,
+                                    size: 16,
+                                  ),
+                                  label: const Text('Add'),
+                                ),
+                                IconButton(
+                                  tooltip:
+                                      isExpanded ? 'Hide members' : 'Show members',
+                                  onPressed: () {
+                                    setState(() {
+                                      if (isExpanded) {
+                                        _expandedTeamIds.remove(team.id);
+                                      } else {
+                                        _expandedTeamIds.add(team.id);
+                                      }
+                                    });
+                                  },
+                                  icon: Icon(
+                                    isExpanded
+                                        ? Icons.keyboard_arrow_up
+                                        : Icons.keyboard_arrow_down,
+                                  ),
+                                ),
+                                IconButton(
+                                  tooltip: 'Edit',
+                                  onPressed: () =>
+                                      _showEditTeamDialog(context, provider, team),
+                                  icon: const Icon(Icons.edit, size: 18),
+                                ),
+                                IconButton(
+                                  tooltip: 'Delete',
+                                  onPressed: () =>
+                                      _confirmDeleteTeam(context, provider, team),
+                                  icon: const Icon(Icons.delete_outline, size: 18),
                                 ),
                               ],
+                            ),
+                            if (isExpanded) ...[
                               const SizedBox(height: AppSpacing.md),
-                              Expanded(
-                                child: members.isEmpty
-                                    ? Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Chip(
-                                          label: const Text('No members yet'),
-                                          backgroundColor:
-                                              AppColors.surfaceAlt,
-                                        ),
-                                      )
-                                    : const SizedBox.shrink(),
-                              ),
-                              Align(
-                                alignment: Alignment.bottomRight,
-                                child: TextButton.icon(
-                                  onPressed: () => _showTeamMembersDialog(
-                                      context, provider, team),
-                                  icon: const Icon(Icons.person_add_alt_1,
-                                      size: 16),
-                                  label: const Text('Add members'),
-                                ),
-                              ),
+                              members.isEmpty
+                                  ? Chip(
+                                      label: const Text('No members yet'),
+                                      backgroundColor: AppColors.surfaceAlt,
+                                    )
+                                  : Column(
+                                      children: members
+                                          .map(
+                                            (member) => ListTile(
+                                              contentPadding: EdgeInsets.zero,
+                                              leading: CircleAvatar(
+                                                backgroundColor:
+                                                    AppColors.primarySoft,
+                                                child: Text(
+                                                  member.name.isNotEmpty
+                                                      ? member.name[0]
+                                                          .toUpperCase()
+                                                      : '?',
+                                                  style: const TextStyle(
+                                                    color: AppColors.primary,
+                                                    fontWeight:
+                                                        FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                              title: Text(member.name),
+                                              subtitle: Text(member.email),
+                                            ),
+                                          )
+                                          .toList(),
+                                    ),
                             ],
-                          ),
+                          ],
                         ),
                       );
                     },
@@ -661,9 +691,9 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
       context: context,
       builder: (context) => AddUserDialog(
         initialUser: user,
-        onSave: (newUser) {
+        onSave: (newUser, {String? password}) {
           if (user == null) {
-            return provider.addUser(newUser);
+            return provider.addUser(newUser, password: password);
           } else {
             return provider.updateUser(newUser);
           }
@@ -743,14 +773,6 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
     if (confirm == true) {
       await provider.deleteTeam(team.id);
     }
-  }
-
-  void _openTeamDetail(BuildContext context, Team team) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => TeamDetailPage(teamId: team.id),
-      ),
-    );
   }
 
   void _confirmDelete(
