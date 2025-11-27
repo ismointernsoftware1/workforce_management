@@ -47,7 +47,6 @@ class _DashboardViewState extends State<DashboardView> {
                 Expanded(
                   child: Column(
                     children: [
-                      if (provider.activeTab != DashboardTab.chat) ...[
                       _TopBar(
                         activeTab: provider.activeTab,
                         isMobile: isMobile,
@@ -64,7 +63,6 @@ class _DashboardViewState extends State<DashboardView> {
                         showHamburger: true, // Always show hamburger
                       ),
                       const SizedBox(height: AppSpacing.sm),
-                      ],
                       if (provider.isLoading)
                         const Expanded(
                           child: Center(
@@ -197,9 +195,7 @@ class _TopBarState extends State<_TopBar> {
         horizontal: widget.isMobile ? AppSpacing.md : AppSpacing.xl,
         vertical: AppSpacing.md,
       ),
-      child: widget.activeTab == DashboardTab.chat
-          ? const SizedBox.shrink()
-          : Row(
+      child: Row(
               children: [
                 if (widget.isMobile || widget.showHamburger) ...[
                   ShadTooltip(
@@ -216,12 +212,26 @@ class _TopBarState extends State<_TopBar> {
                   const SizedBox(width: AppSpacing.sm),
                 ],
                 Expanded(
-                  child: ShadInput(
-                    controller: _searchController,
-                    hintText: 'Search...',
-                    prefixIcon:
-                        const Icon(Icons.search, color: AppColors.textMuted),
-                  ),
+                  child: widget.activeTab == DashboardTab.chat
+                      ? Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Chat',
+                            style: TextStyle(
+                              fontSize: widget.isMobile ? 20 : 24,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        )
+                      : ShadInput(
+                          controller: _searchController,
+                          hintText: 'Search...',
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
                 ),
                 if (widget.activeTab == DashboardTab.tasks) ...[
                   SizedBox(

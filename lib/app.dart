@@ -27,41 +27,55 @@ class WorkforceApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        // Auth service provider
-        Provider<AuthService>(
-          create: (_) => AuthService(),
-        ),
-        // Other providers will be added after authentication
-      ],
+    return Provider<AuthService>(
+      create: (_) => AuthService(),
       child: Consumer<AuthService>(
         builder: (context, authService, _) {
-          return MaterialApp(
-            title: 'Workforce Management',
-            debugShowCheckedModeBanner: false,
-            theme: AppTheme.light,
-            home: StreamBuilder<User?>(
-              stream: authService.authStateChanges,
-              builder: (context, snapshot) {
-                // Show loading while checking auth state
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Scaffold(
+          return StreamBuilder<User?>(
+            stream: authService.authStateChanges,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return _buildMaterialApp(
+                  const Scaffold(
                     body: Center(child: CircularProgressIndicator()),
-                  );
-                }
+                  ),
+                );
+              }
 
-                // If user is authenticated, show dashboard
-                if (snapshot.hasData && snapshot.data != null) {
-                  return _buildAuthenticatedApp(snapshot.data!);
-                }
+              final user = snapshot.data;
+              if (user == null) {
+                return _buildMaterialApp(const LoginView());
+              }
 
-                // If user is not authenticated, show login
-                return const LoginView();
-              },
-            ),
-            routes: {
-              '/dashboard': (context) => const DashboardView(),
+              final realtimeChatController = RealtimeChatController(
+                service: RealtimeChatService(),
+                currentUserId: user.uid,
+                currentUserName:
+                    user.displayName ?? user.email?.split('@')[0] ?? 'User',
+              );
+
+              return MultiProvider(
+                providers: [
+                  ChangeNotifierProvider(
+                    create: (_) => DashboardProvider(
+                      taskController: TaskController(_firebaseService),
+                      teamController: TeamController(_firebaseService),
+                      chatController: ChatController(_firebaseService),
+                    )..initialize(),
+                  ),
+                  ChangeNotifierProvider(
+                    create: (_) => ExpenseProvider(
+                      expenseController: ExpenseController(_firebaseService),
+                    )..initialize(),
+                  ),
+                  ChangeNotifierProvider(
+                    create: (_) => RealtimeChatProvider(
+                      controller: realtimeChatController,
+                    ),
+                  ),
+                ],
+                child: _buildMaterialApp(const DashboardView()),
+              );
             },
           );
         },
@@ -69,40 +83,15 @@ class WorkforceApp extends StatelessWidget {
     );
   }
 
-  Widget _buildAuthenticatedApp(User user) {
-    // Get user info
-    final userId = user.uid;
-    final userName = user.displayName ?? user.email?.split('@')[0] ?? 'User';
-
-    // Initialize chat service and controller
-    final realtimeChatService = RealtimeChatService();
-    final realtimeChatController = RealtimeChatController(
-      service: realtimeChatService,
-      currentUserId: userId,
-      currentUserName: userName,
-    );
-
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(
-          create: (_) => DashboardProvider(
-            taskController: TaskController(_firebaseService),
-            teamController: TeamController(_firebaseService),
-            chatController: ChatController(_firebaseService),
-          )..initialize(),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => ExpenseProvider(
-            expenseController: ExpenseController(_firebaseService),
-          )..initialize(),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => RealtimeChatProvider(
-            controller: realtimeChatController,
-          ),
-        ),
-      ],
-      child: const DashboardView(),
+  Widget _buildMaterialApp(Widget home) {
+    return MaterialApp(
+      title: 'Workforce Management',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
+      home: home,
+      routes: {
+        '/dashboard': (context) => const DashboardView(),
+      },
     );
   }
 }

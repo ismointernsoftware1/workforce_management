@@ -97,16 +97,7 @@ class _ExpensesViewState extends State<ExpensesView> {
                     ),
                     if (!isMobile)
                       ShadButton(
-                        onPressed: () async {
-                          await Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const AddExpenseView(),
-                            ),
-                          );
-                          if (context.mounted) {
-                            await provider.refreshExpenses();
-                          }
-                        },
+                        onPressed: () => _openAddExpense(context),
                         variant: ShadButtonVariant.default_,
                         size: ShadButtonSize.md,
                         icon: const Icon(Icons.add, size: 20),
@@ -114,16 +105,7 @@ class _ExpensesViewState extends State<ExpensesView> {
                       )
                     else
                       ShadButton(
-                        onPressed: () async {
-                          await Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const AddExpenseView(),
-                            ),
-                          );
-                          if (context.mounted) {
-                            await provider.refreshExpenses();
-                          }
-                        },
+                        onPressed: () => _openAddExpense(context),
                         variant: ShadButtonVariant.default_,
                         size: ShadButtonSize.sm,
                         icon: const Icon(Icons.add, size: 18),
@@ -315,6 +297,18 @@ class _ExpensesViewState extends State<ExpensesView> {
     }
     
     return filtered;
+  }
+
+  Future<void> _openAddExpense(BuildContext context) async {
+    final navigator = Navigator.of(context, rootNavigator: true);
+    await navigator.push(
+      MaterialPageRoute(
+        builder: (_) => const AddExpenseView(),
+        fullscreenDialog: true,
+      ),
+    );
+    if (!mounted) return;
+    await context.read<ExpenseProvider>().refreshExpenses();
   }
 
   Future<void> _handleApprove(

@@ -24,6 +24,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _showMembers = false;
+  bool _showConversationList = true;
 
   @override
   void initState() {
