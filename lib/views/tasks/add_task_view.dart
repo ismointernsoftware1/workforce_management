@@ -199,6 +199,45 @@ class _AddTaskViewState extends State<AddTaskView> {
     }
   }
 
+  Widget _buildSection({
+    required String title,
+    required String subtitle,
+    required List<Widget> children,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section Title and Subtitle
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.textMuted,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        // Section Fields
+        ...children,
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DashboardProvider>();
@@ -230,308 +269,258 @@ class _AddTaskViewState extends State<AddTaskView> {
         ),
       ),
       backgroundColor: AppColors.background,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.xl),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 768;
+          return SingleChildScrollView(
+            padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.xl),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Section
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              // Task Information Section
+              _buildSection(
+                title: 'Task Information',
+                subtitle: 'Group fields related to uniquely identifying the task.',
                 children: [
-                  Text(
-                    'Create a new task',
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                      height: 1.2,
-                      letterSpacing: -0.5,
-                    ),
+                  ShadInput(
+                    controller: _titleController,
+                    label: 'Task Title *',
+                    hintText: 'Enter task title',
+                    prefixIcon: const Icon(Icons.task_alt, color: AppColors.primary),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter a task title';
+                      }
+                      return null;
+                    },
                   ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'Fill in the details below to create a new task for your team',
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: AppColors.textMuted,
-                      height: 1.4,
-                    ),
+                  const SizedBox(height: AppSpacing.lg),
+                  ShadInput(
+                    controller: _descriptionController,
+                    label: 'Task Description *',
+                    hintText: 'Enter task description',
+                    prefixIcon: const Icon(Icons.description, color: AppColors.primary),
+                    maxLines: 4,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter a task description';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  ShadInput(
+                    label: 'Due Date *',
+                    hintText: _selectedDueDate == null
+                        ? 'Select due date'
+                        : DateFormat('MM/dd/yyyy').format(_selectedDueDate!),
+                    prefixIcon: const Icon(Icons.calendar_today, color: AppColors.primary),
+                    suffixIcon: const Icon(Icons.arrow_drop_down, color: AppColors.textMuted),
+                    readOnly: true,
+                    onTap: _selectDueDate,
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.xl + AppSpacing.md),
-              // Task Title
-              ShadInput(
-                controller: _titleController,
-                label: 'Task Title *',
-                hintText: 'Enter task title',
-                prefixIcon: const Icon(Icons.task_alt, color: AppColors.primary),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a task title';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: AppSpacing.lg),
 
-              // Task Description
-              ShadInput(
-                controller: _descriptionController,
-                label: 'Task Description *',
-                hintText: 'Enter task description',
-                prefixIcon: const Icon(Icons.description, color: AppColors.primary),
-                maxLines: 4,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a task description';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.xl),
 
-              // Due Date
-              ShadInput(
-                label: 'Due Date *',
-                hintText: _selectedDueDate == null
-                    ? 'Select due date'
-                    : DateFormat('MM/dd/yyyy').format(_selectedDueDate!),
-                prefixIcon: const Icon(Icons.calendar_today, color: AppColors.primary),
-                suffixIcon: const Icon(Icons.arrow_drop_down, color: AppColors.textMuted),
-                readOnly: true,
-                onTap: _selectDueDate,
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              
-              // Divider
-              Divider(
-                color: AppColors.border.withValues(alpha: 0.5),
-                height: AppSpacing.xl,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-
-              // Priority Dropdown
-              ShadSelect<TaskPriority>(
-                value: _selectedPriority,
-                label: 'Priority *',
-                hint: 'Select priority',
-                prefixIcon: const Icon(Icons.flag, color: AppColors.primary),
-                items: TaskPriority.values.map((priority) {
-                  String label;
-                  Color color;
-                  switch (priority) {
-                    case TaskPriority.high:
-                      label = 'High';
-                      color = AppColors.danger;
-                      break;
-                    case TaskPriority.medium:
-                      label = 'Medium';
-                      color = AppColors.warning;
-                      break;
-                    case TaskPriority.low:
-                      label = 'Low';
-                      color = AppColors.success;
-                      break;
-                  }
-                  return ShadSelectItem<TaskPriority>(
-                    value: priority,
-                    label: label,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Text(label),
-                      ],
-                    ),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _selectedPriority = value;
-                    });
-                  }
-                },
-              ),
-              const SizedBox(height: AppSpacing.lg),
-
-              // Assigned To Dropdown
-              ShadSelect<String>(
-                value: _selectedAssignedTo,
-                label: 'Assigned To *',
-                hint: 'Select team member',
-                prefixIcon: const Icon(Icons.person, color: AppColors.primary),
-                items: teamMembers.map((member) {
-                  return ShadSelectItem<String>(
-                    value: member.name,
-                    label: '${member.name} - ${member.role}',
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircleAvatar(
-                          radius: 12,
-                          backgroundColor: AppColors.primarySoft,
-                          child: Text(
-                            member.name[0].toUpperCase(),
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.bold,
+              // Task Classification Section
+              _buildSection(
+                title: 'Task Classification',
+                subtitle: 'Details that describe the task type and specifications.',
+                children: [
+                  ShadSelect<TaskPriority>(
+                    value: _selectedPriority,
+                    label: 'Priority *',
+                    hint: 'Select priority',
+                    prefixIcon: const Icon(Icons.flag, color: AppColors.primary),
+                    items: TaskPriority.values.map((priority) {
+                      String label;
+                      Color color;
+                      switch (priority) {
+                        case TaskPriority.high:
+                          label = 'High';
+                          color = AppColors.danger;
+                          break;
+                        case TaskPriority.medium:
+                          label = 'Medium';
+                          color = AppColors.warning;
+                          break;
+                        case TaskPriority.low:
+                          label = 'Low';
+                          color = AppColors.success;
+                          break;
+                      }
+                      return ShadSelectItem<TaskPriority>(
+                        value: priority,
+                        label: label,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                              ),
                             ),
-                          ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Text(label),
+                          ],
                         ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Flexible(
-                          child: Text(
-                            '${member.name} - ${member.role}',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          _selectedPriority = value;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  ShadSelect<String>(
+                    value: _selectedAssignedTo,
+                    label: 'Assigned To *',
+                    hint: 'Select team member',
+                    prefixIcon: const Icon(Icons.person, color: AppColors.primary),
+                    items: teamMembers.map((member) {
+                      return ShadSelectItem<String>(
+                        value: member.name,
+                        label: '${member.name} - ${member.role}',
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircleAvatar(
+                              radius: 12,
+                              backgroundColor: AppColors.primarySoft,
+                              child: Text(
+                                member.name[0].toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Flexible(
+                              child: Text(
+                                '${member.name} - ${member.role}',
+                                style: const TextStyle(fontWeight: FontWeight.w600),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedAssignedTo = value;
-                  });
-                },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please select an assignee';
-                  }
-                  return null;
-                },
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedAssignedTo = value;
+                      });
+                    },
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please select an assignee';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
               ),
-              const SizedBox(height: AppSpacing.lg),
-              
-              // Divider
-              Divider(
-                color: AppColors.border.withValues(alpha: 0.5),
-                height: AppSpacing.xl,
-              ),
-              const SizedBox(height: AppSpacing.sm),
 
-              // Location Picker
-              LocationPicker(
-                location: _selectedLocation,
-                onLocationChanged: (location) {
-                  setState(() {
-                    _selectedLocation = location;
-                  });
-                },
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              
-              // Divider
-              Divider(
-                color: AppColors.border.withValues(alpha: 0.5),
-                height: AppSpacing.xl,
-              ),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: AppSpacing.xl),
 
-              // Attachments Picker
-              AttachmentPicker(
-                attachments: _attachments,
-                onAttachmentsChanged: (attachments) {
-                  setState(() {
-                    _attachments = attachments;
-                  });
-                },
+              // Task Details Section
+              _buildSection(
+                title: 'Task Details',
+                subtitle: 'Essential location and attachment information.',
+                children: [
+                  LocationPicker(
+                    location: _selectedLocation,
+                    onLocationChanged: (location) {
+                      setState(() {
+                        _selectedLocation = location;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  AttachmentPicker(
+                    attachments: _attachments,
+                    onAttachmentsChanged: (attachments) {
+                      setState(() {
+                        _attachments = attachments;
+                      });
+                    },
+                  ),
+                ],
               ),
-              const SizedBox(height: AppSpacing.lg),
-              
-              // Divider
-              Divider(
-                color: AppColors.border.withValues(alpha: 0.5),
-                height: AppSpacing.xl,
-              ),
-              const SizedBox(height: AppSpacing.sm),
+
+              const SizedBox(height: AppSpacing.xl),
 
               // Subtasks Section
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              _buildSection(
+                title: 'Subtasks',
+                subtitle: 'Break down your task into smaller steps.',
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      Text(
-                        'Subtasks',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.3,
-                        ),
+                      ShadButton(
+                        onPressed: _addSubTaskField,
+                        variant: ShadButtonVariant.outline,
+                        size: ShadButtonSize.sm,
+                        icon: const Icon(Icons.add, size: 18),
+                        child: const Text('Add Subtask'),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Break down your task into smaller steps',
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  // Subtask Fields
+                  ...List.generate(_subTaskControllers.length, (index) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: ShadInput(
+                              controller: _subTaskControllers[index],
+                              hintText: 'Enter subtask ${index + 1}',
+                              prefixIcon: const Icon(Icons.check_box_outline_blank, size: 20),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          ShadButton(
+                            onPressed: () => _removeSubTaskField(index),
+                            variant: ShadButtonVariant.ghost,
+                            size: ShadButtonSize.icon,
+                            icon: const Icon(Icons.delete_outline, color: AppColors.danger, size: 20),
+                            child: const SizedBox.shrink(),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                  if (_subTaskControllers.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                      child: Text(
+                        'No subtasks added yet. Click "Add Subtask" to create one.',
                         style: TextStyle(
                           fontSize: 13,
                           color: AppColors.textMuted,
+                          fontStyle: FontStyle.italic,
                         ),
                       ),
-                    ],
-                  ),
-                  ShadButton(
-                    onPressed: _addSubTaskField,
-                    variant: ShadButtonVariant.outline,
-                    size: ShadButtonSize.sm,
-                    icon: const Icon(Icons.add, size: 18),
-                    child: const Text('Add Subtask'),
-                  ),
+                    ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.sm),
-              
-              // Subtask Fields
-              ...List.generate(_subTaskControllers.length, (index) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: ShadInput(
-                          controller: _subTaskControllers[index],
-                          hintText: 'Enter subtask ${index + 1}',
-                          prefixIcon: const Icon(Icons.check_box_outline_blank, size: 20),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      ShadButton(
-                        onPressed: () => _removeSubTaskField(index),
-                        variant: ShadButtonVariant.ghost,
-                        size: ShadButtonSize.icon,
-                        icon: const Icon(Icons.delete_outline, color: AppColors.danger, size: 20),
-                        child: const SizedBox.shrink(),
-                      ),
-                    ],
-                  ),
-                );
-              }),
 
               const SizedBox(height: AppSpacing.xl),
-              
-              // Divider before action button
-              Divider(
-                color: AppColors.border.withValues(alpha: 0.5),
-                height: AppSpacing.xl,
-              ),
-              const SizedBox(height: AppSpacing.md),
 
               // Save Button
               ShadButton(
@@ -560,6 +549,8 @@ class _AddTaskViewState extends State<AddTaskView> {
             ],
           ),
         ),
+          );
+        },
       ),
     );
   }

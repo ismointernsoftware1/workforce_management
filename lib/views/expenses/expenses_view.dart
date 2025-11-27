@@ -19,13 +19,27 @@ class ExpensesView extends StatefulWidget {
 }
 
 class _ExpensesViewState extends State<ExpensesView> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text;
+      });
+    });
     // Refresh expenses when view becomes visible
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshExpenses();
     });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _refreshExpenses() async {
@@ -62,19 +76,21 @@ class _ExpensesViewState extends State<ExpensesView> {
                         Text(
                           'Expense Management',
                           style: TextStyle(
-                            fontSize: isMobile ? 24 : 32,
+                            fontSize: isMobile ? 28 : 36,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
-                            letterSpacing: -0.5,
+                            letterSpacing: -0.8,
+                            height: 1.1,
                           ),
                         ),
-                        const SizedBox(height: AppSpacing.xs),
+                        const SizedBox(height: AppSpacing.sm),
                         Text(
                           'Track and approve employee expenses',
                           style: TextStyle(
                             color: AppColors.textMuted,
-                            fontSize: isMobile ? 13 : 15,
-                            height: 1.4,
+                            fontSize: isMobile ? 14 : 16,
+                            height: 1.5,
+                            fontWeight: FontWeight.w400,
                           ),
                         ),
                       ],
@@ -114,6 +130,14 @@ class _ExpensesViewState extends State<ExpensesView> {
                         child: const SizedBox.shrink(),
                       ),
                   ],
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                
+                // Search Bar
+                ShadInput(
+                  controller: _searchController,
+                  hintText: 'Search expenses...',
+                  prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 
@@ -200,31 +224,43 @@ class _ExpensesViewState extends State<ExpensesView> {
                 const SizedBox(height: AppSpacing.md),
                 
                 // Expenses Table
-                if (provider.filteredExpenses.isEmpty)
-                  Center(
+                if (_getFilteredExpenses(provider).isEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl * 3),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.receipt_long,
-                          size: 64,
-                          color: AppColors.textMuted.withValues(alpha: 0.5),
+                        Container(
+                          padding: const EdgeInsets.all(AppSpacing.xl),
+                          decoration: BoxDecoration(
+                            color: AppColors.primarySoft,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.receipt_long,
+                            size: 64,
+                            color: AppColors.primary,
+                          ),
                         ),
-                        const SizedBox(height: AppSpacing.lg),
+                        const SizedBox(height: AppSpacing.xl),
                         Text(
                           'No expenses found',
                           style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
+                            letterSpacing: -0.5,
                           ),
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         Text(
-                          'Add a new expense to get started',
+                          _searchQuery.isNotEmpty
+                              ? 'No expenses match your search'
+                              : 'Add a new expense to get started',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 15,
                             color: AppColors.textMuted,
+                            height: 1.5,
                           ),
                         ),
                       ],
@@ -232,7 +268,8 @@ class _ExpensesViewState extends State<ExpensesView> {
                   )
                 else
                   _ExpensesTable(
-                    expenses: provider.filteredExpenses,
+                    expenses: _getFilteredExpenses(provider),
+                    isMobile: isMobile,
                   ),
               ],
             ),
@@ -260,6 +297,24 @@ class _ExpensesViewState extends State<ExpensesView> {
 
   String _formatCurrency(double amount) {
     return '\$${amount.toStringAsFixed(2)}';
+  }
+
+  List<ExpenseModel> _getFilteredExpenses(ExpenseProvider provider) {
+    var filtered = provider.filteredExpenses;
+    
+    // Apply search filter
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase();
+      filtered = filtered.where((expense) {
+        final merchant = expense.merchant?.toLowerCase() ?? '';
+        return expense.description.toLowerCase().contains(query) ||
+            expense.category.name.toLowerCase().contains(query) ||
+            expense.employeeName.toLowerCase().contains(query) ||
+            merchant.contains(query);
+      }).toList();
+    }
+    
+    return filtered;
   }
 
   Future<void> _handleApprove(
@@ -455,9 +510,13 @@ class _ExpensesViewState extends State<ExpensesView> {
 }
 
 class _ExpensesTable extends StatelessWidget {
-  const _ExpensesTable({required this.expenses});
+  const _ExpensesTable({
+    required this.expenses,
+    required this.isMobile,
+  });
 
   final List<ExpenseModel> expenses;
+  final bool isMobile;
 
   @override
   Widget build(BuildContext context) {
@@ -467,110 +526,136 @@ class _ExpensesTable extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        children: [
-          // Table Header
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: AppColors.border),
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    'Description',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Category',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Employee',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 1,
-                  child: Text(
-                    'Amount',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 1,
-                  child: Text(
-                    'Date',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 1,
-                  child: Text(
-                    'Status',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Actions',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Table Rows
-          Builder(
-            builder: (context) {
-              final viewState = context.findAncestorStateOfType<_ExpensesViewState>();
-              return Column(
-                children: expenses.map((expense) => _ExpenseTableRow(
-                      expense: expense,
-                      dateFormatter: dateFormatter,
-                      currencyFormatter: currencyFormatter,
-                      viewState: viewState,
-                    )).toList(),
-              );
-            },
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.border.withValues(alpha: 0.5),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.textPrimary.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
+      child: isMobile
+          ? Column(
+              children: expenses.map((expense) {
+                final viewState = context.findAncestorStateOfType<_ExpensesViewState>();
+                return _ExpenseMobileCard(
+                  expense: expense,
+                  dateFormatter: dateFormatter,
+                  currencyFormatter: currencyFormatter,
+                  viewState: viewState,
+                );
+              }).toList(),
+            )
+          : Column(
+              children: [
+                // Table Header
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceAlt,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: AppColors.border.withValues(alpha: 0.5),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          'Description',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          'Category',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          'Employee',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 1,
+                        child: Text(
+                          'Amount',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 1,
+                        child: Text(
+                          'Date',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 1,
+                        child: Text(
+                          'Status',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          'Actions',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Table Rows
+                Builder(
+                  builder: (context) {
+                    final viewState = context.findAncestorStateOfType<_ExpensesViewState>();
+                    return Column(
+                      children: expenses.map((expense) => _ExpenseTableRow(
+                            expense: expense,
+                            dateFormatter: dateFormatter,
+                            currencyFormatter: currencyFormatter,
+                            viewState: viewState,
+                          )).toList(),
+                    );
+                  },
+                ),
+              ],
+            ),
     );
   }
 }
@@ -591,10 +676,14 @@ class _ExpenseTableRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
+        color: AppColors.surface,
         border: Border(
-          bottom: BorderSide(color: AppColors.border.withValues(alpha: 0.5)),
+          bottom: BorderSide(
+            color: AppColors.border.withValues(alpha: 0.3),
+            width: 1,
+          ),
         ),
       ),
       child: Row(
@@ -701,6 +790,182 @@ class _ExpenseTableRow extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExpenseMobileCard extends StatelessWidget {
+  const _ExpenseMobileCard({
+    required this.expense,
+    required this.dateFormatter,
+    required this.currencyFormatter,
+    required this.viewState,
+  });
+
+  final ExpenseModel expense;
+  final DateFormat dateFormatter;
+  final NumberFormat currencyFormatter;
+  final _ExpensesViewState? viewState;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.all(AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      expense.description,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        color: AppColors.textPrimary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      expense.category.name,
+                      style: const TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _StatusBadge(status: expense.status),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Amount',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      currencyFormatter.format(expense.amount),
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Date',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      dateFormatter.format(expense.expenseDate),
+                      style: const TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Employee',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      expense.employeeName,
+                      style: const TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 14,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Wrap(
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
+            children: [
+              if (expense.status == ExpenseStatus.submitted ||
+                  expense.status == ExpenseStatus.underReview ||
+                  expense.status == ExpenseStatus.draft)
+                ...[
+                  ShadButton(
+                    onPressed: () => viewState?._handleApprove(context, expense),
+                    variant: ShadButtonVariant.default_,
+                    size: ShadButtonSize.sm,
+                    icon: const Icon(Icons.check, size: 16, color: Colors.white),
+                    child: const Text('Approve'),
+                  ),
+                  ShadButton(
+                    onPressed: () => viewState?._handleReject(context, expense),
+                    variant: ShadButtonVariant.destructive,
+                    size: ShadButtonSize.sm,
+                    icon: const Icon(Icons.close, size: 16, color: Colors.white),
+                    child: const Text('Reject'),
+                  ),
+                ],
+              ShadButton(
+                onPressed: () => viewState?._handleEdit(context, expense),
+                variant: ShadButtonVariant.outline,
+                size: ShadButtonSize.sm,
+                icon: const Icon(Icons.edit_outlined, size: 16),
+                child: const Text('Edit'),
+              ),
+              ShadButton(
+                onPressed: () => viewState?._showDeleteConfirmation(context, expense),
+                variant: ShadButtonVariant.ghost,
+                size: ShadButtonSize.sm,
+                icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
+                child: const Text('Delete'),
+              ),
+            ],
           ),
         ],
       ),

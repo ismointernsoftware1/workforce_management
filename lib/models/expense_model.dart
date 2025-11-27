@@ -5,6 +5,7 @@ import 'expense_approval.dart';
 import 'expense_category.dart';
 
 enum ExpenseStatus { draft, submitted, underReview, approved, rejected, paid }
+
 enum ExpenseType { receipt, mileage, other }
 
 class ExpenseModel {
@@ -36,7 +37,7 @@ class ExpenseModel {
   final String employeeId;
   final String employeeName;
   final double amount;
-  final String currency; // e.g., 'USD', 'INR'
+  final String currency;
   final DateTime expenseDate;
   final String description;
   final ExpenseCategory category;
@@ -45,14 +46,14 @@ class ExpenseModel {
   final List<ExpenseReceipt> receipts;
   final List<ExpenseApproval> approvals;
   final ExpenseMileage? mileage;
-  final String? reimbursementId; // Link to reimbursement if part of one
+  final String? reimbursementId;
   final DateTime? createdAt;
   final DateTime? updatedAt;
-  final bool? duplicateFlag; // Fraud detection flag
-  final String? duplicateReason; // Why it was flagged
+  final bool? duplicateFlag;
+  final String? duplicateReason;
   final double? taxAmount;
   final String? merchant;
-  final String? paymentMethod; // e.g., 'Credit Card', 'Cash', 'Bank Transfer'
+  final String? paymentMethod;
 
   factory ExpenseModel.fromSnapshot(DocumentSnapshot<Map<String, dynamic>> snap) {
     final data = snap.data() ?? <String, dynamic>{};
@@ -201,8 +202,8 @@ class ExpenseMileage {
     this.endDate,
   });
 
-  final double distance; // in miles or km
-  final double rate; // rate per mile/km
+  final double distance;
+  final double rate;
   final String startLocation;
   final String endLocation;
   final String purpose;

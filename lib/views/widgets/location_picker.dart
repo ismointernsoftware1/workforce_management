@@ -316,73 +316,150 @@ class _LocationPickerState extends State<LocationPicker> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Location',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                    letterSpacing: -0.3,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isMobile = constraints.maxWidth < 600;
+            if (isMobile) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Location',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Add location for this task',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
                   ),
+                  const SizedBox(height: AppSpacing.md),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: [
+                      if (widget.location != null && widget.enabled && !_isManualInput)
+                        ShadButton(
+                          onPressed: _clearLocation,
+                          variant: ShadButtonVariant.outline,
+                          size: ShadButtonSize.sm,
+                          icon: const Icon(Icons.clear, size: 18),
+                          child: const Text('Clear'),
+                        ),
+                      ShadButton(
+                        onPressed: widget.enabled && !_isLoading && !_isManualInput
+                            ? _toggleManualInput
+                            : null,
+                        variant: ShadButtonVariant.outline,
+                        size: ShadButtonSize.sm,
+                        disabled: !widget.enabled || _isLoading || _isManualInput,
+                        icon: const Icon(Icons.edit_location, size: 18),
+                        child: const Text('Enter Address'),
+                      ),
+                      ShadButton(
+                        onPressed: widget.enabled && !_isLoading && !_isManualInput
+                            ? _pickCurrentLocation
+                            : null,
+                        variant: ShadButtonVariant.outline,
+                        size: ShadButtonSize.sm,
+                        disabled: !widget.enabled || _isLoading || _isManualInput,
+                        icon: _isLoading
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.location_on, size: 18),
+                        child: const Text('Use Current'),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            }
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Location',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Add location for this task',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'Add location for this task',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textMuted,
+                Flexible(
+                  child: Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    alignment: WrapAlignment.end,
+                    children: [
+                      if (widget.location != null && widget.enabled && !_isManualInput)
+                        ShadButton(
+                          onPressed: _clearLocation,
+                          variant: ShadButtonVariant.outline,
+                          size: ShadButtonSize.sm,
+                          icon: const Icon(Icons.clear, size: 18),
+                          child: const Text('Clear'),
+                        ),
+                      ShadButton(
+                        onPressed: widget.enabled && !_isLoading && !_isManualInput
+                            ? _toggleManualInput
+                            : null,
+                        variant: ShadButtonVariant.outline,
+                        size: ShadButtonSize.sm,
+                        disabled: !widget.enabled || _isLoading || _isManualInput,
+                        icon: const Icon(Icons.edit_location, size: 18),
+                        child: const Text('Enter Address'),
+                      ),
+                      ShadButton(
+                        onPressed: widget.enabled && !_isLoading && !_isManualInput
+                            ? _pickCurrentLocation
+                            : null,
+                        variant: ShadButtonVariant.outline,
+                        size: ShadButtonSize.sm,
+                        disabled: !widget.enabled || _isLoading || _isManualInput,
+                        icon: _isLoading
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.location_on, size: 18),
+                        child: const Text('Use Current'),
+                      ),
+                    ],
                   ),
                 ),
               ],
-            ),
-            Row(
-              children: [
-                if (widget.location != null && widget.enabled && !_isManualInput)
-                  ShadButton(
-                    onPressed: _clearLocation,
-                    variant: ShadButtonVariant.outline,
-                    size: ShadButtonSize.sm,
-                    icon: const Icon(Icons.clear, size: 18),
-                    child: const Text('Clear'),
-                  ),
-                if (widget.location != null && widget.enabled && !_isManualInput)
-                  const SizedBox(width: AppSpacing.sm),
-                ShadButton(
-                  onPressed: widget.enabled && !_isLoading && !_isManualInput
-                      ? _toggleManualInput
-                      : null,
-                  variant: ShadButtonVariant.outline,
-                  size: ShadButtonSize.sm,
-                  disabled: !widget.enabled || _isLoading || _isManualInput,
-                  icon: const Icon(Icons.edit_location, size: 18),
-                  child: const Text('Enter Address'),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                ShadButton(
-                  onPressed: widget.enabled && !_isLoading && !_isManualInput
-                      ? _pickCurrentLocation
-                      : null,
-                  variant: ShadButtonVariant.outline,
-                  size: ShadButtonSize.sm,
-                  disabled: !widget.enabled || _isLoading || _isManualInput,
-                  icon: _isLoading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.location_on, size: 18),
-                  child: const Text('Use Current'),
-                ),
-              ],
-            ),
-          ],
+            );
+          },
         ),
         if (_isManualInput) ...[
           const SizedBox(height: AppSpacing.md),

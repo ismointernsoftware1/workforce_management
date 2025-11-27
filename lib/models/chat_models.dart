@@ -17,7 +17,7 @@ class ChatMessage {
 
   factory ChatMessage.fromMap(Map<String, dynamic> data, {String? id}) {
     return ChatMessage(
-      id: id ?? data['id'] as String? ?? '',
+      id: id ?? (data['id'] as String? ?? ''),
       sender: data['sender'] as String? ?? '',
       body: data['body'] as String? ?? '',
       sentAt: (data['sentAt'] is Timestamp)
@@ -57,7 +57,7 @@ class Conversation {
 
   factory Conversation.fromMap(Map<String, dynamic> data, {String? id}) {
     return Conversation(
-      id: id ?? data['id'] as String? ?? '',
+      id: id ?? (data['id'] as String? ?? ''),
       topic: data['topic'] as String? ?? '',
       preview: data['preview'] as String? ?? '',
       updatedAt: (data['updatedAt'] is Timestamp)
@@ -72,6 +72,7 @@ class Conversation {
           .map(
             (m) => ChatMessage.fromMap(
               Map<String, dynamic>.from(m as Map),
+              id: m['id'] as String?,
             ),
           )
           .toList(),

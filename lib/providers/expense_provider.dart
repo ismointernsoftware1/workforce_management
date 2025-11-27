@@ -55,7 +55,7 @@ class ExpenseProvider extends ChangeNotifier {
       categories = await _expenseController.fetchCategories();
       notifyListeners();
     } catch (error) {
-      print('Error loading categories: $error');
+      debugPrint('Error loading categories: $error');
     }
   }
 
@@ -161,7 +161,7 @@ class ExpenseProvider extends ChangeNotifier {
     try {
       return await _expenseController.checkDuplicateReceipt(fileHash, employeeId);
     } catch (error) {
-      print('Error checking duplicate receipt: $error');
+      debugPrint('Error checking duplicate receipt: $error');
       return false;
     }
   }

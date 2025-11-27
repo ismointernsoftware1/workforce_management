@@ -28,7 +28,7 @@ class ShadSelect<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dropdown = DropdownButtonFormField<T>(
-      value: value,
+      initialValue: value,
       decoration: InputDecoration(
         hintText: hint,
         prefixIcon: prefixIcon,
@@ -88,7 +88,26 @@ class ShadSelect<T> extends StatelessWidget {
         Icons.expand_more_rounded,
         color: AppColors.textMuted,
       ),
-      isExpanded: true,
+      isExpanded: false, // Set to false to allow natural sizing
+    );
+
+    // Wrap dropdown to provide width constraints when used in Row
+    // Use Flexible approach that works in both constrained and unconstrained contexts
+    final constrainedDropdown = LayoutBuilder(
+      builder: (context, constraints) {
+        // If width is unbounded (e.g., in a Row without Expanded), provide a default
+        if (constraints.maxWidth == double.infinity) {
+          return SizedBox(
+            width: 200, // Default width when unbounded
+            child: dropdown,
+          );
+        }
+        // Otherwise, use available space
+        return SizedBox(
+          width: constraints.maxWidth,
+          child: dropdown,
+        );
+      },
     );
 
     if (label != null) {
@@ -104,12 +123,12 @@ class ShadSelect<T> extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.xs),
-          dropdown,
+          constrainedDropdown,
         ],
       );
     }
 
-    return dropdown;
+    return constrainedDropdown;
   }
 }
 

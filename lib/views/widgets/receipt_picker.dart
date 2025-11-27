@@ -112,48 +112,104 @@ class _ReceiptPickerState extends State<ReceiptPicker> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isMobile = constraints.maxWidth < 600;
+            if (isMobile) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Receipts',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Upload receipt images for this expense',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  ShadButton(
+                    onPressed: widget.enabled && !_isUploading
+                        ? _pickReceipts
+                        : null,
+                    variant: ShadButtonVariant.outline,
+                    size: ShadButtonSize.sm,
+                    disabled: !widget.enabled || _isUploading,
+                    icon: _isUploading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.add_photo_alternate, size: 18),
+                    child: const Text('Add Receipts'),
+                  ),
+                ],
+              );
+            }
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Receipts',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                    letterSpacing: -0.3,
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Receipts',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Upload receipt images for this expense',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'Upload receipt images for this expense',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textMuted,
+                const SizedBox(width: AppSpacing.sm),
+                Flexible(
+                  child: ShadButton(
+                    onPressed: widget.enabled && !_isUploading
+                        ? _pickReceipts
+                        : null,
+                    variant: ShadButtonVariant.outline,
+                    size: ShadButtonSize.sm,
+                    disabled: !widget.enabled || _isUploading,
+                    icon: _isUploading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.add_photo_alternate, size: 18),
+                    child: const Text('Add Receipts'),
                   ),
                 ),
               ],
-            ),
-            ShadButton(
-              onPressed: widget.enabled && !_isUploading
-                  ? _pickReceipts
-                  : null,
-              variant: ShadButtonVariant.outline,
-              size: ShadButtonSize.sm,
-              disabled: !widget.enabled || _isUploading,
-              icon: _isUploading
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.add_photo_alternate, size: 18),
-              child: const Text('Add Receipts'),
-            ),
-          ],
+            );
+          },
         ),
         if (widget.receipts.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),

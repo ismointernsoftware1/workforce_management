@@ -105,22 +105,67 @@ class LocationService {
   }
 
   Future<List<Map<String, dynamic>>> geocodeAddress(String address) async {
-    try {
-      final locations = await locationFromAddress(address);
-      if (locations.isEmpty) {
-        return [];
-      }
-
-      return locations.map((location) {
-        return {
-          'latitude': location.latitude,
-          'longitude': location.longitude,
-        };
-      }).toList();
-    } catch (e) {
-      print('Error geocoding address: $e');
+    // Clean the address: remove quotes, extra spaces, and normalize
+    String cleanAddress = address
+        .trim()
+        .replaceAll('"', '') // Remove double quotes
+        .replaceAll("'", '') // Remove single quotes
+        .replaceAll(RegExp(r'\s+'), ' ') // Replace multiple spaces with single space
+        .trim();
+    
+    if (cleanAddress.isEmpty) {
       return [];
     }
+    
+    // Try to improve address format for better geocoding results
+    String formattedAddress = cleanAddress;
+    
+    // If address doesn't contain country, try adding common country names
+    // This helps with city names like "mumbai" or "delhi"
+    final lowerAddress = formattedAddress.toLowerCase();
+    if (!lowerAddress.contains('india') &&
+        !lowerAddress.contains('usa') &&
+        !lowerAddress.contains('united states') &&
+        !lowerAddress.contains('united kingdom') &&
+        !lowerAddress.contains('uk')) {
+      // For common Indian cities, add India
+      final indianCities = ['mumbai', 'delhi', 'bangalore', 'chennai', 'kolkata', 
+                           'hyderabad', 'pune', 'ahmedabad', 'jaipur', 'surat',
+                           'lucknow', 'kanpur', 'nagpur', 'indore', 'thane'];
+      if (indianCities.any((city) => lowerAddress.contains(city))) {
+        formattedAddress = '$cleanAddress, India';
+      }
+    }
+    
+    // Try multiple address formats
+    final addressesToTry = [
+      formattedAddress,
+      if (formattedAddress != cleanAddress) cleanAddress,
+      // Try without country if it was added
+      if (formattedAddress.endsWith(', India')) cleanAddress,
+    ];
+    
+    for (final addr in addressesToTry) {
+      if (addr.isEmpty) continue;
+      
+      try {
+        final locations = await locationFromAddress(addr);
+        if (locations.isNotEmpty) {
+          return locations.map((location) {
+            return {
+              'latitude': location.latitude,
+              'longitude': location.longitude,
+            };
+          }).toList();
+        }
+      } catch (e) {
+        // Continue to next address format
+        print('Error geocoding address "$addr": $e');
+        continue;
+      }
+    }
+    
+    return [];
   }
 }
 
