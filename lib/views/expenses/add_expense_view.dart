@@ -10,6 +10,7 @@ import '../../models/expense_category.dart';
 import '../../models/expense_receipt.dart';
 import '../../providers/expense_provider.dart';
 import '../../services/mileage_service.dart';
+import '../../utils/responsive_utils.dart';
 import '../widgets/receipt_picker.dart';
 
 class AddExpenseView extends StatefulWidget {
@@ -276,21 +277,16 @@ class _AddExpenseViewState extends State<AddExpenseView> {
         ),
       ),
       backgroundColor: AppColors.background,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isMobile = constraints.maxWidth < 768;
-          return SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(
-              isMobile ? AppSpacing.md : AppSpacing.xl,
-              AppSpacing.md,
-              isMobile ? AppSpacing.md : AppSpacing.xl,
-              AppSpacing.xl,
-            ),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      body: SingleChildScrollView(
+        padding: ResponsiveUtils.getPadding(context),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
 
               // Expense Type Selection
               ShadSelect<ExpenseType>(
@@ -520,10 +516,10 @@ class _AddExpenseViewState extends State<AddExpenseView> {
             ],
           ),
         ),
-          );
-        },
       ),
-    );
+    ),
+  ),
+);
   }
 }
 
@@ -678,9 +674,9 @@ class _MileageCalculatorState extends State<_MileageCalculator> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Calculation Breakdown
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final isMobile = constraints.maxWidth < 400;
+                    Builder(
+                      builder: (context) {
+                        final isMobile = ResponsiveUtils.isMobile(context);
                         if (isMobile) {
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/team_model.dart';
+import '../../utils/responsive_utils.dart';
 
 class AddTeamDialog extends StatefulWidget {
   const AddTeamDialog({
@@ -70,10 +71,11 @@ class _AddTeamDialogState extends State<AddTeamDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 768;
+    final isMobile = ResponsiveUtils.isMobile(context);
+    final isDesktop = ResponsiveUtils.isDesktop(context);
     return Dialog(
       insetPadding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 16 : (MediaQuery.of(context).size.width > 900 ? 120 : 40),
+        horizontal: isMobile ? 16 : (isDesktop ? 120 : 40),
         vertical: isMobile ? 20 : 80,
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
@@ -122,9 +124,9 @@ class _AddTeamDialogState extends State<AddTeamDialog> {
                 maxLines: 2,
               ),
               const SizedBox(height: AppSpacing.xl),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final isMobile = constraints.maxWidth < 400;
+              Builder(
+                builder: (context) {
+                  final isMobile = ResponsiveUtils.isMobile(context);
                   if (isMobile) {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,

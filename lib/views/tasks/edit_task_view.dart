@@ -7,6 +7,7 @@ import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/task_model.dart';
 import '../../providers/dashboard_provider.dart';
+import '../../utils/responsive_utils.dart';
 
 class EditTaskView extends StatefulWidget {
   const EditTaskView({super.key, required this.task});
@@ -231,7 +232,7 @@ class _EditTaskViewState extends State<EditTaskView> {
       ),
       backgroundColor: AppColors.background,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.xl),
+        padding: ResponsiveUtils.getPadding(context),
         child: Form(
           key: _formKey,
           child: Column(

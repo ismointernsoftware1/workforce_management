@@ -212,60 +212,38 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
         children: [
           Container(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-            child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-                Expanded(
-                  child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            child: isMobile
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                  Text(
-                    'People Directory',
-                    style: TextStyle(
-                          fontSize: ResponsiveUtils.getFontSize(
-                            context,
-                            mobile: 22,
-                            tablet: 24,
-                            desktop: 28,
-                          ),
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                      const SizedBox(height: 4),
-                  Text(
-                    'Manage and view all users',
-                        style: TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: ResponsiveUtils.getFontSize(
-                            context,
-                            mobile: 12,
-                            tablet: 13,
-                            desktop: 14,
-                          ),
+                      _buildPeopleHeaderTexts(context),
+                      const SizedBox(height: AppSpacing.sm),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: ShadButton(
+                          onPressed: () => _showAddUserDialog(context, provider),
+                          variant: ShadButtonVariant.outline,
+                          size: ShadButtonSize.sm,
+                          icon: const Icon(Icons.add, size: 18),
+                          child: const SizedBox.shrink(),
                         ),
-                  ),
-                ],
-              ),
-                ),
-                if (!isMobile)
-                  ShadButton(
-                    onPressed: () => _showAddUserDialog(context, provider),
-                    variant: ShadButtonVariant.outline,
-                    size: ShadButtonSize.md,
-                    icon: const Icon(Icons.add, size: 20),
-                    child: const Text('Add User'),
+                      ),
+                    ],
                   )
-                else
-                  ShadButton(
-                    onPressed: () => _showAddUserDialog(context, provider),
-                    variant: ShadButtonVariant.outline,
-                    size: ShadButtonSize.sm,
-                    icon: const Icon(Icons.add, size: 18),
-                    child: const SizedBox.shrink(),
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: _buildPeopleHeaderTexts(context)),
+                      const SizedBox(width: AppSpacing.md),
+                      ShadButton(
+                        onPressed: () => _showAddUserDialog(context, provider),
+                        variant: ShadButtonVariant.outline,
+                        size: ShadButtonSize.md,
+                        icon: const Icon(Icons.add, size: 20),
+                        child: const Text('Add User'),
+                      ),
+                    ],
                   ),
-              ],
-            ),
           ),
           const SizedBox(height: AppSpacing.xl),
           if (isMobile) ...[
@@ -444,41 +422,38 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                'All Teams',
-                style: TextStyle(
-                        fontSize: isMobile ? 22 : 28,
-                  fontWeight: FontWeight.bold,
+          if (isMobile)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildTeamHeaderTexts(isMobile),
+                const SizedBox(height: AppSpacing.sm),
+                ShadButton(
+                  onPressed: () => _showAddTeamDialog(context, provider),
+                  variant: ShadButtonVariant.outline,
+                  size: ShadButtonSize.sm,
+                  icon: const Icon(Icons.group_add, size: 20),
+                  width: double.infinity,
+                  child: const Text('Create Team'),
                 ),
-              ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Manage members and team settings',
-                      style: TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: isMobile ? 12 : 14,
-                      ),
-                    ),
-                  ],
+              ],
+            )
+          else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _buildTeamHeaderTexts(isMobile)),
+                const SizedBox(width: AppSpacing.md),
+                ShadButton(
+                  onPressed: () => _showAddTeamDialog(context, provider),
+                  variant: ShadButtonVariant.outline,
+                  size: ShadButtonSize.md,
+                  icon: const Icon(Icons.group_add, size: 20),
+                  child: const Text('Create Team'),
                 ),
-              ),
-              ShadButton(
-                onPressed: () => _showAddTeamDialog(context, provider),
-                variant: ShadButtonVariant.outline,
-                size: isMobile ? ShadButtonSize.sm : ShadButtonSize.md,
-                icon: const Icon(Icons.group_add, size: 20),
-                child:
-                    isMobile ? const SizedBox.shrink() : const Text('Create Team'),
-              ),
-            ],
-          ),
+              ],
+            ),
+          if (!isMobile) const SizedBox(height: AppSpacing.md),
           const SizedBox(height: AppSpacing.xl),
           ShadInput(
             controller: _teamSearchController,
@@ -568,12 +543,11 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Padding(
-                        padding: const EdgeInsets.all(AppSpacing.xl),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
+                        padding: EdgeInsets.all(
+                          isMobile ? AppSpacing.md : AppSpacing.xl,
+                        ),
+                        child: isMobile
+                            ? Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
@@ -581,32 +555,93 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
-                                      fontSize: ResponsiveUtils.getFontSize(
-                                        context,
-                                        mobile: 20,
-                                        tablet: 22,
-                                        desktop: 24,
-                                      ),
+                                      fontSize: 18,
                                       fontWeight: FontWeight.w700,
                                       color: AppColors.textPrimary,
                                       letterSpacing: -0.3,
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: 6),
                                   Row(
                                     children: [
                                       Icon(
                                         Icons.people_outline,
-                                        size: 16,
+                                        size: 14,
                                         color: AppColors.textMuted,
                                       ),
-                                      const SizedBox(width: 6),
+                                      const SizedBox(width: 4),
                                       Text(
                                         '${team.memberIds.length} members',
                                         style: TextStyle(
                                           color: AppColors.textMuted,
-                                          fontSize: 14,
+                                          fontSize: 12,
                                           fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: AppSpacing.xs,
+                                    runSpacing: AppSpacing.xs,
+                                    children: [
+                                      ShadTooltip(
+                                        message: 'Add members',
+                                        child: ShadButton(
+                                          onPressed: () => _showTeamMembersDialog(
+                                              context, provider, team),
+                                          variant: ShadButtonVariant.outline,
+                                          size: ShadButtonSize.icon,
+                                          icon: const Icon(Icons.person_add_alt_1, size: 18),
+                                          child: const SizedBox.shrink(),
+                                        ),
+                                      ),
+                                      ShadTooltip(
+                                        message: isExpanded ? 'Hide members' : 'Show members',
+                                        child: ShadButton(
+                                          onPressed: () {
+                                            setState(() {
+                                              if (isExpanded) {
+                                                _expandedTeamIds.remove(team.id);
+                                              } else {
+                                                _expandedTeamIds.add(team.id);
+                                              }
+                                            });
+                                          },
+                                          variant: ShadButtonVariant.ghost,
+                                          size: ShadButtonSize.icon,
+                                          icon: Icon(
+                                            isExpanded
+                                                ? Icons.keyboard_arrow_up
+                                                : Icons.keyboard_arrow_down,
+                                            size: 18,
+                                            color: AppColors.textMuted,
+                                          ),
+                                          child: const SizedBox.shrink(),
+                                        ),
+                                      ),
+                                      ShadTooltip(
+                                        message: 'Edit',
+                                        child: ShadButton(
+                                          onPressed: () =>
+                                              _showEditTeamDialog(context, provider, team),
+                                          variant: ShadButtonVariant.ghost,
+                                          size: ShadButtonSize.icon,
+                                          icon: const Icon(Icons.edit_outlined,
+                                              size: 18, color: AppColors.textMuted),
+                                          child: const SizedBox.shrink(),
+                                        ),
+                                      ),
+                                      ShadTooltip(
+                                        message: 'Delete',
+                                        child: ShadButton(
+                                          onPressed: () =>
+                                              _confirmDeleteTeam(context, provider, team),
+                                          variant: ShadButtonVariant.ghost,
+                                          size: ShadButtonSize.icon,
+                                          icon: const Icon(Icons.delete_outline,
+                                              size: 18, color: AppColors.danger),
+                                          child: const SizedBox.shrink(),
                                         ),
                                       ),
                                     ],
@@ -619,80 +654,137 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         color: AppColors.textMuted,
-                                        fontSize: 14,
+                                        fontSize: 13,
                                         height: 1.4,
                                       ),
                                     ),
                                   ],
                                 ],
-                              ),
-                            ),
-                            const SizedBox(width: AppSpacing.md),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                ShadButton(
-                                  onPressed: () => _showTeamMembersDialog(
-                                      context, provider, team),
-                                  variant: ShadButtonVariant.outline,
-                                  size: ShadButtonSize.sm,
-                                  icon: const Icon(Icons.person_add_alt_1, size: 16),
-                                  child: const Text('Add members'),
-                                ),
-                                const SizedBox(width: AppSpacing.xs),
-                                ShadTooltip(
-                                  message: isExpanded ? 'Hide members' : 'Show members',
-                                  child: ShadButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        if (isExpanded) {
-                                          _expandedTeamIds.remove(team.id);
-                                        } else {
-                                          _expandedTeamIds.add(team.id);
-                                        }
-                                      });
-                                    },
-                                    variant: ShadButtonVariant.ghost,
-                                    size: ShadButtonSize.icon,
-                                    icon: Icon(
-                                      isExpanded
-                                          ? Icons.keyboard_arrow_up
-                                          : Icons.keyboard_arrow_down,
-                                      size: 20,
-                                      color: AppColors.textMuted,
+                              )
+                            : Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          team.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: ResponsiveUtils.getFontSize(
+                                              context,
+                                              mobile: 20,
+                                              tablet: 22,
+                                              desktop: 24,
+                                            ),
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.textPrimary,
+                                            letterSpacing: -0.3,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.people_outline,
+                                              size: 16,
+                                              color: AppColors.textMuted,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              '${team.memberIds.length} members',
+                                              style: TextStyle(
+                                                color: AppColors.textMuted,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        if (team.description.isNotEmpty) ...[
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            team.description,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: AppColors.textMuted,
+                                              fontSize: 14,
+                                              height: 1.4,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
                                     ),
-                                    child: const SizedBox.shrink(),
                                   ),
-                                ),
-                                const SizedBox(width: AppSpacing.xs),
-                                ShadTooltip(
-                                  message: 'Edit',
-                                  child: ShadButton(
-                                    onPressed: () =>
-                                        _showEditTeamDialog(context, provider, team),
-                                    variant: ShadButtonVariant.ghost,
-                                    size: ShadButtonSize.icon,
-                                    icon: const Icon(Icons.edit_outlined, size: 20, color: AppColors.textMuted),
-                                    child: const SizedBox.shrink(),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      ShadButton(
+                                        onPressed: () => _showTeamMembersDialog(
+                                            context, provider, team),
+                                        variant: ShadButtonVariant.outline,
+                                        size: ShadButtonSize.sm,
+                                        icon: const Icon(Icons.person_add_alt_1, size: 16),
+                                        child: const Text('Add members'),
+                                      ),
+                                      const SizedBox(width: AppSpacing.xs),
+                                      ShadTooltip(
+                                        message: isExpanded ? 'Hide members' : 'Show members',
+                                        child: ShadButton(
+                                          onPressed: () {
+                                            setState(() {
+                                              if (isExpanded) {
+                                                _expandedTeamIds.remove(team.id);
+                                              } else {
+                                                _expandedTeamIds.add(team.id);
+                                              }
+                                            });
+                                          },
+                                          variant: ShadButtonVariant.ghost,
+                                          size: ShadButtonSize.icon,
+                                          icon: Icon(
+                                            isExpanded
+                                                ? Icons.keyboard_arrow_up
+                                                : Icons.keyboard_arrow_down,
+                                            size: 20,
+                                            color: AppColors.textMuted,
+                                          ),
+                                          child: const SizedBox.shrink(),
+                                        ),
+                                      ),
+                                      const SizedBox(width: AppSpacing.xs),
+                                      ShadTooltip(
+                                        message: 'Edit',
+                                        child: ShadButton(
+                                          onPressed: () =>
+                                              _showEditTeamDialog(context, provider, team),
+                                          variant: ShadButtonVariant.ghost,
+                                          size: ShadButtonSize.icon,
+                                          icon: const Icon(Icons.edit_outlined, size: 20, color: AppColors.textMuted),
+                                          child: const SizedBox.shrink(),
+                                        ),
+                                      ),
+                                      const SizedBox(width: AppSpacing.xs),
+                                      ShadTooltip(
+                                        message: 'Delete',
+                                        child: ShadButton(
+                                          onPressed: () =>
+                                              _confirmDeleteTeam(context, provider, team),
+                                          variant: ShadButtonVariant.ghost,
+                                          size: ShadButtonSize.icon,
+                                          icon: const Icon(Icons.delete_outline, size: 20, color: AppColors.danger),
+                                          child: const SizedBox.shrink(),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                                const SizedBox(width: AppSpacing.xs),
-                                ShadTooltip(
-                                  message: 'Delete',
-                                  child: ShadButton(
-                                    onPressed: () =>
-                                        _confirmDeleteTeam(context, provider, team),
-                                    variant: ShadButtonVariant.ghost,
-                                    size: ShadButtonSize.icon,
-                                    icon: const Icon(Icons.delete_outline, size: 20, color: AppColors.danger),
-                                    child: const SizedBox.shrink(),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                                ],
+                              ),
                         ),
-                      ),
                       if (isExpanded) ...[
                         Divider(
                           height: 1,
@@ -700,19 +792,21 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
                           color: AppColors.border.withValues(alpha: 0.3),
                         ),
                         Padding(
-                          padding: const EdgeInsets.all(AppSpacing.xl),
+                          padding: EdgeInsets.all(
+                            isMobile ? AppSpacing.md : AppSpacing.xl,
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 'Team Members',
                                 style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: isMobile ? 14 : 16,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.textPrimary,
                                 ),
                               ),
-                              const SizedBox(height: AppSpacing.md),
+                              SizedBox(height: isMobile ? AppSpacing.sm : AppSpacing.md),
                               members.isEmpty
                                   ? Container(
                                       padding: const EdgeInsets.symmetric(
@@ -748,10 +842,10 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
                                       children: members
                                           .map(
                                             (member) => Container(
-                                              margin: const EdgeInsets.only(
+                                              margin: EdgeInsets.only(
                                                   bottom: AppSpacing.sm),
-                                              padding: const EdgeInsets.all(
-                                                  AppSpacing.md),
+                                              padding: EdgeInsets.all(
+                                                  isMobile ? AppSpacing.sm : AppSpacing.md),
                                               decoration: BoxDecoration(
                                                 color: AppColors.surfaceAlt,
                                                 borderRadius:
@@ -763,8 +857,8 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
                                               child: Row(
                                                 children: [
                                                   Container(
-                                                    width: 40,
-                                                    height: 40,
+                                                    width: isMobile ? 36 : 40,
+                                                    height: isMobile ? 36 : 40,
                                                     decoration: BoxDecoration(
                                                       color: AppColors.primarySoft,
                                                       shape: BoxShape.circle,
@@ -782,12 +876,12 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
                                                         style: TextStyle(
                                                           color: AppColors.primary,
                                                           fontWeight: FontWeight.w700,
-                                                          fontSize: 16,
+                                                          fontSize: isMobile ? 14 : 16,
                                                         ),
                                                       ),
                                                     ),
                                                   ),
-                                                  const SizedBox(width: AppSpacing.md),
+                                                  SizedBox(width: isMobile ? AppSpacing.sm : AppSpacing.md),
                                                   Expanded(
                                                     child: Column(
                                                       crossAxisAlignment:
@@ -795,19 +889,22 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
                                                       children: [
                                                         Text(
                                                           member.name,
-                                                          style: const TextStyle(
+                                                          style: TextStyle(
                                                             fontWeight: FontWeight.w600,
-                                                            fontSize: 15,
+                                                            fontSize: isMobile ? 14 : 15,
                                                             color: AppColors.textPrimary,
                                                           ),
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow.ellipsis,
                                                         ),
-                                                        const SizedBox(height: 4),
+                                                        SizedBox(height: isMobile ? 2 : 4),
                                                         Text(
                                                           member.email,
                                                           style: TextStyle(
                                                             color: AppColors.textMuted,
-                                                            fontSize: 13,
+                                                            fontSize: isMobile ? 12 : 13,
                                                           ),
+                                                          maxLines: 1,
                                                           overflow: TextOverflow.ellipsis,
                                                         ),
                                                       ],
@@ -823,9 +920,9 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
                           ),
                         ),
                       ],
-                          ],
-                        ),
-                      );
+                    ],
+                  ),
+                );
               }).toList(),
             ),
           const SizedBox(height: AppSpacing.xl),
@@ -1194,6 +1291,63 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
         initialTeam: team,
         onSubmit: (updated) => provider.updateTeam(updated),
       ),
+    );
+  }
+
+  Widget _buildPeopleHeaderTexts(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'People Directory',
+          style: TextStyle(
+            fontSize: ResponsiveUtils.getFontSize(
+              context,
+              mobile: 22,
+              tablet: 24,
+              desktop: 28,
+            ),
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Manage and view all users',
+          style: TextStyle(
+            color: AppColors.textMuted,
+            fontSize: ResponsiveUtils.getFontSize(
+              context,
+              mobile: 12,
+              tablet: 13,
+              desktop: 14,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTeamHeaderTexts(bool isMobile) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'All Teams',
+          style: TextStyle(
+            fontSize: isMobile ? 22 : 28,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Manage members and team settings',
+          style: TextStyle(
+            color: AppColors.textMuted,
+            fontSize: isMobile ? 12 : 14,
+          ),
+        ),
+      ],
     );
   }
 

@@ -8,6 +8,7 @@ import '../../constants/app_spacing.dart';
 import '../../models/expense_model.dart';
 import '../../models/expense_category.dart';
 import '../../providers/expense_provider.dart';
+import '../../utils/responsive_utils.dart';
 
 class EditExpenseView extends StatefulWidget {
   const EditExpenseView({super.key, required this.expense});
@@ -193,7 +194,7 @@ class _EditExpenseViewState extends State<EditExpenseView> {
       ),
       backgroundColor: AppColors.background,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.xl),
+        padding: ResponsiveUtils.getPadding(context),
         child: Form(
           key: _formKey,
           child: Column(

@@ -8,6 +8,7 @@ import '../../constants/app_spacing.dart';
 import '../../models/task_approval.dart';
 import '../../models/task_attachment.dart';
 import '../../models/task_model.dart';
+import '../../utils/responsive_utils.dart';
 
 class TaskDetailView extends StatelessWidget {
   const TaskDetailView({
@@ -68,7 +69,7 @@ class TaskDetailView extends StatelessWidget {
       ),
       backgroundColor: AppColors.background,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.xl),
+        padding: ResponsiveUtils.getPadding(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

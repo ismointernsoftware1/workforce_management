@@ -68,62 +68,39 @@ class _ExpensesViewState extends State<ExpensesView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Header Section
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Expense Management',
-                          style: TextStyle(
-                            fontSize: ResponsiveUtils.getFontSize(
-                              context,
-                              mobile: 28,
-                              tablet: 32,
-                              desktop: 36,
-                            ),
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                            letterSpacing: -0.8,
-                            height: 1.1,
-                          ),
+                if (isMobile)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeaderTitle(context),
+                      const SizedBox(height: AppSpacing.sm),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ShadButton(
+                          onPressed: () => _openAddExpense(context),
+                          variant: ShadButtonVariant.default_,
+                          size: ShadButtonSize.md,
+                          icon: const Icon(Icons.add, size: 18),
+                          child: const Text('New Expense'),
                         ),
-                        const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          'Track and approve employee expenses',
-                          style: TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: ResponsiveUtils.getFontSize(
-                              context,
-                              mobile: 14,
-                              tablet: 15,
-                              desktop: 16,
-                            ),
-                            height: 1.5,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (!isMobile)
+                      ),
+                    ],
+                  )
+                else
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: _buildHeaderTitle(context)),
+                      const SizedBox(width: AppSpacing.md),
                       ShadButton(
                         onPressed: () => _openAddExpense(context),
                         variant: ShadButtonVariant.default_,
                         size: ShadButtonSize.md,
                         icon: const Icon(Icons.add, size: 20),
                         child: const Text('New Expense'),
-                      )
-                    else
-                      ShadButton(
-                        onPressed: () => _openAddExpense(context),
-                        variant: ShadButtonVariant.default_,
-                        size: ShadButtonSize.sm,
-                        icon: const Icon(Icons.add, size: 18),
-                        child: const SizedBox.shrink(),
                       ),
-                  ],
-                ),
+                    ],
+                  ),
                 const SizedBox(height: AppSpacing.xl),
                 
                 // Search Bar
@@ -290,6 +267,44 @@ class _ExpensesViewState extends State<ExpensesView> {
 
   String _formatCurrency(double amount) {
     return '\$${amount.toStringAsFixed(2)}';
+  }
+
+  Widget _buildHeaderTitle(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Expense Management',
+          style: TextStyle(
+            fontSize: ResponsiveUtils.getFontSize(
+              context,
+              mobile: 28,
+              tablet: 32,
+              desktop: 36,
+            ),
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+            letterSpacing: -0.8,
+            height: 1.1,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          'Track and approve employee expenses',
+          style: TextStyle(
+            color: AppColors.textMuted,
+            fontSize: ResponsiveUtils.getFontSize(
+              context,
+              mobile: 14,
+              tablet: 15,
+              desktop: 16,
+            ),
+            height: 1.5,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+      ],
+    );
   }
 
   List<ExpenseModel> _getFilteredExpenses(ExpenseProvider provider) {

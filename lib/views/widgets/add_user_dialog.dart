@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/user_model.dart';
+import '../../utils/responsive_utils.dart';
 
 class AddUserDialog extends StatefulWidget {
   const AddUserDialog({
@@ -114,19 +115,20 @@ class _AddUserDialogState extends State<AddUserDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width > 900;
-    final isMobile = MediaQuery.of(context).size.width < 768;
+    final isMobile = ResponsiveUtils.isMobile(context);
+    final isDesktop = ResponsiveUtils.isDesktop(context);
+    final screenWidth = MediaQuery.of(context).size.width;
 
     return Dialog(
       insetPadding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 16 : (isWide ? 120 : 40),
+        horizontal: isMobile ? 16 : (isDesktop ? 120 : 40),
         vertical: isMobile ? 20 : 60,
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       backgroundColor: const Color(0xFFF4F5FA),
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxWidth: isWide ? 900 : MediaQuery.of(context).size.width * 0.9,
+          maxWidth: isDesktop ? 900 : screenWidth * 0.9,
         ),
         child: Padding(
           padding: EdgeInsets.all(isMobile ? 16 : 32),
@@ -159,7 +161,7 @@ class _AddUserDialogState extends State<AddUserDialog> {
                   runSpacing: 16,
                   children: [
                     SizedBox(
-                      width: isWide ? 400 : double.infinity,
+                      width: isDesktop ? 400 : double.infinity,
                       child: _buildTextField(
                         controller: _nameController,
                         label: 'Full name',
@@ -170,7 +172,7 @@ class _AddUserDialogState extends State<AddUserDialog> {
                       ),
                     ),
                     SizedBox(
-                      width: isWide ? 400 : double.infinity,
+                      width: isDesktop ? 400 : double.infinity,
                       child: _buildTextField(
                         controller: _roleController,
                         label: 'Role',
@@ -181,7 +183,7 @@ class _AddUserDialogState extends State<AddUserDialog> {
                       ),
                     ),
                     SizedBox(
-                      width: isWide ? 400 : double.infinity,
+                      width: isDesktop ? 400 : double.infinity,
                       child: _buildTextField(
                         controller: _emailController,
                         label: 'Email',
@@ -199,7 +201,7 @@ class _AddUserDialogState extends State<AddUserDialog> {
                     ),
                     if (!_isEditing)
                       SizedBox(
-                        width: isWide ? 400 : double.infinity,
+                        width: isDesktop ? 400 : double.infinity,
                         child: _buildTextField(
                           controller: _passwordController,
                           label: 'Password',
@@ -227,7 +229,7 @@ class _AddUserDialogState extends State<AddUserDialog> {
                         ),
                       ),
                     SizedBox(
-                      width: isWide ? 400 : double.infinity,
+                      width: isDesktop ? 400 : double.infinity,
                       child: DropdownButtonFormField<String>(
                         decoration: _inputDecoration('Status'),
                         value: _status,
@@ -255,9 +257,9 @@ class _AddUserDialogState extends State<AddUserDialog> {
                   ],
                 ),
                 const SizedBox(height: 32),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isMobile = constraints.maxWidth < 400;
+                Builder(
+                  builder: (context) {
+                    final isMobile = ResponsiveUtils.isMobile(context);
                     if (isMobile) {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,

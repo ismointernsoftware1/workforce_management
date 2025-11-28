@@ -9,6 +9,7 @@ import '../../models/task_attachment.dart';
 import '../../models/task_location.dart';
 import '../../models/task_model.dart';
 import '../../providers/dashboard_provider.dart';
+import '../../utils/responsive_utils.dart';
 import '../widgets/attachment_picker.dart';
 import '../widgets/location_picker.dart';
 
@@ -269,16 +270,16 @@ class _AddTaskViewState extends State<AddTaskView> {
         ),
       ),
       backgroundColor: AppColors.background,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isMobile = constraints.maxWidth < 768;
-          return SingleChildScrollView(
-            padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.xl),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      body: SingleChildScrollView(
+        padding: ResponsiveUtils.getPadding(context),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
               // Task Information Section
               _buildSection(
                 title: 'Task Information',
@@ -549,10 +550,10 @@ class _AddTaskViewState extends State<AddTaskView> {
             ],
           ),
         ),
-          );
-        },
       ),
-    );
+    ),
+  ),
+);
   }
 }
 
