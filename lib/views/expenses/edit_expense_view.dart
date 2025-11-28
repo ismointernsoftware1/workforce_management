@@ -26,6 +26,7 @@ class _EditExpenseViewState extends State<EditExpenseView> {
   
   DateTime? _selectedExpenseDate;
   ExpenseCategory? _selectedCategory;
+  ExpenseStatus? _selectedStatus;
   bool _isLoading = false;
 
   @override
@@ -37,6 +38,7 @@ class _EditExpenseViewState extends State<EditExpenseView> {
     _merchantController.text = widget.expense.merchant ?? '';
     _selectedExpenseDate = widget.expense.expenseDate;
     _selectedCategory = widget.expense.category;
+    _selectedStatus = widget.expense.status;
   }
 
   @override
@@ -105,6 +107,7 @@ class _EditExpenseViewState extends State<EditExpenseView> {
         expenseDate: _selectedExpenseDate!,
         description: _descriptionController.text.trim(),
         category: _selectedCategory!,
+        status: _selectedStatus ?? widget.expense.status,
         merchant: _merchantController.text.trim().isEmpty
             ? null
             : _merchantController.text.trim(),
@@ -304,34 +307,53 @@ class _EditExpenseViewState extends State<EditExpenseView> {
                 hintText: 'Enter merchant name',
                 prefixIcon: const Icon(Icons.store, color: AppColors.primary),
               ),
-              const SizedBox(height: AppSpacing.xl),
+              const SizedBox(height: AppSpacing.lg),
 
-              // Status Info (read-only)
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceAlt,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      color: AppColors.textMuted,
-                      size: 20,
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Text(
-                      'Status: ',
-                      style: TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 14,
-                      ),
-                    ),
-                    _StatusBadge(status: widget.expense.status),
-                  ],
-                ),
+              // Status Selection
+              ShadSelect<ExpenseStatus>(
+                label: 'Status *',
+                hint: 'Select status',
+                value: _selectedStatus,
+                prefixIcon: const Icon(Icons.flag, color: AppColors.primary),
+                items: ExpenseStatus.values.map((status) {
+                  String label;
+                  switch (status) {
+                    case ExpenseStatus.approved:
+                      label = 'Approved';
+                      break;
+                    case ExpenseStatus.rejected:
+                      label = 'Rejected';
+                      break;
+                    case ExpenseStatus.submitted:
+                      label = 'Submitted';
+                      break;
+                    case ExpenseStatus.underReview:
+                      label = 'Under Review';
+                      break;
+                    case ExpenseStatus.paid:
+                      label = 'Paid';
+                      break;
+                    case ExpenseStatus.draft:
+                      label = 'Draft';
+                      break;
+                  }
+                  return ShadSelectItem<ExpenseStatus>(
+                    value: status,
+                    label: label,
+                    child: Text(label),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedStatus = value;
+                  });
+                },
+                validator: (value) {
+                  if (value == null) {
+                    return 'Please select a status';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: AppSpacing.xl),
 
@@ -370,47 +392,6 @@ class _EditExpenseViewState extends State<EditExpenseView> {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.status});
-
-  final ExpenseStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    String label;
-    ShadBadgeVariant variant;
-
-    switch (status) {
-      case ExpenseStatus.approved:
-        label = 'Approved';
-        variant = ShadBadgeVariant.default_;
-        break;
-      case ExpenseStatus.rejected:
-        label = 'Rejected';
-        variant = ShadBadgeVariant.destructive;
-        break;
-      case ExpenseStatus.submitted:
-      case ExpenseStatus.underReview:
-        label = 'Pending';
-        variant = ShadBadgeVariant.secondary;
-        break;
-      case ExpenseStatus.paid:
-        label = 'Paid';
-        variant = ShadBadgeVariant.default_;
-        break;
-      case ExpenseStatus.draft:
-        label = 'Draft';
-        variant = ShadBadgeVariant.outline;
-        break;
-    }
-
-    return ShadBadge(
-      label: label,
-      variant: variant,
     );
   }
 }

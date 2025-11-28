@@ -633,7 +633,7 @@ class _ExpensesTable extends StatelessWidget {
                         ),
                       ),
                       Expanded(
-                        flex: 2,
+                        flex: 3,
                         child: Text(
                           'Actions',
                           style: TextStyle(
@@ -739,8 +739,10 @@ class _ExpenseTableRow extends StatelessWidget {
             child: _StatusBadge(status: expense.status),
           ),
           Expanded(
-            flex: 2,
-            child: Row(
+            flex: 3,
+            child: Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
               children: [
                 // Approve/Reject buttons for pending expenses
                 if (expense.status == ExpenseStatus.submitted || 
@@ -754,10 +756,15 @@ class _ExpenseTableRow extends StatelessWidget {
                     variant: ShadButtonVariant.default_,
                     size: ShadButtonSize.sm,
                     icon: const Icon(Icons.check, size: 16, color: Colors.white),
-                    child: const Text('Approve'),
+                    child: const Text(
+                      'Approve',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.visible,
+                      softWrap: false,
+                    ),
                   ),
                 ),
-                const SizedBox(width: AppSpacing.xs),
                 ShadTooltip(
                   message: 'Reject Expense',
                   child: ShadButton(
@@ -765,10 +772,15 @@ class _ExpenseTableRow extends StatelessWidget {
                     variant: ShadButtonVariant.destructive,
                     size: ShadButtonSize.sm,
                     icon: const Icon(Icons.close, size: 16, color: Colors.white),
-                    child: const Text('Reject'),
+                    child: const Text(
+                      'Reject',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.visible,
+                      softWrap: false,
+                    ),
                   ),
                 ),
-                    const SizedBox(width: AppSpacing.xs),
                   ],
                 // Edit button
                 ShadTooltip(
@@ -778,10 +790,15 @@ class _ExpenseTableRow extends StatelessWidget {
                     variant: ShadButtonVariant.outline,
                     size: ShadButtonSize.sm,
                     icon: const Icon(Icons.edit_outlined, size: 16),
-                    child: const Text('Edit'),
+                    child: const Text(
+                      'Edit',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.visible,
+                      softWrap: false,
+                    ),
                   ),
                 ),
-                const SizedBox(width: AppSpacing.xs),
                 // Delete button
                 ShadTooltip(
                   message: 'Delete Expense',
@@ -790,7 +807,13 @@ class _ExpenseTableRow extends StatelessWidget {
                     variant: ShadButtonVariant.ghost,
                     size: ShadButtonSize.sm,
                     icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
-                    child: const Text('Delete'),
+                    child: const Text(
+                      'Delete',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.visible,
+                      softWrap: false,
+                    ),
                   ),
                 ),
               ],

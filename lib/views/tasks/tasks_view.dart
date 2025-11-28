@@ -9,6 +9,7 @@ import '../../providers/dashboard_provider.dart';
 import '../../utils/responsive_utils.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/task_card.dart';
+import 'add_task_view.dart';
 
 class TasksView extends StatefulWidget {
   const TasksView({super.key});
@@ -34,6 +35,17 @@ class _TasksViewState extends State<TasksView> {
     await provider.refreshTasks();
   }
 
+  void _openAddTask(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const AddTaskView(),
+      ),
+    ).then((_) {
+      // Refresh tasks after returning from add task view
+      _refreshTasks();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DashboardProvider>();
@@ -51,43 +63,62 @@ class _TasksViewState extends State<TasksView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-          Container(
-            padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Tasks & Workflow',
-                  style: TextStyle(
-                    fontSize: ResponsiveUtils.getFontSize(
-                      context,
-                      mobile: 28,
-                      tablet: 32,
-                      desktop: 36,
+          // Header Section
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Tasks & Workflow',
+                    style: TextStyle(
+                      fontSize: ResponsiveUtils.getFontSize(
+                        context,
+                        mobile: 28,
+                        tablet: 32,
+                        desktop: 36,
+                      ),
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                      letterSpacing: -0.8,
+                      height: 1.1,
                     ),
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                    letterSpacing: -0.8,
-                    height: 1.1,
                   ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  'Manage your team\'s tasks and deadlines',
-                  style: TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: ResponsiveUtils.getFontSize(
-                      context,
-                      mobile: 14,
-                      tablet: 15,
-                      desktop: 16,
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Manage your team\'s tasks and deadlines',
+                    style: TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: ResponsiveUtils.getFontSize(
+                        context,
+                        mobile: 14,
+                        tablet: 15,
+                        desktop: 16,
+                      ),
+                      height: 1.5,
+                      fontWeight: FontWeight.w400,
                     ),
-                    height: 1.5,
-                    fontWeight: FontWeight.w400,
                   ),
+                ],
+              ),
+              if (!isMobile)
+                ShadButton(
+                  onPressed: () => _openAddTask(context),
+                  variant: ShadButtonVariant.default_,
+                  size: ShadButtonSize.md,
+                  icon: const Icon(Icons.add, size: 20),
+                  child: const Text('New Task'),
+                )
+              else
+                ShadButton(
+                  onPressed: () => _openAddTask(context),
+                  variant: ShadButtonVariant.default_,
+                  size: ShadButtonSize.sm,
+                  icon: const Icon(Icons.add, size: 18),
+                  child: const SizedBox.shrink(),
                 ),
-              ],
-            ),
+            ],
           ),
           const SizedBox(height: AppSpacing.xl),
           isMobile
