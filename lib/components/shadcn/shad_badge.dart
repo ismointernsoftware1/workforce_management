@@ -26,7 +26,7 @@ class ShadBadge extends StatelessWidget {
     
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
+        horizontal: AppSpacing.xs,
         vertical: 2,
       ),
       decoration: BoxDecoration(
@@ -38,7 +38,7 @@ class ShadBadge extends StatelessWidget {
         label,
         style: TextStyle(
           color: style.textColor,
-          fontSize: 12,
+          fontSize: 10,
           fontWeight: FontWeight.w600,
         ),
       ),

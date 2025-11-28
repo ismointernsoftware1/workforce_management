@@ -5,9 +5,9 @@ import '../components/shadcn/shadcn.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_spacing.dart';
 import '../providers/dashboard_provider.dart';
+import '../utils/responsive_utils.dart';
 import 'chat/realtime_chat_view.dart';
 import 'expenses/expenses_view.dart';
-import 'tasks/add_task_view.dart';
 import 'tasks/tasks_view.dart';
 import 'team/team_view.dart';
 import 'widgets/sidebar.dart';
@@ -20,17 +20,15 @@ class DashboardView extends StatefulWidget {
 }
 
 class _DashboardViewState extends State<DashboardView> {
-  // Breakpoint for mobile vs desktop
-  static const double mobileBreakpoint = 768.0;
   bool _sidebarOpen = true; // Sidebar open by default on web
 
   @override
   Widget build(BuildContext context) {
     return Consumer<DashboardProvider>(
       builder: (context, provider, _) {
-        // Check if we're on mobile (width < 768px)
-        final isMobile = MediaQuery.of(context).size.width < mobileBreakpoint;
-        // On web, sidebar can be toggled
+        final isMobile = ResponsiveUtils.isMobile(context);
+        // On mobile, sidebar is hidden by default (shown via drawer)
+        // On desktop, sidebar can be toggled
         final showSidebar = isMobile ? false : _sidebarOpen;
         
         return Scaffold(
@@ -49,7 +47,6 @@ class _DashboardViewState extends State<DashboardView> {
                     children: [
                       _TopBar(
                         activeTab: provider.activeTab,
-                        isMobile: isMobile,
                         onMenuTap: () {
                           if (isMobile) {
                             _showMobileSidebar(context, provider);
@@ -60,7 +57,6 @@ class _DashboardViewState extends State<DashboardView> {
                             });
                           }
                         },
-                        showHamburger: true, // Always show hamburger
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       if (provider.isLoading)
@@ -127,15 +123,11 @@ class _DashboardViewState extends State<DashboardView> {
 class _TopBar extends StatefulWidget {
   const _TopBar({
     required this.activeTab,
-    required this.isMobile,
     required this.onMenuTap,
-    this.showHamburger = false,
   });
 
   final DashboardTab activeTab;
-  final bool isMobile;
   final VoidCallback onMenuTap;
-  final bool showHamburger;
 
   @override
   State<_TopBar> createState() => _TopBarState();
@@ -155,6 +147,22 @@ class _TopBarState extends State<_TopBar> {
   }
 
   @override
+  void didUpdateWidget(_TopBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Sync search controller with provider when tab changes
+    if (oldWidget.activeTab != widget.activeTab) {
+      final provider = Provider.of<DashboardProvider>(context, listen: false);
+      if (widget.activeTab == DashboardTab.tasks) {
+        _searchController.text = provider.taskSearchQuery;
+      } else if (widget.activeTab == DashboardTab.team) {
+        _searchController.clear();
+      } else {
+        _searchController.clear();
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -163,7 +171,7 @@ class _TopBarState extends State<_TopBar> {
   void _performSearch(DashboardProvider provider, String query) {
     switch (widget.activeTab) {
       case DashboardTab.tasks:
-        // Search is handled in TasksView
+        provider.setTaskSearchQuery(query);
         break;
       case DashboardTab.team:
         provider.filterUsers(query);
@@ -177,51 +185,46 @@ class _TopBarState extends State<_TopBar> {
     }
   }
 
-  Future<void> _navigateToAddTask(BuildContext context) async {
-    final provider = Provider.of<DashboardProvider>(context, listen: false);
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const AddTaskView(),
-      ),
-    );
-    // Refresh tasks after returning from add task page
-    await provider.refreshTasks();
-  }
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveUtils.isMobile(context);
     final isChat = widget.activeTab == DashboardTab.chat;
 
     return Padding(
       padding: EdgeInsets.symmetric(
-        horizontal: widget.isMobile ? AppSpacing.md : AppSpacing.xl,
+        horizontal: isMobile ? AppSpacing.md : AppSpacing.xl,
         vertical: AppSpacing.md,
       ),
       child: Row(
         children: [
-          if (widget.isMobile || widget.showHamburger) ...[
-            ShadTooltip(
-              message: 'Menu',
-              child: ShadButton(
-                onPressed: widget.onMenuTap,
-                variant: ShadButtonVariant.ghost,
-                size: ShadButtonSize.icon,
-                icon: const Icon(
-                  Icons.menu,
-                  size: 24,
-                  color: AppColors.textPrimary,
-                ),
-                child: const SizedBox.shrink(),
+          // Always show hamburger menu
+          ShadTooltip(
+            message: 'Menu',
+            child: ShadButton(
+              onPressed: widget.onMenuTap,
+              variant: ShadButtonVariant.ghost,
+              size: ShadButtonSize.icon,
+              icon: const Icon(
+                Icons.menu,
+                size: 24,
+                color: AppColors.textPrimary,
               ),
+              child: const SizedBox.shrink(),
             ),
-            const SizedBox(width: AppSpacing.sm),
-          ],
+          ),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: isChat
                 ? Text(
                     'Chat',
                     style: TextStyle(
-                      fontSize: widget.isMobile ? 20 : 26,
+                      fontSize: ResponsiveUtils.getFontSize(
+                        context,
+                        mobile: 20,
+                        tablet: 24,
+                        desktop: 26,
+                      ),
                       fontWeight: FontWeight.w600,
                       color: AppColors.textPrimary,
                     ),
@@ -235,21 +238,6 @@ class _TopBarState extends State<_TopBar> {
                     ),
                   ),
           ),
-          if (!isChat && widget.activeTab == DashboardTab.tasks) ...[
-            SizedBox(
-              width: widget.isMobile ? AppSpacing.sm : AppSpacing.md,
-            ),
-            ShadButton(
-              onPressed: () => _navigateToAddTask(context),
-              variant: ShadButtonVariant.default_,
-              size:
-                  widget.isMobile ? ShadButtonSize.sm : ShadButtonSize.md,
-              icon: const Icon(Icons.add, size: 20),
-              child: widget.isMobile
-                  ? const SizedBox.shrink()
-                  : const Text('Add Task'),
-            ),
-          ],
         ],
       ),
     );

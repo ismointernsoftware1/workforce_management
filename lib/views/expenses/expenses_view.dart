@@ -7,6 +7,7 @@ import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/expense_model.dart';
 import '../../providers/expense_provider.dart';
+import '../../utils/responsive_utils.dart';
 import '../widgets/stat_card.dart';
 import 'add_expense_view.dart';
 import 'edit_expense_view.dart';
@@ -52,12 +53,12 @@ class _ExpensesViewState extends State<ExpensesView> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ExpenseProvider>();
-    final isMobile = MediaQuery.of(context).size.width < 768;
+    final isMobile = ResponsiveUtils.isMobile(context);
     
     return LayoutBuilder(
       builder: (context, constraints) {
         return SingleChildScrollView(
-          padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.xl),
+          padding: ResponsiveUtils.getPadding(context),
           child: ConstrainedBox(
             constraints: BoxConstraints(
               minWidth: constraints.maxWidth,
@@ -76,7 +77,12 @@ class _ExpensesViewState extends State<ExpensesView> {
                         Text(
                           'Expense Management',
                           style: TextStyle(
-                            fontSize: isMobile ? 28 : 36,
+                            fontSize: ResponsiveUtils.getFontSize(
+                              context,
+                              mobile: 28,
+                              tablet: 32,
+                              desktop: 36,
+                            ),
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
                             letterSpacing: -0.8,
@@ -88,7 +94,12 @@ class _ExpensesViewState extends State<ExpensesView> {
                           'Track and approve employee expenses',
                           style: TextStyle(
                             color: AppColors.textMuted,
-                            fontSize: isMobile ? 14 : 16,
+                            fontSize: ResponsiveUtils.getFontSize(
+                              context,
+                              mobile: 14,
+                              tablet: 15,
+                              desktop: 16,
+                            ),
                             height: 1.5,
                             fontWeight: FontWeight.w400,
                           ),

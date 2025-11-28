@@ -38,6 +38,7 @@ class DashboardProvider extends ChangeNotifier {
   String? selectedConversationId;
 
   String taskFilter = 'All';
+  String taskSearchQuery = '';
   static const List<String> taskFilters = [
     'All',
     'Pending',
@@ -174,6 +175,11 @@ class DashboardProvider extends ChangeNotifier {
 
   void changeTaskFilter(String filter) {
     taskFilter = filter;
+    notifyListeners();
+  }
+
+  void setTaskSearchQuery(String query) {
+    taskSearchQuery = query;
     notifyListeners();
   }
 

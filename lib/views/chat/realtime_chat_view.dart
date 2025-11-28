@@ -10,6 +10,7 @@ import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/realtime_chat_models.dart';
 import '../../providers/realtime_chat_provider.dart';
+import '../../utils/responsive_utils.dart';
 import 'create_group_dialog.dart';
 import 'new_direct_message_dialog.dart';
 
@@ -57,168 +58,205 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveUtils.isMobile(context);
+    final isTablet = ResponsiveUtils.isTablet(context);
+    
+    // On mobile, show either conversation list OR chat view, not both
+    if (isMobile) {
+      if (_showConversationList) {
+        return Padding(
+          padding: ResponsiveUtils.getPadding(context),
+          child: _buildConversationList(context),
+        );
+      } else {
+        return Padding(
+          padding: ResponsiveUtils.getPadding(context),
+          child: _buildChatView(context, isMobile),
+        );
+      }
+    }
+    
+    // Desktop/Tablet: Show both side by side
     return Padding(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: ResponsiveUtils.getPadding(context),
       child: Row(
         children: [
           // Left sidebar with conversations
           SizedBox(
-            width: 280,
-            child: Container(
-              height: double.infinity,
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.max,
-                  children: [
-                  // Search bar
-                  ShadInput(
-                    hintText: 'Search...',
-                    prefixIcon: const Icon(Icons.search, size: 16, color: AppColors.textMuted),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  // Tabs
-                  Consumer<RealtimeChatProvider>(
-                    builder: (context, provider, _) {
-                      final isInbox = provider.activeTab == ChatTab.inbox;
-                      return Row(
-                        children: [
-                          Expanded(
-                            child: _TabButton(
-                              icon: Icons.message,
-                              label: 'Messages',
-                              isActive: isInbox,
-                              onTap: () {
-                                provider.setActiveTab(ChatTab.inbox);
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.xs),
-                          Expanded(
-                            child: _TabButton(
-                              icon: Icons.group,
-                              label: 'Group',
-                              isActive: !isInbox,
-                              onTap: () {
-                                provider.setActiveTab(ChatTab.explore);
-                              },
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  // Conversations list
-                  Expanded(
-                    child: Consumer<RealtimeChatProvider>(
-                      builder: (context, provider, _) {
-                        final conversations = provider.activeTab == ChatTab.inbox
-                            ? provider.directConversations
-                            : provider.groupConversations;
-
-                        if (provider.isLoading) {
-                          return const Center(child: CircularProgressIndicator());
-                        }
-
-                        if (conversations.isEmpty) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  provider.activeTab == ChatTab.inbox
-                                      ? Icons.inbox_outlined
-                                      : Icons.group_outlined,
-                                  size: 32,
-                                  color: AppColors.textMuted,
-                                ),
-                                const SizedBox(height: AppSpacing.sm),
-                                Text(
-                                  provider.activeTab == ChatTab.inbox
-                                      ? 'No messages'
-                                      : 'No groups',
-                                  style: const TextStyle(
-                                    color: AppColors.textMuted,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-
-                        return ListView.builder(
-                          itemCount: conversations.length,
-                          itemBuilder: (context, index) {
-                            final conversation = conversations[index];
-                            final isSelected =
-                                conversation.id == provider.selectedConversationId;
-                            final displayName =
-                                provider.conversationTitle(conversation);
-                            return RealtimeConversationTile(
-                              conversation: conversation,
-                              displayName: displayName,
-                              isSelected: isSelected,
-                              onTap: () {
-                                provider.selectConversation(conversation.id);
-                              },
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  // Action buttons
-                  Consumer<RealtimeChatProvider>(
-                    builder: (context, provider, _) {
-                      if (provider.activeTab == ChatTab.explore) {
-                        return ShadButton(
-                          onPressed: () => _showCreateGroupDialog(context, provider),
-                          variant: ShadButtonVariant.default_,
-                          size: ShadButtonSize.sm,
-                          icon: const Icon(Icons.add, size: 16),
-                          width: double.infinity,
-                          child: const Text(
-                            'Create Group',
-                            style: TextStyle(fontSize: 13),
-                          ),
-                        );
-                      } else {
-                        return ShadButton(
-                          onPressed: () => _showNewDirectMessageDialog(context, provider),
-                          variant: ShadButtonVariant.default_,
-                          size: ShadButtonSize.sm,
-                          icon: const Icon(Icons.add, size: 16),
-                          width: double.infinity,
-                          child: const Text(
-                            'New conversation',
-                            style: TextStyle(fontSize: 13),
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
+            width: isTablet ? 240.0 : 280.0,
+            child: _buildConversationList(context),
           ),
           const SizedBox(width: AppSpacing.md),
           // Main chat area
           Expanded(
-            child: Consumer<RealtimeChatProvider>(
-              builder: (context, provider, _) {
-                final selectedConversation = provider.selectedConversation;
+            child: _buildChatView(context, isMobile),
+          ),
+        ],
+      ),
+    );
+  }
 
-                if (selectedConversation == null) {
-                  return Container(
+  Widget _buildConversationList(BuildContext context) {
+    return Container(
+      height: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            // Search bar
+            ShadInput(
+              hintText: 'Search...',
+              prefixIcon: const Icon(Icons.search, size: 16, color: AppColors.textMuted),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            // Tabs
+            Consumer<RealtimeChatProvider>(
+              builder: (context, provider, _) {
+                final isInbox = provider.activeTab == ChatTab.inbox;
+                return Row(
+                  children: [
+                    Expanded(
+                      child: _TabButton(
+                        icon: Icons.message,
+                        label: 'Messages',
+                        isActive: isInbox,
+                        onTap: () {
+                          provider.setActiveTab(ChatTab.inbox);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: _TabButton(
+                        icon: Icons.group,
+                        label: 'Group',
+                        isActive: !isInbox,
+                        onTap: () {
+                          provider.setActiveTab(ChatTab.explore);
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            // Conversations list
+            Expanded(
+              child: Consumer<RealtimeChatProvider>(
+                builder: (context, provider, _) {
+                  final conversations = provider.activeTab == ChatTab.inbox
+                      ? provider.directConversations
+                      : provider.groupConversations;
+
+                  if (provider.isLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (conversations.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            provider.activeTab == ChatTab.inbox
+                                ? Icons.inbox_outlined
+                                : Icons.group_outlined,
+                            size: 32,
+                            color: AppColors.textMuted,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(
+                            provider.activeTab == ChatTab.inbox
+                                ? 'No messages'
+                                : 'No groups',
+                            style: const TextStyle(
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    itemCount: conversations.length,
+                    itemBuilder: (context, index) {
+                      final conversation = conversations[index];
+                      final isSelected =
+                          conversation.id == provider.selectedConversationId;
+                      final displayName =
+                          provider.conversationTitle(conversation);
+                      return RealtimeConversationTile(
+                        conversation: conversation,
+                        displayName: displayName,
+                        isSelected: isSelected,
+                        onTap: () {
+                          provider.selectConversation(conversation.id);
+                          // On mobile, hide conversation list after selection
+                          if (ResponsiveUtils.isMobile(context)) {
+                            setState(() {
+                              _showConversationList = false;
+                            });
+                          }
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            // Action buttons
+            Consumer<RealtimeChatProvider>(
+              builder: (context, provider, _) {
+                if (provider.activeTab == ChatTab.explore) {
+                  return ShadButton(
+                    onPressed: () => _showCreateGroupDialog(context, provider),
+                    variant: ShadButtonVariant.default_,
+                    size: ShadButtonSize.sm,
+                    icon: const Icon(Icons.add, size: 16),
+                    width: double.infinity,
+                    child: const Text(
+                      'Create Group',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                  );
+                } else {
+                  return ShadButton(
+                    onPressed: () => _showNewDirectMessageDialog(context, provider),
+                    variant: ShadButtonVariant.default_,
+                    size: ShadButtonSize.sm,
+                    icon: const Icon(Icons.add, size: 16),
+                    width: double.infinity,
+                    child: const Text(
+                      'New conversation',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChatView(BuildContext context, bool isMobile) {
+    return Consumer<RealtimeChatProvider>(
+      builder: (context, provider, _) {
+        final selectedConversation = provider.selectedConversation;
+
+        if (selectedConversation == null) {
+          return Container(
                     decoration: BoxDecoration(
                       color: AppColors.surface,
                       borderRadius: BorderRadius.circular(12),
@@ -244,7 +282,12 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                             ),
                             child: Icon(
                               Icons.chat_bubble_outline,
-                              size: 64,
+                              size: ResponsiveUtils.getFontSize(
+                                context,
+                                mobile: 48,
+                                tablet: 56,
+                                desktop: 64,
+                              ),
                               color: AppColors.primary,
                             ),
                           ),
@@ -253,39 +296,65 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                             'Select a conversation',
                             style: TextStyle(
                               color: AppColors.textPrimary,
-                              fontSize: 24,
+                              fontSize: ResponsiveUtils.getFontSize(
+                                context,
+                                mobile: 20,
+                                tablet: 22,
+                                desktop: 24,
+                              ),
                               fontWeight: FontWeight.w600,
                               letterSpacing: -0.5,
                             ),
                           ),
                           const SizedBox(height: AppSpacing.sm),
                           Text(
-                            'Choose a conversation from the sidebar to start chatting',
+                            isMobile
+                                ? 'Tap the menu to view conversations'
+                                : 'Choose a conversation from the sidebar to start chatting',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: AppColors.textMuted,
-                              fontSize: 15,
+                              fontSize: ResponsiveUtils.getFontSize(
+                                context,
+                                mobile: 14,
+                                tablet: 15,
+                                desktop: 15,
+                              ),
                               height: 1.5,
                             ),
                           ),
+                          if (isMobile) ...[
+                            const SizedBox(height: AppSpacing.xl),
+                            ShadButton(
+                              onPressed: () {
+                                setState(() {
+                                  _showConversationList = true;
+                                });
+                              },
+                              variant: ShadButtonVariant.default_,
+                              size: ShadButtonSize.md,
+                              icon: const Icon(Icons.message, size: 18),
+                              child: const Text('View Conversations'),
+                            ),
+                          ],
                         ],
                       ),
                     ),
                   );
-                }
+        }
 
-                final isGroupConversation =
-                    selectedConversation.type == ConversationType.group;
-                if (_showMembers && !isGroupConversation) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) {
-                      setState(() => _showMembers = false);
-                    }
-                  });
-                }
-                final showMembersPanel = _showMembers && isGroupConversation;
+        final isGroupConversation =
+            selectedConversation.type == ConversationType.group;
+        if (_showMembers && !isGroupConversation) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() => _showMembers = false);
+            }
+          });
+        }
+        final showMembersPanel = _showMembers && isGroupConversation;
 
-                return Container(
+        return Container(
                   height: double.infinity,
                   decoration: BoxDecoration(
                     color: AppColors.surface,
@@ -311,6 +380,20 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                               ),
                               child: Row(
                                 children: [
+                                  // Back button on mobile
+                                  if (isMobile)
+                                    ShadButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          _showConversationList = true;
+                                        });
+                                      },
+                                      variant: ShadButtonVariant.ghost,
+                                      size: ShadButtonSize.icon,
+                                      icon: const Icon(Icons.arrow_back, size: 18),
+                                      child: const SizedBox.shrink(),
+                                    ),
+                                  if (isMobile) const SizedBox(width: AppSpacing.xs),
                                   CircleAvatar(
                                     radius: 16,
                                     backgroundColor:
@@ -333,17 +416,27 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                       children: [
                                         Text(
                                           provider.selectedConversationTitle,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontWeight: FontWeight.w600,
-                                            fontSize: 14,
+                                            fontSize: ResponsiveUtils.getFontSize(
+                                              context,
+                                              mobile: 13,
+                                              tablet: 14,
+                                              desktop: 14,
+                                            ),
                                           ),
                                         ),
                                         if (isGroupConversation)
                                           Text(
                                             '${selectedConversation.memberIds.length} members',
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               color: AppColors.textMuted,
-                                              fontSize: 11,
+                                              fontSize: ResponsiveUtils.getFontSize(
+                                                context,
+                                                mobile: 10,
+                                                tablet: 11,
+                                                desktop: 11,
+                                              ),
                                             ),
                                           ),
                                       ],
@@ -352,7 +445,14 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                   const Spacer(),
                                   ShadButton(
                                     onPressed: isGroupConversation
-                                        ? () => _showConversationMenu(provider)
+                                        ? () {
+                                            if (isMobile) {
+                                              // Show members in bottom sheet on mobile
+                                              _showMembersBottomSheet(context, selectedConversation);
+                                            } else {
+                                              _showConversationMenu(provider);
+                                            }
+                                          }
                                         : null,
                                     variant: ShadButtonVariant.ghost,
                                     size: ShadButtonSize.icon,
@@ -535,26 +635,23 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                           ],
                         ),
                       ),
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        curve: Curves.easeInOut,
-                        width: showMembersPanel ? 260 : 0,
-                        child: showMembersPanel
-                            ? _MembersPanel(
-                                conversation: selectedConversation,
-                                onClose: () =>
-                                    setState(() => _showMembers = false),
-                              )
-                            : null,
-                      ),
+                      if (!isMobile)
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeInOut,
+                          width: showMembersPanel ? 260 : 0,
+                          child: showMembersPanel
+                              ? _MembersPanel(
+                                  conversation: selectedConversation,
+                                  onClose: () =>
+                                      setState(() => _showMembers = false),
+                                )
+                              : null,
+                        ),
                     ],
                   ),
                 );
-              },
-            ),
-          ),
-        ],
-      ),
+      },
     );
   }
 
@@ -734,6 +831,125 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
     setState(() {
       _showMembers = !_showMembers;
     });
+  }
+
+  void _showMembersBottomSheet(
+    BuildContext context,
+    RealtimeChatConversation conversation,
+  ) {
+    final members = conversation.memberNames.entries.toList()
+      ..sort((a, b) => a.value.compareTo(b.value));
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            // Handle bar
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${conversation.name} members',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySoft,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${members.length}',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close, size: 20),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            // Members list
+            Expanded(
+              child: members.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No members yet',
+                        style: TextStyle(color: AppColors.textMuted),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      itemCount: members.length,
+                      separatorBuilder: (_, __) =>
+                          const Divider(height: 1, color: AppColors.border),
+                      itemBuilder: (context, index) {
+                        final entry = members[index];
+                        return ListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          leading: CircleAvatar(
+                            radius: 20,
+                            backgroundColor: AppColors.primarySoft,
+                            child: Text(
+                              entry.value.isNotEmpty
+                                  ? entry.value[0].toUpperCase()
+                                  : '?',
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            entry.value,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

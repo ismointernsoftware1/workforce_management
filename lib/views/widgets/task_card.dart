@@ -5,13 +5,11 @@ import 'package:provider/provider.dart';
 import '../../components/shadcn/shadcn.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
-import '../../models/task_approval.dart';
 import '../../models/task_model.dart';
 import '../../providers/dashboard_provider.dart';
 import '../tasks/edit_task_view.dart';
 import '../tasks/task_detail_view.dart';
 import '../tasks/task_audit_logs_view.dart';
-import '../tasks/approval_workflow_view.dart';
 
 class TaskCard extends StatelessWidget {
   const TaskCard({
@@ -58,57 +56,172 @@ class TaskCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final dateFormatter = DateFormat('MM/dd/yyyy');
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+      margin: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: AppColors.border.withValues(alpha: 0.5),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.textPrimary.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: AppColors.textPrimary.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xl),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.adjust_rounded,
-                color: _priorityColor,
-                size: 16,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  task.title,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Title row with status badge
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        task.title,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                          color: AppColors.textPrimary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        task.description,
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 12,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Flexible(
-                child: _StatusDropdown(
+                _StatusDropdown(
                   task: task,
                   statusLabel: _statusLabel,
                   color: _priorityColor,
                 ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              ShadTooltip(
-                message: 'Edit Task',
-                child: ShadButton(
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            // Details section with labels and values
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Priority',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _priorityLabel,
+                        style: TextStyle(
+                          color: _priorityColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Due Date',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        dateFormatter.format(task.dueDate),
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Assigned to',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        task.assignedTo,
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 14,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            // Action buttons
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: [
+                ShadButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => TaskDetailView(task: task),
+                      ),
+                    );
+                  },
+                  variant: ShadButtonVariant.outline,
+                  size: ShadButtonSize.sm,
+                  icon: const Icon(Icons.visibility, size: 16),
+                  child: const Text('View Details'),
+                ),
+                ShadButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => TaskAuditLogsView(task: task),
+                      ),
+                    );
+                  },
+                  variant: ShadButtonVariant.ghost,
+                  size: ShadButtonSize.sm,
+                  icon: const Icon(Icons.history, size: 16),
+                  child: const Text('Audit Logs'),
+                ),
+                ShadButton(
                   onPressed: () async {
                     await Navigator.of(context).push(
                       MaterialPageRoute(
@@ -120,149 +233,62 @@ class TaskCard extends StatelessWidget {
                           .refreshTasks();
                     }
                   },
-                  variant: ShadButtonVariant.ghost,
-                  size: ShadButtonSize.icon,
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  child: const SizedBox.shrink(),
+                  variant: ShadButtonVariant.outline,
+                  size: ShadButtonSize.sm,
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  child: const Text('Edit'),
                 ),
-              ),
-              ShadTooltip(
-                message: 'Delete Task',
-                child: ShadButton(
+                ShadButton(
                   onPressed: () => _showDeleteConfirmation(context),
                   variant: ShadButtonVariant.ghost,
-                  size: ShadButtonSize.icon,
-                  icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.danger),
-                  child: const SizedBox.shrink(),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            task.description,
-            style: const TextStyle(color: AppColors.textMuted),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Wrap(
-            spacing: AppSpacing.lg,
-            runSpacing: AppSpacing.sm,
-            children: [
-              _InfoBadge(
-                label: 'Priority',
-                value: _priorityLabel,
-                color: _priorityColor.withValues(alpha: 0.15),
-                textColor: _priorityColor,
-                useShadBadge: true,
-              ),
-              _InfoBadge(
-                label: 'Due',
-                value: dateFormatter.format(task.dueDate),
-              ),
-              _InfoBadge(
-                label: 'Assigned to',
-                value: task.assignedTo,
-              ),
-              if (task.hasLocation && task.location != null)
-                _InfoBadge(
-                  label: 'Location',
-                  value: 'Set',
-                ),
-              if (task.attachments.isNotEmpty)
-                _InfoBadge(
-                  label: 'Files',
-                  value: '${task.attachments.length}',
-                ),
-              if (task.approvalType != TaskApprovalType.none && task.approvals.isNotEmpty)
-                _InfoBadge(
-                  label: 'Approvals',
-                  value: '${task.approvals.where((a) => a.status == ApprovalStatus.approved).length}/${task.approvals.length}',
-                ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          
-          // Action Buttons Row
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            children: [
-              ShadButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => TaskDetailView(task: task),
-                    ),
-                  );
-                },
-                variant: ShadButtonVariant.outline,
-                size: ShadButtonSize.sm,
-                icon: const Icon(Icons.visibility, size: 16),
-                child: const Text('View Details'),
-              ),
-              ShadButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => TaskAuditLogsView(task: task),
-                    ),
-                  );
-                },
-                variant: ShadButtonVariant.ghost,
-                size: ShadButtonSize.sm,
-                icon: const Icon(Icons.history, size: 16),
-                child: const Text('Audit Logs'),
-              ),
-              if (task.approvalType != TaskApprovalType.none)
-                ShadButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => ApprovalWorkflowView(task: task),
-                      ),
-                    );
-                  },
-                  variant: ShadButtonVariant.ghost,
                   size: ShadButtonSize.sm,
-                  icon: const Icon(Icons.verified, size: 16),
-                  child: const Text('Approve'),
-                ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'Subtasks (${task.subTasks.where((s) => s.isDone).length}/${task.subTasks.length})',
-            style: const TextStyle(
-              color: AppColors.textMuted,
-              fontSize: 13,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          ...task.subTasks.map(
-            (sub) => Row(
-              children: [
-                Checkbox(
-                  value: sub.isDone,
-                  onChanged: (_) {},
-                  activeColor: AppColors.primary,
-                  side: const BorderSide(color: AppColors.border),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Text(
-                    sub.label,
-                    style: TextStyle(
-                      color: sub.isDone
-                          ? AppColors.textMuted
-                          : AppColors.textPrimary,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
+                  child: const Text('Delete'),
                 ),
               ],
             ),
-          ),
-        ],
+            if (task.subTasks.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                'Subtasks (${task.subTasks.where((s) => s.isDone).length}/${task.subTasks.length})',
+                style: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 11,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              ...task.subTasks.map(
+                (sub) => Row(
+                  children: [
+                    SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: Checkbox(
+                        value: sub.isDone,
+                        onChanged: (_) {},
+                        activeColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.border, width: 1.5),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: Text(
+                        sub.label,
+                        style: TextStyle(
+                          color: sub.isDone
+                              ? AppColors.textMuted
+                              : AppColors.textPrimary,
+                          fontSize: 11,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -322,73 +348,6 @@ class TaskCard extends StatelessWidget {
   }
 }
 
-class _InfoBadge extends StatelessWidget {
-  const _InfoBadge({
-    required this.label,
-    required this.value,
-    this.color,
-    this.textColor,
-    this.useShadBadge = false,
-  });
-
-  final String label;
-  final String value;
-  final Color? color;
-  final Color? textColor;
-  final bool useShadBadge;
-
-  @override
-  Widget build(BuildContext context) {
-    if (useShadBadge && label == 'Priority') {
-      ShadBadgeVariant variant;
-      if (textColor == AppColors.danger) {
-        variant = ShadBadgeVariant.destructive;
-      } else if (textColor == AppColors.warning) {
-        variant = ShadBadgeVariant.secondary;
-      } else {
-        variant = ShadBadgeVariant.default_;
-      }
-      
-      return ShadBadge(
-        label: '$label: $value',
-        variant: variant,
-      );
-    }
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
-      ),
-      decoration: BoxDecoration(
-        color: color ?? AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '$label:',
-            style: const TextStyle(
-              color: AppColors.textMuted,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          Text(
-            value,
-            style: TextStyle(
-              color: textColor ?? AppColors.textPrimary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _StatusDropdown extends StatelessWidget {
   const _StatusDropdown({
     required this.task,
@@ -400,43 +359,119 @@ class _StatusDropdown extends StatelessWidget {
   final String statusLabel;
   final Color color;
 
+  Color get _statusColor {
+    switch (task.status) {
+      case TaskStatus.pending:
+        return AppColors.warning;
+      case TaskStatus.inProgress:
+        return AppColors.primary;
+      case TaskStatus.completed:
+        return AppColors.success;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(40),
-        border: Border.all(color: AppColors.border),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: 4,
       ),
-      child: ShadSelect<String>(
-        value: statusLabel,
-        items: const [
-          ShadSelectItem(value: 'Pending', label: 'Pending'),
-          ShadSelectItem(value: 'In Progress', label: 'In Progress'),
-          ShadSelectItem(value: 'Completed', label: 'Completed'),
+      decoration: BoxDecoration(
+        color: _statusColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _statusColor.withValues(alpha: 0.3), width: 1),
+      ),
+      child: PopupMenuButton<TaskStatus>(
+        padding: EdgeInsets.zero,
+        icon: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: _statusColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              statusLabel,
+              style: TextStyle(
+                color: _statusColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 11,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.keyboard_arrow_down,
+              size: 14,
+              color: _statusColor,
+            ),
+          ],
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        itemBuilder: (context) => [
+          PopupMenuItem(
+            value: TaskStatus.pending,
+            child: Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: AppColors.warning,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                const Text('Pending'),
+              ],
+            ),
+          ),
+          PopupMenuItem(
+            value: TaskStatus.inProgress,
+            child: Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                const Text('In Progress'),
+              ],
+            ),
+          ),
+          PopupMenuItem(
+            value: TaskStatus.completed,
+            child: Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: AppColors.success,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                const Text('Completed'),
+              ],
+            ),
+          ),
         ],
-        onChanged: (String? newStatus) async {
-          if (newStatus == null) return;
-          
-          TaskStatus status;
-          switch (newStatus) {
-            case 'Pending':
-              status = TaskStatus.pending;
-              break;
-            case 'In Progress':
-              status = TaskStatus.inProgress;
-              break;
-            case 'Completed':
-              status = TaskStatus.completed;
-              break;
-            default:
-              return;
-          }
-
+        onSelected: (TaskStatus newStatus) async {
           final provider = Provider.of<DashboardProvider>(context, listen: false);
           try {
-            await provider.updateTaskStatus(task.id, status);
+            await provider.updateTaskStatus(task.id, newStatus);
           } catch (e) {
             if (context.mounted) {
               ShadToast.show(

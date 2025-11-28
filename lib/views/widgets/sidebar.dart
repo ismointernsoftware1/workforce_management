@@ -6,6 +6,7 @@ import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../services/auth_service.dart';
+import '../../utils/responsive_utils.dart';
 
 class Sidebar extends StatelessWidget {
   const Sidebar({
@@ -19,8 +20,11 @@ class Sidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveUtils.isMobile(context);
+    final sidebarWidth = isMobile ? 280.0 : 220.0;
+    
     return Container(
-      width: 220,
+      width: sidebarWidth,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.lg,

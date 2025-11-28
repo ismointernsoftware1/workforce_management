@@ -6,9 +6,9 @@ import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/task_model.dart';
 import '../../providers/dashboard_provider.dart';
+import '../../utils/responsive_utils.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/task_card.dart';
-import 'add_task_view.dart';
 
 class TasksView extends StatefulWidget {
   const TasksView({super.key});
@@ -18,27 +18,13 @@ class TasksView extends StatefulWidget {
 }
 
 class _TasksViewState extends State<TasksView> {
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
-
   @override
   void initState() {
     super.initState();
-    _searchController.addListener(() {
-      setState(() {
-        _searchQuery = _searchController.text;
-      });
-    });
     // Refresh tasks when view becomes visible
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshTasks();
     });
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
   }
 
   Future<void> _refreshTasks() async {
@@ -51,12 +37,12 @@ class _TasksViewState extends State<TasksView> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DashboardProvider>();
-    final isMobile = MediaQuery.of(context).size.width < 768;
+    final isMobile = ResponsiveUtils.isMobile(context);
     
     return LayoutBuilder(
       builder: (context, constraints) {
         return SingleChildScrollView(
-          padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.xl),
+          padding: ResponsiveUtils.getPadding(context),
           child: ConstrainedBox(
             constraints: BoxConstraints(
               minWidth: constraints.maxWidth,
@@ -73,7 +59,12 @@ class _TasksViewState extends State<TasksView> {
                 Text(
                   'Tasks & Workflow',
                   style: TextStyle(
-                    fontSize: isMobile ? 28 : 36,
+                    fontSize: ResponsiveUtils.getFontSize(
+                      context,
+                      mobile: 28,
+                      tablet: 32,
+                      desktop: 36,
+                    ),
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
                     letterSpacing: -0.8,
@@ -85,7 +76,12 @@ class _TasksViewState extends State<TasksView> {
                   'Manage your team\'s tasks and deadlines',
                   style: TextStyle(
                     color: AppColors.textMuted,
-                    fontSize: isMobile ? 14 : 16,
+                    fontSize: ResponsiveUtils.getFontSize(
+                      context,
+                      mobile: 14,
+                      tablet: 15,
+                      desktop: 16,
+                    ),
                     height: 1.5,
                     fontWeight: FontWeight.w400,
                   ),
@@ -93,59 +89,6 @@ class _TasksViewState extends State<TasksView> {
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.xl),
-          if (isMobile) ...[
-            ShadInput(
-              controller: _searchController,
-              hintText: 'Search tasks...',
-              prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            ShadButton(
-              onPressed: () async {
-                await Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const AddTaskView(),
-                  ),
-                );
-                // Refresh tasks after returning from add task page
-                await provider.refreshTasks();
-              },
-              variant: ShadButtonVariant.default_,
-              size: ShadButtonSize.md,
-              width: double.infinity,
-              icon: const Icon(Icons.add, size: 18),
-              child: const Text('Add Task'),
-            ),
-          ] else ...[
-            Row(
-              children: [
-                Expanded(
-                  child: ShadInput(
-                    controller: _searchController,
-                    hintText: 'Search tasks...',
-                    prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                ShadButton(
-                  onPressed: () async {
-                    await Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const AddTaskView(),
-                      ),
-                    );
-                    // Refresh tasks after returning from add task page
-                    await provider.refreshTasks();
-                  },
-                  variant: ShadButtonVariant.default_,
-                  size: ShadButtonSize.md,
-                  icon: const Icon(Icons.add, size: 20),
-                  child: const Text('Add Task'),
-                ),
-              ],
-            ),
-          ],
           const SizedBox(height: AppSpacing.xl),
           isMobile
               ? Column(
@@ -225,7 +168,7 @@ class _TasksViewState extends State<TasksView> {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
-                    _searchQuery.isNotEmpty
+                    provider.taskSearchQuery.isNotEmpty
                         ? 'No tasks match your search'
                         : 'Get started by creating your first task',
                     style: TextStyle(
@@ -255,9 +198,9 @@ class _TasksViewState extends State<TasksView> {
   List<TaskModel> _getFilteredTasks(DashboardProvider provider) {
     var filtered = provider.filteredTasks;
     
-    // Apply search filter
-    if (_searchQuery.isNotEmpty) {
-      final query = _searchQuery.toLowerCase();
+    // Apply search filter from provider
+    if (provider.taskSearchQuery.isNotEmpty) {
+      final query = provider.taskSearchQuery.toLowerCase();
       filtered = filtered.where((task) {
         return task.title.toLowerCase().contains(query) ||
             task.description.toLowerCase().contains(query) ||

@@ -73,13 +73,18 @@ class _AddTeamDialogState extends State<AddTeamDialog> {
     final isMobile = MediaQuery.of(context).size.width < 768;
     return Dialog(
       insetPadding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 16 : (MediaQuery.of(context).size.width > 900 ? 120 : 40),
-        vertical: isMobile ? 20 : 80,
+        horizontal: isMobile ? 16 : (MediaQuery.of(context).size.width > 900 ? 200 : 80),
+        vertical: isMobile ? 20 : 120,
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       backgroundColor: const Color(0xFFF4F5FA),
-      child: Padding(
-        padding: EdgeInsets.all(isMobile ? 16 : 32),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: isMobile ? double.infinity : 500,
+          maxHeight: MediaQuery.of(context).size.height * 0.6,
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(isMobile ? 16 : 24),
         child: Form(
           key: _formKey,
           child: Column(
@@ -199,6 +204,7 @@ class _AddTeamDialogState extends State<AddTeamDialog> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );
