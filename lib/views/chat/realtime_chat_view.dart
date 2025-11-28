@@ -1,6 +1,3 @@
-import 'dart:async';
-
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -12,6 +9,7 @@ import '../../models/realtime_chat_models.dart';
 import '../../providers/realtime_chat_provider.dart';
 import '../../utils/responsive_utils.dart';
 import 'create_group_dialog.dart';
+import 'group_members_view.dart';
 import 'new_direct_message_dialog.dart';
 
 class RealtimeChatView extends StatefulWidget {
@@ -111,9 +109,12 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
           mainAxisSize: MainAxisSize.max,
           children: [
             // Search bar
-            ShadInput(
-              hintText: 'Search...',
-              prefixIcon: const Icon(Icons.search, size: 16, color: AppColors.textMuted),
+            SizedBox(
+              width: double.infinity,
+              child: ShadInput(
+                hintText: 'Search...',
+                prefixIcon: const Icon(Icons.search, size: 16, color: AppColors.textMuted),
+              ),
             ),
             const SizedBox(height: AppSpacing.sm),
             // Tabs
@@ -132,7 +133,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                         },
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.xs),
+                    const SizedBox(width: 4),
                     Expanded(
                       child: _TabButton(
                         icon: Icons.group,
@@ -358,8 +359,17 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                   height: double.infinity,
                   decoration: BoxDecoration(
                     color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.border),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.border.withValues(alpha: 0.5),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: Row(
                     children: [
@@ -370,12 +380,20 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                             // Header
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.md,
-                                vertical: AppSpacing.sm,
+                                horizontal: AppSpacing.lg,
+                                vertical: AppSpacing.md,
                               ),
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(12),
+                                  topRight: Radius.circular(12),
+                                ),
                                 border: Border(
-                                  bottom: BorderSide(color: AppColors.border),
+                                  bottom: BorderSide(
+                                    color: AppColors.border.withValues(alpha: 0.5),
+                                    width: 1,
+                                  ),
                                 ),
                               ),
                               child: Row(
@@ -394,17 +412,27 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                       child: const SizedBox.shrink(),
                                     ),
                                   if (isMobile) const SizedBox(width: AppSpacing.xs),
-                                  CircleAvatar(
-                                    radius: 16,
-                                    backgroundColor:
-                                        AppColors.primary.withValues(alpha: 0.2),
-                                    child: Text(
-                                      provider.selectedConversationTitle
-                                          .substring(0, 1)
-                                          .toUpperCase(),
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withValues(alpha: 0.1),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: AppColors.primary.withValues(alpha: 0.2),
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        provider.selectedConversationTitle
+                                            .substring(0, 1)
+                                            .toUpperCase(),
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 16,
+                                          color: AppColors.primary,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -420,10 +448,12 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                             fontWeight: FontWeight.w600,
                                             fontSize: ResponsiveUtils.getFontSize(
                                               context,
-                                              mobile: 13,
-                                              tablet: 14,
-                                              desktop: 14,
+                                              mobile: 15,
+                                              tablet: 16,
+                                              desktop: 16,
                                             ),
+                                            color: AppColors.textPrimary,
+                                            letterSpacing: -0.2,
                                           ),
                                         ),
                                         if (isGroupConversation)
@@ -442,23 +472,33 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                       ],
                                     ),
                                   ),
-                                  const Spacer(),
-                                  ShadButton(
-                                    onPressed: isGroupConversation
-                                        ? () {
-                                            if (isMobile) {
-                                              // Show members in bottom sheet on mobile
-                                              _showMembersBottomSheet(context, selectedConversation);
-                                            } else {
-                                              _showConversationMenu(provider);
-                                            }
-                                          }
-                                        : null,
-                                    variant: ShadButtonVariant.ghost,
-                                    size: ShadButtonSize.icon,
-                                    icon: const Icon(Icons.more_horiz, size: 18),
-                                    child: const SizedBox.shrink(),
-                                  ),
+                                  // 3-dot menu for group conversations only
+                                  if (isGroupConversation) ...[
+                                    const SizedBox(width: AppSpacing.xs),
+                                    ShadButton(
+                                      onPressed: () {
+                                        if (isMobile) {
+                                          // Navigate to members page on mobile
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (context) => GroupMembersView(
+                                                conversation: selectedConversation,
+                                              ),
+                                            ),
+                                          );
+                                        } else {
+                                          // Toggle members panel on desktop
+                                          setState(() {
+                                            _showMembers = !_showMembers;
+                                          });
+                                        }
+                                      },
+                                      variant: ShadButtonVariant.ghost,
+                                      size: ShadButtonSize.icon,
+                                      icon: const Icon(Icons.more_horiz, size: 18),
+                                      child: const SizedBox.shrink(),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -552,8 +592,8 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                   return ListView.builder(
                                     controller: _scrollController,
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: AppSpacing.md,
-                                      vertical: AppSpacing.sm,
+                                      horizontal: AppSpacing.lg,
+                                      vertical: AppSpacing.md,
                                     ),
                                     itemCount: messages.length,
                                     itemBuilder: (context, index) {
@@ -582,21 +622,22 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                               ),
                               child: Row(
                                 children: [
-                                  ShadButton(
-                                    onPressed: () => _pickAndUploadFile(provider),
-                                    variant: ShadButtonVariant.ghost,
-                                    size: ShadButtonSize.icon,
-                                    icon: const Icon(Icons.attach_file,
-                                        size: 18, color: AppColors.textMuted),
-                                    child: const SizedBox.shrink(),
-                                  ),
-                                  const SizedBox(width: AppSpacing.xs),
                                   Expanded(
                                     child: Container(
                                       decoration: BoxDecoration(
                                         color: AppColors.surface,
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(color: AppColors.border),
+                                        borderRadius: BorderRadius.circular(24),
+                                        border: Border.all(
+                                          color: AppColors.border.withValues(alpha: 0.5),
+                                          width: 1,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.02),
+                                            blurRadius: 4,
+                                            offset: const Offset(0, 1),
+                                          ),
+                                        ],
                                       ),
                                       child: TextField(
                                         controller: _messageController,
@@ -604,30 +645,53 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                           hintText: 'Type a message...',
                                           border: InputBorder.none,
                                           contentPadding: EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 10,
+                                            horizontal: 20,
+                                            vertical: 12,
                                           ),
                                           hintStyle: TextStyle(
                                             color: AppColors.textMuted,
-                                            fontSize: 14,
+                                            fontSize: 15,
                                           ),
                                         ),
                                         style: const TextStyle(
-                                          fontSize: 14,
+                                          fontSize: 15,
                                           color: AppColors.textPrimary,
+                                          height: 1.4,
                                         ),
+                                        maxLines: null,
+                                        textInputAction: TextInputAction.newline,
                                         onSubmitted: (_) => _sendMessage(provider),
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: AppSpacing.xs),
-                                  ShadButton(
-                                    onPressed: () => _sendMessage(provider),
-                                    variant: ShadButtonVariant.default_,
-                                    size: ShadButtonSize.icon,
-                                    icon: const Icon(Icons.send,
-                                        size: 18, color: Colors.white),
-                                    child: const SizedBox.shrink(),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary,
+                                      borderRadius: BorderRadius.circular(24),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: AppColors.primary.withValues(alpha: 0.3),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: () => _sendMessage(provider),
+                                        borderRadius: BorderRadius.circular(24),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(12),
+                                          child: const Icon(
+                                            Icons.send_rounded,
+                                            size: 20,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -679,75 +743,6 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
         _messageController.text = text;
       }
     });
-  }
-
-  Future<void> _pickAndUploadFile(RealtimeChatProvider provider) async {
-    if (provider.selectedConversationId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a conversation first')),
-      );
-      return;
-    }
-
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.any,
-        allowMultiple: false,
-        withData: true,
-      );
-
-      if (result != null && result.files.single.bytes != null) {
-        final file = result.files.single;
-        final fileData = file.bytes!;
-        final fileName = file.name;
-
-        if (!mounted) return;
-        final rootNavigator = Navigator.of(context, rootNavigator: true);
-        var loaderVisible = true;
-
-        showDialog(
-          context: context,
-          useRootNavigator: true,
-          barrierDismissible: false,
-          builder: (_) => const Center(child: CircularProgressIndicator()),
-        );
-
-        try {
-          await provider.sendMessageWithFile(
-            _messageController.text.trim(),
-            fileData,
-            fileName,
-          );
-
-          _messageController.clear();
-          await Future.delayed(const Duration(milliseconds: 300));
-          _scrollToBottom();
-        } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Error uploading file: ${e.toString()}'),
-                duration: const Duration(seconds: 3),
-              ),
-            );
-          }
-        } finally {
-          if (loaderVisible) {
-            await rootNavigator.maybePop();
-            loaderVisible = false;
-          }
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error picking file: ${e.toString()}'),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    }
   }
 
   void _showCreateGroupDialog(
@@ -822,135 +817,6 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
     }
   }
 
-  void _showConversationMenu(RealtimeChatProvider provider) {
-    final conversation = provider.selectedConversation;
-    if (conversation == null || conversation.type != ConversationType.group) {
-      return;
-    }
-
-    setState(() {
-      _showMembers = !_showMembers;
-    });
-  }
-
-  void _showMembersBottomSheet(
-    BuildContext context,
-    RealtimeChatConversation conversation,
-  ) {
-    final members = conversation.memberNames.entries.toList()
-      ..sort((a, b) => a.value.compareTo(b.value));
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          children: [
-            // Handle bar
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            // Header
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '${conversation.name} members',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primarySoft,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${members.length}',
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close, size: 20),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            // Members list
-            Expanded(
-              child: members.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No members yet',
-                        style: TextStyle(color: AppColors.textMuted),
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      itemCount: members.length,
-                      separatorBuilder: (_, __) =>
-                          const Divider(height: 1, color: AppColors.border),
-                      itemBuilder: (context, index) {
-                        final entry = members[index];
-                        return ListTile(
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          leading: CircleAvatar(
-                            radius: 20,
-                            backgroundColor: AppColors.primarySoft,
-                            child: Text(
-                              entry.value.isNotEmpty
-                                  ? entry.value[0].toUpperCase()
-                                  : '?',
-                              style: const TextStyle(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                          title: Text(
-                            entry.value,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _MembersPanel extends StatelessWidget {
@@ -1205,15 +1071,44 @@ class RealtimeMessageBubble extends StatelessWidget {
         alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
           constraints: const BoxConstraints(maxWidth: 320),
-          margin: const EdgeInsets.symmetric(vertical: 2),
+          margin: EdgeInsets.only(
+            bottom: 4,
+            right: isMine ? 0 : 8,
+            left: isMine ? 8 : 0,
+          ),
           padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 8,
+            horizontal: 14,
+            vertical: 10,
           ),
           decoration: BoxDecoration(
             color: isMine ? AppColors.primary : AppColors.surface,
-            border: isMine ? null : Border.all(color: AppColors.border),
-            borderRadius: BorderRadius.circular(12),
+            border: isMine
+                ? null
+                : Border.all(
+                    color: AppColors.border.withValues(alpha: 0.5),
+                    width: 1,
+                  ),
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(16),
+              topRight: const Radius.circular(16),
+              bottomLeft: Radius.circular(isMine ? 16 : 4),
+              bottomRight: Radius.circular(isMine ? 4 : 16),
+            ),
+            boxShadow: isMine
+                ? [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
           ),
           child: Column(
             crossAxisAlignment:
@@ -1223,20 +1118,22 @@ class RealtimeMessageBubble extends StatelessWidget {
               if (!isMine) ...[
                 Text(
                   message.senderName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    fontSize: 11,
+                    fontSize: 12,
                     color: AppColors.textPrimary,
+                    letterSpacing: 0.1,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
               ],
               Text(
                 message.text,
                 style: TextStyle(
                   color: isMine ? Colors.white : AppColors.textPrimary,
-                  fontSize: 13,
-                  height: 1.3,
+                  fontSize: 14,
+                  height: 1.4,
+                  letterSpacing: 0.1,
                 ),
               ),
               if (message.attachmentUrl != null) ...[
@@ -1301,14 +1198,16 @@ class RealtimeMessageBubble extends StatelessWidget {
                     ),
                   ),
               ],
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               Text(
                 formatter.format(time),
                 style: TextStyle(
                   color: isMine
-                      ? Colors.white.withValues(alpha: 0.7)
+                      ? Colors.white.withValues(alpha: 0.8)
                       : AppColors.textMuted,
-                  fontSize: 10,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.2,
                 ),
               ),
             ],
@@ -1371,8 +1270,8 @@ class _TabButton extends StatelessWidget {
       borderRadius: BorderRadius.circular(6),
       child: Container(
         padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm,
-          vertical: AppSpacing.xs,
+          horizontal: 8,
+          vertical: 6,
         ),
         decoration: BoxDecoration(
           color: isActive
@@ -1386,16 +1285,20 @@ class _TabButton extends StatelessWidget {
           children: [
             Icon(
               icon,
-              size: 16,
+              size: 14,
               color: isActive ? AppColors.primary : AppColors.textMuted,
             ),
             const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: isActive ? AppColors.primary : AppColors.textMuted,
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                fontSize: 13,
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isActive ? AppColors.primary : AppColors.textMuted,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                  fontSize: 12,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ),
           ],

@@ -73,8 +73,8 @@ class _AddTeamDialogState extends State<AddTeamDialog> {
     final isMobile = MediaQuery.of(context).size.width < 768;
     return Dialog(
       insetPadding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 16 : (MediaQuery.of(context).size.width > 900 ? 200 : 80),
-        vertical: isMobile ? 20 : 120,
+        horizontal: isMobile ? 16 : (MediaQuery.of(context).size.width > 900 ? 120 : 40),
+        vertical: isMobile ? 20 : 80,
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       backgroundColor: const Color(0xFFF4F5FA),
@@ -132,8 +132,8 @@ class _AddTeamDialogState extends State<AddTeamDialog> {
                         ElevatedButton(
                           onPressed: _isSaving ? null : _handleSave,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
+                            backgroundColor: AppColors.primarySoft,
+                            foregroundColor: AppColors.primary,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 24,
                               vertical: 14,
@@ -176,8 +176,8 @@ class _AddTeamDialogState extends State<AddTeamDialog> {
                         child: ElevatedButton(
                           onPressed: _isSaving ? null : _handleSave,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
+                            backgroundColor: AppColors.primarySoft,
+                            foregroundColor: AppColors.primary,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 24,
                               vertical: 14,

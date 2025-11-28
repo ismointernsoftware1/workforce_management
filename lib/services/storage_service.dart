@@ -2,7 +2,7 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:uuid/uuid.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 
 class StorageService {
   StorageService({FirebaseStorage? storage})
@@ -105,23 +105,86 @@ class StorageService {
     required String fileName,
   }) async {
     try {
+      if (fileData.isEmpty) {
+        throw Exception('File data is empty');
+      }
+
       final fileExtension = fileName.split('.').last;
       final uniqueFileName = '${_uuid.v4()}.$fileExtension';
       final ref = _storage.ref().child('chat/$conversationId/attachments/$uniqueFileName');
 
-      UploadTask uploadTask;
-      if (kIsWeb) {
-        uploadTask = ref.putData(fileData);
-      } else {
-        uploadTask = ref.putData(fileData);
-      }
+      // Set metadata for better organization
+      final metadata = SettableMetadata(
+        contentType: _getContentType(fileName),
+        customMetadata: {
+          'originalName': fileName,
+          'uploadedAt': DateTime.now().toIso8601String(),
+        },
+      );
 
-      final snapshot = await uploadTask;
-      final downloadUrl = await snapshot.ref.getDownloadURL();
+      debugPrint('Starting upload: $fileName (${fileData.length} bytes)');
+      
+      UploadTask uploadTask = ref.putData(fileData, metadata);
+      
+      // Listen to upload progress
+      uploadTask.snapshotEvents.listen((taskSnapshot) {
+        final progress = (taskSnapshot.bytesTransferred / taskSnapshot.totalBytes) * 100;
+        debugPrint('Upload progress: ${progress.toStringAsFixed(1)}%');
+      });
+
+      debugPrint('Waiting for upload to complete...');
+      
+      // Add timeout to prevent infinite hanging
+      final snapshot = await uploadTask.timeout(
+        const Duration(minutes: 5),
+        onTimeout: () {
+          throw Exception('Upload timeout: File upload took too long');
+        },
+      );
+      
+      debugPrint('Upload completed, getting download URL...');
+      
+      final downloadUrl = await snapshot.ref.getDownloadURL().timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Download URL timeout: Failed to get download URL');
+        },
+      );
+      
+      debugPrint('Download URL obtained: $downloadUrl');
 
       return downloadUrl;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('Upload error: $e');
+      debugPrint('Stack trace: $stackTrace');
       throw Exception('Failed to upload chat attachment: $e');
+    }
+  }
+
+  String? _getContentType(String fileName) {
+    final extension = fileName.split('.').last.toLowerCase();
+    switch (extension) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'gif':
+        return 'image/gif';
+      case 'pdf':
+        return 'application/pdf';
+      case 'doc':
+        return 'application/msword';
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'txt':
+        return 'text/plain';
+      case 'mp4':
+        return 'video/mp4';
+      case 'mp3':
+        return 'audio/mpeg';
+      default:
+        return null;
     }
   }
 

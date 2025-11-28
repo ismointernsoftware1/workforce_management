@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 
 import '../../constants/app_colors.dart';
@@ -42,9 +40,6 @@ class _AddUserDialogState extends State<AddUserDialog> {
     _roleController.text = user?.role ?? '';
     _joinDate = user?.joinDate ?? DateTime.now();
     _status = user?.status ?? 'Active';
-    if (!_isEditing) {
-      _passwordController.text = _generatePassword();
-    }
   }
 
   @override
@@ -54,14 +49,6 @@ class _AddUserDialogState extends State<AddUserDialog> {
     _roleController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  String _generatePassword() {
-    const chars =
-        'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@#%&*?';
-    final rand = Random.secure();
-    return List.generate(10, (index) => chars[rand.nextInt(chars.length)])
-        .join();
   }
 
   Future<void> _handleSave() async {
@@ -226,40 +213,17 @@ class _AddUserDialogState extends State<AddUserDialog> {
                             }
                             return null;
                           },
-                          suffixIcon: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                tooltip: 'Generate password',
-                                icon: const Icon(Icons.refresh),
-                                onPressed: () {
-                                  setState(() {
-                                    _passwordController.text =
-                                        _generatePassword();
-                                  });
-                                },
-                              ),
-                              IconButton(
-                                icon: Icon(
-                                  _obscurePassword
-                                      ? Icons.visibility_outlined
-                                      : Icons.visibility_off_outlined,
-                                ),
-                                onPressed: () {
-                                  setState(
-                                      () => _obscurePassword = !_obscurePassword);
-                                },
-                              ),
-                            ],
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                            ),
+                            onPressed: () {
+                              setState(
+                                  () => _obscurePassword = !_obscurePassword);
+                            },
                           ),
-                        ),
-                      ),
-                    if (!_isEditing)
-                      const Text(
-                        'Share this temporary password with the user; they should change it after first login.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textMuted,
                         ),
                       ),
                     SizedBox(
