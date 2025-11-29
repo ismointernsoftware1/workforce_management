@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../components/shadcn/shadcn.dart';
+import '../utils/animation_utils.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_spacing.dart';
 import '../providers/dashboard_provider.dart';
@@ -41,7 +43,14 @@ class _DashboardViewState extends State<DashboardView> {
                   Sidebar(
                     activeTab: provider.activeTab,
                     onTabChanged: provider.changeTab,
-                  ),
+                  )
+                      .animate()
+                      .slideX(
+                        begin: -1,
+                        duration: AnimationUtils.normalDuration,
+                        curve: Curves.easeOutCubic,
+                      )
+                      .fadeIn(duration: AnimationUtils.normalDuration),
                 Expanded(
                   child: Column(
                     children: [
@@ -57,7 +66,19 @@ class _DashboardViewState extends State<DashboardView> {
                             });
                           }
                         },
-                      ),
+                      )
+                          .animate()
+                          .fade(
+                            duration: AnimationUtils.normalDuration,
+                            delay: AnimationUtils.shortDelay,
+                          )
+                          .slide(
+                            begin: const Offset(0, -10),
+                            end: Offset.zero,
+                            duration: AnimationUtils.normalDuration,
+                            delay: AnimationUtils.shortDelay,
+                            curve: Curves.easeOutCubic,
+                          ),
                       const SizedBox(height: AppSpacing.sm),
                       if (provider.isLoading)
                         const Expanded(
@@ -70,7 +91,22 @@ class _DashboardViewState extends State<DashboardView> {
                       else
                         Expanded(
                           child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 250),
+                            duration: const Duration(milliseconds: 300),
+                            transitionBuilder: (child, animation) {
+                              return FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0.1, 0),
+                                    end: Offset.zero,
+                                  ).animate(CurvedAnimation(
+                                    parent: animation,
+                                    curve: Curves.easeOutCubic,
+                                  )),
+                                  child: child,
+                                ),
+                              );
+                            },
                             child: _buildTab(provider),
                           ),
                         ),

@@ -175,7 +175,7 @@ class RealtimeChatService {
         return conversationId;
       }
 
-      // Create conversation
+      // Create conversation with per-user unread counts
       await _database.child('conversations').child(conversationId).set({
         'type': ConversationType.direct.name,
         'name': userName2, // For userId1, show userId2's name
@@ -186,7 +186,10 @@ class RealtimeChatService {
         },
         'lastMessage': '',
         'lastMessageTime': DateTime.now().millisecondsSinceEpoch,
-        'unreadCount': 0,
+        'unreadCounts': {
+          userId1: 0,
+          userId2: 0,
+        },
         'createdAt': DateTime.now().millisecondsSinceEpoch,
       });
 
@@ -220,6 +223,12 @@ class RealtimeChatService {
     try {
       final conversationId = _database.child('conversations').push().key!;
 
+      // Initialize unread counts for all members
+      final initialUnreadCounts = <String, int>{};
+      for (final memberId in memberIds) {
+        initialUnreadCounts[memberId] = 0;
+      }
+      
       await _database.child('conversations').child(conversationId).set({
         'type': ConversationType.group.name,
         'name': groupName,
@@ -227,7 +236,7 @@ class RealtimeChatService {
         'memberNames': memberNames,
         'lastMessage': '',
         'lastMessageTime': DateTime.now().millisecondsSinceEpoch,
-        'unreadCount': 0,
+        'unreadCounts': initialUnreadCounts,
         'createdBy': createdBy,
         'createdAt': DateTime.now().millisecondsSinceEpoch,
       });
@@ -270,16 +279,186 @@ class RealtimeChatService {
       await messageRef.set(messageData);
       print('Message sent successfully with key: ${messageRef.key}');
 
-      // Update conversation last message
-      await _database.child('conversations').child(conversationId).update({
-        'lastMessage': message.text,
-        'lastMessageTime': message.timestamp,
-      });
-      print('Conversation updated successfully');
+      // Get conversation to update unread counts
+      final conversationRef = _database.child('conversations').child(conversationId);
+      final conversationSnapshot = await conversationRef.get();
+      
+      if (conversationSnapshot.exists) {
+        final conversationData = conversationSnapshot.value as Map<dynamic, dynamic>;
+        final memberIds = (conversationData['memberIds'] as List<dynamic>? ?? [])
+            .map((e) => e.toString())
+            .toList();
+        
+        // Increment unread count for all members except the sender
+        // Note: In production, you'd track unread counts per user
+        final updates = <String, dynamic>{
+          'lastMessage': message.text,
+          'lastMessageTime': message.timestamp,
+        };
+        
+        // Increment unread count for recipients (not sender) - per-user tracking
+        final senderId = message.senderId;
+        final unreadCounts = (conversationData['unreadCounts'] as Map<dynamic, dynamic>? ?? {})
+            .map((key, value) => MapEntry(
+              key.toString(),
+              (value is int) ? value : (int.tryParse(value.toString()) ?? 0),
+            ));
+        
+        // Increment unread count for each recipient (not sender)
+        for (final memberId in memberIds) {
+          if (memberId != senderId) {
+            final currentCount = unreadCounts[memberId] ?? 0;
+            unreadCounts[memberId] = currentCount + 1;
+            print('Incremented unread count for user $memberId to ${currentCount + 1}');
+          } else {
+            // Ensure sender's unread count is 0
+            unreadCounts[memberId] = 0;
+          }
+        }
+        
+        updates['unreadCounts'] = unreadCounts;
+        print('Updated unread counts for conversation $conversationId: $unreadCounts');
+        
+        await conversationRef.update(updates);
+        print('Conversation updated successfully with unread count');
+      } else {
+        // Fallback: just update last message
+        await conversationRef.update({
+          'lastMessage': message.text,
+          'lastMessageTime': message.timestamp,
+        });
+      }
     } catch (e) {
       print('Error sending message: $e');
       print('Stack trace: ${StackTrace.current}');
       rethrow;
+    }
+  }
+
+  // Get conversations stream for a user
+  Stream<List<RealtimeChatConversation>> getUserConversationsStream(
+    String userId,
+  ) {
+    try {
+      final userConversationsRef =
+          _database.child('userConversations').child(userId);
+      
+      StreamSubscription<DatabaseEvent>? userConversationsSubscription;
+      final Map<String, StreamSubscription<DatabaseEvent>> conversationSubscriptions = {};
+      late final StreamController<List<RealtimeChatConversation>> controller;
+      final Map<String, RealtimeChatConversation> conversationsMap = {};
+
+      void emitConversations() {
+        final conversations = conversationsMap.values.toList();
+        conversations.sort((a, b) => b.lastMessageTime.compareTo(a.lastMessageTime));
+        controller.add(conversations);
+      }
+
+      controller = StreamController<List<RealtimeChatConversation>>.broadcast(
+        onListen: () {
+          // Listen to userConversations to know which conversations to track
+          userConversationsSubscription = userConversationsRef.onValue.listen(
+            (event) async {
+              if (!event.snapshot.exists || event.snapshot.value == null) {
+                // Cancel all conversation subscriptions
+                for (final sub in conversationSubscriptions.values) {
+                  await sub.cancel();
+                }
+                conversationSubscriptions.clear();
+                conversationsMap.clear();
+                controller.add([]);
+                return;
+              }
+
+              final conversationIds = <String>[];
+              if (event.snapshot.value is Map) {
+                final map = event.snapshot.value as Map;
+                conversationIds.addAll(map.keys.map((e) => e.toString()));
+              }
+
+              // Cancel subscriptions for conversations that are no longer in the list
+              final currentIds = conversationIds.toSet();
+              final subscriptionsToRemove = <String>[];
+              for (final id in conversationSubscriptions.keys) {
+                if (!currentIds.contains(id)) {
+                  subscriptionsToRemove.add(id);
+                }
+              }
+              for (final id in subscriptionsToRemove) {
+                await conversationSubscriptions[id]?.cancel();
+                conversationSubscriptions.remove(id);
+                conversationsMap.remove(id);
+              }
+
+              // Set up real-time listeners for each conversation
+              for (final conversationId in conversationIds) {
+                // Skip if we already have a subscription for this conversation
+                if (conversationSubscriptions.containsKey(conversationId)) {
+                  continue;
+                }
+
+                // Set up real-time listener for this conversation
+                final conversationRef =
+                    _database.child('conversations').child(conversationId);
+                
+                final subscription = conversationRef.onValue.listen(
+                  (conversationEvent) {
+                    if (!conversationEvent.snapshot.exists || 
+                        conversationEvent.snapshot.value == null) {
+                      conversationsMap.remove(conversationId);
+                      emitConversations();
+                      return;
+                    }
+
+                    try {
+                      final data = conversationEvent.snapshot.value as Map<dynamic, dynamic>;
+                      final conversation = RealtimeChatConversation.fromMap(
+                        data,
+                        conversationId,
+                        currentUserId: userId,
+                      );
+                      conversationsMap[conversationId] = conversation;
+                      emitConversations();
+                    } catch (e) {
+                      print('Error parsing conversation $conversationId: $e');
+                    }
+                  },
+                  onError: (error) {
+                    print('Error listening to conversation $conversationId: $error');
+                  },
+                );
+
+                conversationSubscriptions[conversationId] = subscription;
+              }
+
+              // If no conversations, emit empty list
+              if (conversationIds.isEmpty) {
+                controller.add([]);
+              }
+            },
+            onError: (error) {
+              print('Error in user conversations stream: $error');
+              controller.add([]);
+            },
+          );
+        },
+        onCancel: () async {
+          await userConversationsSubscription?.cancel();
+          for (final sub in conversationSubscriptions.values) {
+            await sub.cancel();
+          }
+          conversationSubscriptions.clear();
+          conversationsMap.clear();
+          if (!controller.isClosed) {
+            await controller.close();
+          }
+        },
+      );
+
+      return controller.stream;
+    } catch (e) {
+      print('Error setting up user conversations stream: $e');
+      return Stream.value([]);
     }
   }
 
@@ -320,7 +499,7 @@ class RealtimeChatService {
           if (conversationSnapshot.exists) {
             final data = conversationSnapshot.value as Map<dynamic, dynamic>;
             conversations.add(
-              RealtimeChatConversation.fromMap(data, conversationId),
+              RealtimeChatConversation.fromMap(data, conversationId, currentUserId: userId),
             );
           }
         } catch (e) {
@@ -349,79 +528,93 @@ class RealtimeChatService {
           .child(conversationId)
           .child('messages');
 
-      StreamSubscription<DatabaseEvent>? subscription;
-      late final StreamController<List<RealtimeChatMessage>> controller;
+      final StreamController<List<RealtimeChatMessage>> controller = StreamController<List<RealtimeChatMessage>>.broadcast();
+      
+      // Set up Firebase listener immediately - don't wait for onListen
+      // This ensures the listener is active and will receive updates immediately
+      print('Setting up Firebase listener for conversation: $conversationId');
+      
+      // Helper function to process and emit messages
+      void processAndEmitMessages(DatabaseEvent event) {
+        print('Messages stream event received for conversation: $conversationId');
+        print('Event snapshot exists: ${event.snapshot.exists}');
 
-      controller = StreamController<List<RealtimeChatMessage>>.broadcast(
-        onListen: () {
-          controller.add(<RealtimeChatMessage>[]);
-          subscription = messagesRef
-              .orderByChild('timestamp')
-              .onValue
-              .listen(
-                (event) {
-                  print(
-                      'Messages stream event received for conversation: $conversationId');
-                  print('Event snapshot exists: ${event.snapshot.exists}');
-
-                  if (!event.snapshot.exists || event.snapshot.value == null) {
-                    print('No messages found for conversation: $conversationId');
-                    controller.add(<RealtimeChatMessage>[]);
-                    return;
-                  }
-
-                  final data = event.snapshot.value;
-                  print('Received data type: ${data.runtimeType}');
-
-                  if (data is! Map) {
-                    print('Messages data is not a Map: ${data.runtimeType}');
-                    controller.add(<RealtimeChatMessage>[]);
-                    return;
-                  }
-
-                  final messages = <RealtimeChatMessage>[];
-
-                  data.forEach((key, value) {
-                    try {
-                      if (value is Map) {
-                        messages.add(
-                          RealtimeChatMessage.fromMap(
-                            value,
-                            key.toString(),
-                          ),
-                        );
-                      }
-                    } catch (e) {
-                      print('Error parsing message $key: $e');
-                    }
-                  });
-
-                  messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-                  print(
-                      'Parsed ${messages.length} messages for conversation: $conversationId');
-                  if (messages.isNotEmpty) {
-                    print(
-                        'Latest message: ${messages.last.text} from ${messages.last.senderName}');
-                  }
-                  controller.add(messages);
-                },
-                onError: (error) {
-                  print(
-                      'Error in messages stream for conversation $conversationId: $error');
-                  print('Error stack trace: ${StackTrace.current}');
-                  controller.add(<RealtimeChatMessage>[]);
-                },
-              );
-        },
-        onCancel: () async {
-          print('Cancelling messages stream for conversation: $conversationId');
-          await subscription?.cancel();
-          subscription = null;
+        if (!event.snapshot.exists || event.snapshot.value == null) {
+          print('No messages found for conversation: $conversationId');
           if (!controller.isClosed) {
-            await controller.close();
+            controller.add(<RealtimeChatMessage>[]);
           }
-        },
-      );
+          return;
+        }
+
+        final data = event.snapshot.value;
+        print('Received data type: ${data.runtimeType}');
+
+        if (data is! Map) {
+          print('Messages data is not a Map: ${data.runtimeType}');
+          if (!controller.isClosed) {
+            controller.add(<RealtimeChatMessage>[]);
+          }
+          return;
+        }
+
+        final messages = <RealtimeChatMessage>[];
+
+        data.forEach((key, value) {
+          try {
+            if (value is Map) {
+              messages.add(
+                RealtimeChatMessage.fromMap(
+                  value,
+                  key.toString(),
+                ),
+              );
+            }
+          } catch (e) {
+            print('Error parsing message $key: $e');
+          }
+        });
+
+        messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+        print('Parsed ${messages.length} messages for conversation: $conversationId');
+        if (messages.isNotEmpty) {
+          print('Latest message: ${messages.last.text} from ${messages.last.senderName}');
+        }
+        if (!controller.isClosed) {
+          controller.add(messages);
+        }
+      }
+      
+      final subscription = messagesRef
+          .orderByChild('timestamp')
+          .onValue
+          .listen(
+            processAndEmitMessages,
+            onError: (error) {
+              print('Error in messages stream for conversation $conversationId: $error');
+              print('Error stack trace: ${StackTrace.current}');
+              if (!controller.isClosed) {
+                controller.add(<RealtimeChatMessage>[]);
+              }
+            },
+          );
+      
+      // Get initial value immediately
+      messagesRef
+          .orderByChild('timestamp')
+          .once()
+          .then((event) {
+            processAndEmitMessages(event);
+          })
+          .catchError((error) {
+            print('Error getting initial messages: $error');
+          });
+      
+      // Clean up subscription when controller is closed
+      controller.onCancel = () {
+        print('Cancelling messages stream for conversation: $conversationId');
+        subscription.cancel();
+      };
 
       return controller.stream;
     } catch (e) {
@@ -436,9 +629,11 @@ class RealtimeChatService {
 
   // Get conversation stream
   Stream<RealtimeChatConversation?> getConversationStream(
-    String conversationId,
-  ) {
+    String conversationId, {
+    String? currentUserId,
+  }) {
     try {
+      final userId = currentUserId; // Capture for use in closure
       StreamSubscription<DatabaseEvent>? subscription;
       late final StreamController<RealtimeChatConversation?> controller;
 
@@ -457,7 +652,7 @@ class RealtimeChatService {
 
                   final data = event.snapshot.value as Map<dynamic, dynamic>;
                   controller.add(
-                    RealtimeChatConversation.fromMap(data, conversationId),
+                    RealtimeChatConversation.fromMap(data, conversationId, currentUserId: userId),
                   );
                 },
                 onError: (error) {
@@ -485,13 +680,26 @@ class RealtimeChatService {
   // Mark conversation as read
   Future<void> markAsRead(String conversationId, String userId) async {
     try {
-      // Reset unread count for this user
-      // You might want to track per-user unread counts
-      await _database
-          .child('conversations')
-          .child(conversationId)
-          .child('unreadCount')
-          .set(0);
+      // Reset unread count for this specific user when they open the conversation
+      final conversationRef = _database.child('conversations').child(conversationId);
+      final conversationSnapshot = await conversationRef.get();
+      
+      if (conversationSnapshot.exists) {
+        final conversationData = conversationSnapshot.value as Map<dynamic, dynamic>;
+        final unreadCounts = (conversationData['unreadCounts'] as Map<dynamic, dynamic>? ?? {})
+            .map((key, value) => MapEntry(
+              key.toString(),
+              (value is int) ? value : (int.tryParse(value.toString()) ?? 0),
+            ));
+        
+        // Set this user's unread count to 0
+        unreadCounts[userId] = 0;
+        
+        await conversationRef.update({
+          'unreadCounts': unreadCounts,
+        });
+        print('Marked conversation $conversationId as read for user $userId');
+      }
     } catch (e) {
       print('Error marking as read: $e');
     }
@@ -544,6 +752,91 @@ class RealtimeChatService {
     } catch (e) {
       print('Error updating group members: $e');
       rethrow;
+    }
+  }
+
+  // Set typing status
+  Future<void> setTyping(
+    String conversationId,
+    String userId,
+    String userName,
+    bool isTyping,
+  ) async {
+    try {
+      print('Setting typing status: conversation=$conversationId, user=$userName ($userId), isTyping=$isTyping');
+      final typingRef = _database
+          .child('conversations')
+          .child(conversationId)
+          .child('typing')
+          .child(userId);
+
+      if (isTyping) {
+        await typingRef.set({
+          'userId': userId,
+          'userName': userName,
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        });
+        print('Typing status set successfully');
+      } else {
+        await typingRef.remove();
+        print('Typing status cleared successfully');
+      }
+    } catch (e) {
+      print('Error setting typing status: $e');
+      print('Stack trace: ${StackTrace.current}');
+    }
+  }
+
+  // Get typing status stream
+  Stream<Map<String, String>> getTypingStream(String conversationId) {
+    try {
+      final typingRef = _database
+          .child('conversations')
+          .child(conversationId)
+          .child('typing');
+
+      return typingRef.onValue.map((event) {
+        print('Typing stream event received for conversation: $conversationId');
+        print('Event snapshot exists: ${event.snapshot.exists}');
+        
+        if (!event.snapshot.exists || event.snapshot.value == null) {
+          print('No typing users found');
+          return <String, String>{};
+        }
+
+        final data = event.snapshot.value;
+        print('Typing data type: ${data.runtimeType}');
+        
+        if (data is! Map) {
+          print('Typing data is not a Map');
+          return <String, String>{};
+        }
+
+        final typingUsers = <String, String>{};
+
+        data.forEach((userId, value) {
+          try {
+            if (value is Map) {
+              final userName = value['userName']?.toString() ?? '';
+              if (userName.isNotEmpty) {
+                typingUsers[userId.toString()] = userName;
+                print('Found typing user: $userName ($userId)');
+              }
+            }
+          } catch (e) {
+            print('Error parsing typing user $userId: $e');
+          }
+        });
+
+        print('Total typing users: ${typingUsers.length}');
+        return typingUsers;
+      }).handleError((error) {
+        print('Error in typing stream: $error');
+        return <String, String>{};
+      });
+    } catch (e) {
+      print('Error getting typing stream: $e');
+      return Stream.value(<String, String>{});
     }
   }
 }

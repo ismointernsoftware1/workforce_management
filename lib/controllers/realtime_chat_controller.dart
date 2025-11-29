@@ -123,6 +123,10 @@ class RealtimeChatController {
   Future<List<RealtimeChatConversation>> getUserConversations() =>
       _service.getUserConversations(_currentUserId);
 
+  // Get user conversations stream
+  Stream<List<RealtimeChatConversation>> getUserConversationsStream() =>
+      _service.getUserConversationsStream(_currentUserId);
+
   // Get messages stream
   Stream<List<RealtimeChatMessage>> getMessagesStream(String conversationId) =>
       _service.getMessagesStream(conversationId);
@@ -131,7 +135,7 @@ class RealtimeChatController {
   Stream<RealtimeChatConversation?> getConversationStream(
     String conversationId,
   ) =>
-      _service.getConversationStream(conversationId);
+      _service.getConversationStream(conversationId, currentUserId: _currentUserId);
 
   // Mark as read
   Future<void> markAsRead(String conversationId) =>
@@ -144,5 +148,22 @@ class RealtimeChatController {
     Map<String, String> memberNames,
   ) =>
       _service.updateGroupMembers(conversationId, memberIds, memberNames);
+
+  // Set typing status
+  Future<void> setTyping(
+    String conversationId,
+    bool isTyping,
+  ) async {
+    await _service.setTyping(
+      conversationId,
+      _currentUserId,
+      _currentUserName,
+      isTyping,
+    );
+  }
+
+  // Get typing stream
+  Stream<Map<String, String>> getTypingStream(String conversationId) =>
+      _service.getTypingStream(conversationId);
 }
 

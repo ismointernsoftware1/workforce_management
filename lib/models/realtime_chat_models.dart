@@ -65,7 +65,8 @@ class RealtimeChatConversation {
     required this.lastMessageTime,
     required this.memberIds,
     required this.memberNames,
-    this.unreadCount = 0,
+    this.unreadCounts = const {},
+    this.unreadCount = 0, // Legacy support - will be calculated from unreadCounts
     this.createdBy,
     this.createdAt,
   });
@@ -77,16 +78,37 @@ class RealtimeChatConversation {
   final int lastMessageTime;
   final List<String> memberIds;
   final Map<String, String> memberNames; // userId -> name
-  final int unreadCount;
+  final Map<String, int> unreadCounts; // userId -> unread count
+  final int unreadCount; // Legacy - calculated from unreadCounts for current user
   final String? createdBy;
   final int? createdAt;
+  
+  // Get unread count for a specific user
+  int getUnreadCountForUser(String userId) {
+    return unreadCounts[userId] ?? 0;
+  }
 
   factory RealtimeChatConversation.fromMap(
     Map<dynamic, dynamic> data,
-    String id,
-  ) {
+    String id, {
+    String? currentUserId,
+  }) {
     final memberIdsList = data['memberIds'] as List<dynamic>? ?? [];
     final memberNamesMap = data['memberNames'] as Map<dynamic, dynamic>? ?? {};
+    
+    // Parse unreadCounts map (per-user unread counts)
+    final unreadCountsMap = data['unreadCounts'] as Map<dynamic, dynamic>? ?? {};
+    final unreadCounts = Map<String, int>.from(
+      unreadCountsMap.map((key, value) => MapEntry(
+        key.toString(),
+        (value is int) ? value : (int.tryParse(value.toString()) ?? 0),
+      )),
+    );
+    
+    // Calculate unread count for current user (for backward compatibility)
+    final unreadCount = currentUserId != null 
+        ? (unreadCounts[currentUserId] ?? 0)
+        : (data['unreadCount'] as int? ?? 0); // Fallback to legacy field
     
     return RealtimeChatConversation(
       id: id,
@@ -101,7 +123,8 @@ class RealtimeChatConversation {
       memberNames: Map<String, String>.from(
         memberNamesMap.map((key, value) => MapEntry(key.toString(), value.toString())),
       ),
-      unreadCount: data['unreadCount'] as int? ?? 0,
+      unreadCounts: unreadCounts,
+      unreadCount: unreadCount,
       createdBy: data['createdBy'] as String?,
       createdAt: data['createdAt'] as int?,
     );
@@ -114,7 +137,7 @@ class RealtimeChatConversation {
         'lastMessageTime': lastMessageTime,
         'memberIds': memberIds,
         'memberNames': memberNames,
-        'unreadCount': unreadCount,
+        'unreadCounts': unreadCounts,
         if (createdBy != null) 'createdBy': createdBy,
         if (createdAt != null) 'createdAt': createdAt,
       };

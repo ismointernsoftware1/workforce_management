@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../components/shadcn/shadcn.dart';
+import '../../utils/animation_utils.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/task_model.dart';
@@ -68,7 +70,19 @@ class _TasksViewState extends State<TasksView> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeaderTitle(context),
+                _buildHeaderTitle(context)
+                    .animate()
+                    .fade(
+                      duration: AnimationUtils.normalDuration,
+                      delay: AnimationUtils.shortDelay,
+                    )
+                    .slide(
+                      begin: const Offset(0, -10),
+                      end: Offset.zero,
+                      duration: AnimationUtils.normalDuration,
+                      delay: AnimationUtils.shortDelay,
+                      curve: Curves.easeOutCubic,
+                    ),
                 const SizedBox(height: AppSpacing.sm),
                 SizedBox(
                   width: double.infinity,
@@ -78,7 +92,19 @@ class _TasksViewState extends State<TasksView> {
                     size: ShadButtonSize.md,
                     icon: const Icon(Icons.add, size: 18),
                     child: const Text('New Task'),
-                  ),
+                  )
+                      .animate()
+                      .fade(
+                        duration: AnimationUtils.normalDuration,
+                        delay: AnimationUtils.mediumDelay,
+                      )
+                      .slide(
+                        begin: const Offset(0, -10),
+                        end: Offset.zero,
+                        duration: AnimationUtils.normalDuration,
+                        delay: AnimationUtils.mediumDelay,
+                        curve: Curves.easeOutCubic,
+                      ),
                 ),
               ],
             )
@@ -86,7 +112,21 @@ class _TasksViewState extends State<TasksView> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(child: _buildHeaderTitle(context)),
+                Expanded(
+                  child: _buildHeaderTitle(context)
+                      .animate()
+                      .fade(
+                        duration: AnimationUtils.normalDuration,
+                        delay: AnimationUtils.shortDelay,
+                      )
+                      .slide(
+                        begin: const Offset(0, -10),
+                        end: Offset.zero,
+                        duration: AnimationUtils.normalDuration,
+                        delay: AnimationUtils.shortDelay,
+                        curve: Curves.easeOutCubic,
+                      ),
+                ),
                 const SizedBox(width: AppSpacing.md),
                 ShadButton(
                   onPressed: () => _openAddTask(context),
@@ -94,7 +134,19 @@ class _TasksViewState extends State<TasksView> {
                   size: ShadButtonSize.md,
                   icon: const Icon(Icons.add, size: 20),
                   child: const Text('New Task'),
-                ),
+                )
+                    .animate()
+                    .fade(
+                      duration: AnimationUtils.normalDuration,
+                      delay: AnimationUtils.mediumDelay,
+                    )
+                    .slide(
+                      begin: const Offset(0, -10),
+                      end: Offset.zero,
+                      duration: AnimationUtils.normalDuration,
+                      delay: AnimationUtils.mediumDelay,
+                      curve: Curves.easeOutCubic,
+                    ),
               ],
             ),
           const SizedBox(height: AppSpacing.xl),
@@ -104,19 +156,55 @@ class _TasksViewState extends State<TasksView> {
                     StatCard(
                       title: 'Total',
                       value: provider.totalTasks.toString(),
-                    ),
+                    )
+                        .animate()
+                        .scale(
+                          begin: const Offset(0.95, 0.95),
+                          end: const Offset(1, 1),
+                          duration: AnimationUtils.normalDuration,
+                          delay: AnimationUtils.shortDelay,
+                          curve: Curves.easeOutCubic,
+                        )
+                        .fade(
+                          duration: AnimationUtils.normalDuration,
+                          delay: AnimationUtils.shortDelay,
+                        ),
                     const SizedBox(height: AppSpacing.md),
                     StatCard(
                       title: 'In Progress',
                       value: provider.inProgressCount.toString(),
                       badge: _coloredBadge('Active', AppColors.warning),
-                    ),
+                    )
+                        .animate()
+                        .scale(
+                          begin: const Offset(0.95, 0.95),
+                          end: const Offset(1, 1),
+                          duration: AnimationUtils.normalDuration,
+                          delay: AnimationUtils.mediumDelay,
+                          curve: Curves.easeOutCubic,
+                        )
+                        .fade(
+                          duration: AnimationUtils.normalDuration,
+                          delay: AnimationUtils.mediumDelay,
+                        ),
                     const SizedBox(height: AppSpacing.md),
                     StatCard(
                       title: 'Completed',
                       value: provider.completedCount.toString(),
                       badge: _coloredBadge('Done', AppColors.success),
-                    ),
+                    )
+                        .animate()
+                        .scale(
+                          begin: const Offset(0.95, 0.95),
+                          end: const Offset(1, 1),
+                          duration: AnimationUtils.normalDuration,
+                          delay: AnimationUtils.longDelay,
+                          curve: Curves.easeOutCubic,
+                        )
+                        .fade(
+                          duration: AnimationUtils.normalDuration,
+                          delay: AnimationUtils.longDelay,
+                        ),
                   ],
                 )
               : Row(
@@ -125,7 +213,19 @@ class _TasksViewState extends State<TasksView> {
                       child: StatCard(
                         title: 'Total',
                         value: provider.totalTasks.toString(),
-                      ),
+                      )
+                          .animate()
+                          .scale(
+                            begin: const Offset(0.95, 0.95),
+                            end: const Offset(1, 1),
+                            duration: AnimationUtils.normalDuration,
+                            delay: AnimationUtils.shortDelay,
+                            curve: Curves.easeOutCubic,
+                          )
+                          .fade(
+                            duration: AnimationUtils.normalDuration,
+                            delay: AnimationUtils.shortDelay,
+                          ),
                     ),
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
@@ -133,7 +233,19 @@ class _TasksViewState extends State<TasksView> {
                         title: 'In Progress',
                         value: provider.inProgressCount.toString(),
                         badge: _coloredBadge('Active', AppColors.warning),
-                      ),
+                      )
+                          .animate()
+                          .scale(
+                            begin: const Offset(0.95, 0.95),
+                            end: const Offset(1, 1),
+                            duration: AnimationUtils.normalDuration,
+                            delay: AnimationUtils.mediumDelay,
+                            curve: Curves.easeOutCubic,
+                          )
+                          .fade(
+                            duration: AnimationUtils.normalDuration,
+                            delay: AnimationUtils.mediumDelay,
+                          ),
                     ),
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
@@ -141,7 +253,19 @@ class _TasksViewState extends State<TasksView> {
                         title: 'Completed',
                         value: provider.completedCount.toString(),
                         badge: _coloredBadge('Done', AppColors.success),
-                      ),
+                      )
+                          .animate()
+                          .scale(
+                            begin: const Offset(0.95, 0.95),
+                            end: const Offset(1, 1),
+                            duration: AnimationUtils.normalDuration,
+                            delay: AnimationUtils.longDelay,
+                            curve: Curves.easeOutCubic,
+                          )
+                          .fade(
+                            duration: AnimationUtils.normalDuration,
+                            delay: AnimationUtils.longDelay,
+                          ),
                     ),
                   ],
                 ),
@@ -189,10 +313,22 @@ class _TasksViewState extends State<TasksView> {
               ),
             )
           else
-            ..._getFilteredTasks(provider).map(
-              (task) => Padding(
+            ..._getFilteredTasks(provider).asMap().entries.map(
+              (entry) => Padding(
                 padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                child: TaskCard(task: task),
+                child: TaskCard(task: entry.value)
+                    .animate()
+                    .fade(
+                      duration: AnimationUtils.normalDuration,
+                      delay: AnimationUtils.shortDelay * (entry.key + 1),
+                    )
+                    .slide(
+                      begin: const Offset(0, 20),
+                      end: Offset.zero,
+                      duration: AnimationUtils.normalDuration,
+                      delay: AnimationUtils.shortDelay * (entry.key + 1),
+                      curve: Curves.easeOutCubic,
+                    ),
               ),
             ),
         ],

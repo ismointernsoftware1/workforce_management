@@ -47,6 +47,8 @@ dependencies:
   crypto: ^3.0.5
   uuid: ^4.3.3
   shadcn_ui: ^0.39.14
+  flutter_animate: ^4.5.2
+  animations: ^2.1.1
 
 dev_dependencies:
   flutter_test:

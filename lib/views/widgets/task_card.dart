@@ -56,22 +56,22 @@ class TaskCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final dateFormatter = DateFormat('MM/dd/yyyy');
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.border.withValues(alpha: 0.5),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.textPrimary.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+        margin: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppColors.border.withValues(alpha: 0.5),
+            width: 1,
           ),
-        ],
-      ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.textPrimary.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
@@ -258,33 +258,40 @@ class TaskCard extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.xs),
               ...task.subTasks.map(
-                (sub) => Row(
-                  children: [
-                    SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: Checkbox(
-                        value: sub.isDone,
-                        onChanged: (_) {},
-                        activeColor: AppColors.primary,
-                        side: const BorderSide(color: AppColors.border, width: 1.5),
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Expanded(
-                      child: Text(
-                        sub.label,
-                        style: TextStyle(
-                          color: sub.isDone
-                              ? AppColors.textMuted
-                              : AppColors.textPrimary,
-                          fontSize: 11,
+                (sub) => InkWell(
+                  onTap: () => _toggleSubtask(context, sub.id),
+                  borderRadius: BorderRadius.circular(4),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: Checkbox(
+                            value: sub.isDone,
+                            onChanged: (_) => _toggleSubtask(context, sub.id),
+                            activeColor: AppColors.primary,
+                            side: const BorderSide(color: AppColors.border, width: 1.5),
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
                         ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Expanded(
+                          child: Text(
+                            sub.label,
+                            style: TextStyle(
+                              color: sub.isDone
+                                  ? AppColors.textMuted
+                                  : AppColors.textPrimary,
+                              fontSize: 11,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -292,6 +299,36 @@ class TaskCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _toggleSubtask(BuildContext context, String subtaskId) async {
+    final provider = Provider.of<DashboardProvider>(context, listen: false);
+    try {
+      // Find the subtask and toggle its completion status
+      final updatedSubTasks = task.subTasks.map((sub) {
+        if (sub.id == subtaskId) {
+          return SubTask(
+            id: sub.id,
+            label: sub.label,
+            isDone: !sub.isDone,
+          );
+        }
+        return sub;
+      }).toList();
+
+      // Update the task with the new subtasks
+      final updatedTask = task.copyWith(subTasks: updatedSubTasks);
+      await provider.updateTask(updatedTask);
+    } catch (e) {
+      if (context.mounted) {
+        ShadToast.show(
+          context,
+          title: 'Error',
+          description: 'Failed to update subtask: ${e.toString()}',
+          variant: ShadToastVariant.error,
+        );
+      }
+    }
   }
 
   Future<void> _showDeleteConfirmation(BuildContext context) async {
