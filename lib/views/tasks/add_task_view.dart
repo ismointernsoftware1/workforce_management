@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 
 import '../../components/shadcn/shadcn.dart';
 import '../../constants/app_colors.dart';
@@ -8,6 +7,10 @@ import '../../constants/app_spacing.dart';
 import '../../models/task_attachment.dart';
 import '../../models/task_location.dart';
 import '../../models/task_model.dart';
+import '../../features/form_builder/models/form_models.dart';
+import '../../features/form_builder/services/form_builder_firestore_service.dart';
+import '../../features/form_builder/services/default_forms_initializer.dart';
+import '../../features/form_builder/widgets/enhanced_form_renderer.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../utils/responsive_utils.dart';
 import '../widgets/attachment_picker.dart';
@@ -22,49 +25,60 @@ class AddTaskView extends StatefulWidget {
 
 class _AddTaskViewState extends State<AddTaskView> {
   final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
   final _subTaskControllers = <TextEditingController>[];
 
-  DateTime? _selectedDueDate;
-  TaskPriority _selectedPriority = TaskPriority.medium;
-  String? _selectedAssignedTo;
   bool _isLoading = false;
+  bool _isLoadingForm = true;
   List<TaskAttachment> _attachments = [];
   TaskLocation? _selectedLocation;
+  final _formService = FormBuilderFirestoreService();
+  final _formInitializer = DefaultFormsInitializer(FormBuilderFirestoreService());
+  FormModel? _defaultTaskForm;
+  Map<String, dynamic> _formValues = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDefaultForm();
+  }
+
+  Future<void> _loadDefaultForm() async {
+    try {
+      // Initialize default forms if they don't exist
+      await _formInitializer.initializeDefaultForms();
+      
+      // Load the default "Add Task Form"
+      final formId = await _formInitializer.getDefaultFormId('Add Task Form');
+      if (formId != null) {
+        final form = await _formService.getForm(formId);
+        if (mounted && form != null) {
+          setState(() {
+            _defaultTaskForm = form;
+            _isLoadingForm = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoadingForm = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingForm = false;
+        });
+      }
+    }
+  }
 
   @override
   void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
     for (var controller in _subTaskControllers) {
       controller.dispose();
     }
     super.dispose();
-  }
-
-  Future<void> _selectDueDate() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDueDate ?? DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null && picked != _selectedDueDate) {
-      setState(() {
-        _selectedDueDate = picked;
-      });
-    }
   }
 
   void _addSubTaskField() {
@@ -80,12 +94,73 @@ class _AddTaskViewState extends State<AddTaskView> {
     });
   }
 
+  // Helper to extract value from form by field label
+  String? _getFormValue(String label) {
+    if (_defaultTaskForm == null) return null;
+    for (final section in _defaultTaskForm!.sections) {
+      for (final field in section.fields) {
+        if (field.label == label) {
+          return _formValues[field.id]?.toString();
+        }
+      }
+    }
+    return null;
+  }
+
+  DateTime? _getFormDateValue(String label) {
+    if (_defaultTaskForm == null) return null;
+    for (final section in _defaultTaskForm!.sections) {
+      for (final field in section.fields) {
+        if (field.label == label) {
+          return _formValues[field.id] as DateTime?;
+        }
+      }
+    }
+    return null;
+  }
+
+  TaskPriority _parsePriority(String? priorityStr) {
+    if (priorityStr == null) return TaskPriority.medium;
+    switch (priorityStr.toLowerCase()) {
+      case 'high':
+        return TaskPriority.high;
+      case 'low':
+        return TaskPriority.low;
+      default:
+        return TaskPriority.medium;
+    }
+  }
+
   Future<void> _saveTask() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    if (_selectedDueDate == null) {
+    // Extract values from form
+    final title = _getFormValue('Task Title') ?? '';
+    final description = _getFormValue('Task Description') ?? '';
+    final dueDate = _getFormDateValue('Due Date');
+    final priorityStr = _getFormValue('Priority');
+    final assignedTo = _getFormValue('Assigned To') ?? '';
+
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: ShadAlert(
+            title: 'Validation Error',
+            description: 'Please enter a task title',
+            variant: ShadAlertVariant.destructive,
+          ),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          padding: const EdgeInsets.all(16),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (dueDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: ShadAlert(
@@ -102,7 +177,7 @@ class _AddTaskViewState extends State<AddTaskView> {
       return;
     }
 
-    if (_selectedAssignedTo == null || _selectedAssignedTo!.isEmpty) {
+    if (assignedTo.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: ShadAlert(
@@ -140,19 +215,37 @@ class _AddTaskViewState extends State<AddTaskView> {
               ))
           .toList();
 
+      // Snapshot form definition and values
+      String? formId;
+      Map<String, dynamic>? formDefinition;
+      Map<String, dynamic>? formValues;
+      if (_defaultTaskForm != null) {
+        formId = _defaultTaskForm!.id;
+        formDefinition = {
+          'id': _defaultTaskForm!.id,
+          'name': _defaultTaskForm!.name,
+          'sections':
+              _defaultTaskForm!.sections.map((s) => s.toMap()).toList(),
+        };
+        formValues = Map<String, dynamic>.from(_formValues);
+      }
+
       // Create task model
       final task = TaskModel(
         id: '', // Will be generated by Firestore
-        title: _titleController.text.trim(),
-        description: _descriptionController.text.trim(),
-        priority: _selectedPriority,
-        dueDate: _selectedDueDate!,
-        assignedTo: _selectedAssignedTo!,
+        title: title,
+        description: description,
+        priority: _parsePriority(priorityStr),
+        dueDate: dueDate,
+        assignedTo: assignedTo,
         status: TaskStatus.pending,
         subTasks: subTasks,
         attachments: _attachments,
         location: _selectedLocation,
         hasLocation: _selectedLocation != null && !_selectedLocation!.isEmpty,
+        formId: formId,
+        formDefinition: formDefinition,
+        formValues: formValues,
       );
 
       // Add task through provider
@@ -244,6 +337,21 @@ class _AddTaskViewState extends State<AddTaskView> {
     final provider = context.watch<DashboardProvider>();
     final teamMembers = provider.members;
 
+    // Build dynamic options map for dropdowns
+    final dynamicOptions = <String, List<String>>{};
+    if (_defaultTaskForm != null) {
+      for (final section in _defaultTaskForm!.sections) {
+        for (final field in section.fields) {
+          if (field.label == 'Assigned To') {
+            // Populate with team members
+            dynamicOptions[field.id] = teamMembers
+                .map((m) => '${m.name} - ${m.role}')
+                .toList();
+          }
+        }
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -270,171 +378,46 @@ class _AddTaskViewState extends State<AddTaskView> {
         ),
       ),
       backgroundColor: AppColors.background,
-      body: SingleChildScrollView(
-        padding: ResponsiveUtils.getPadding(context),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-              // Task Information Section
-              _buildSection(
-                title: 'Task Information',
-                subtitle: 'Group fields related to uniquely identifying the task.',
-                children: [
-                  ShadInput(
-                    controller: _titleController,
-                    label: 'Task Title *',
-                    hintText: 'Enter task title',
-                    prefixIcon: const Icon(Icons.task_alt, color: AppColors.primary),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter a task title';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  ShadInput(
-                    controller: _descriptionController,
-                    label: 'Task Description *',
-                    hintText: 'Enter task description',
-                    prefixIcon: const Icon(Icons.description, color: AppColors.primary),
-                    maxLines: 4,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter a task description';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  ShadInput(
-                    label: 'Due Date *',
-                    hintText: _selectedDueDate == null
-                        ? 'Select due date'
-                        : DateFormat('MM/dd/yyyy').format(_selectedDueDate!),
-                    prefixIcon: const Icon(Icons.calendar_today, color: AppColors.primary),
-                    suffixIcon: const Icon(Icons.arrow_drop_down, color: AppColors.textMuted),
-                    readOnly: true,
-                    onTap: _selectDueDate,
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: AppSpacing.xl),
-
-              // Task Classification Section
-              _buildSection(
-                title: 'Task Classification',
-                subtitle: 'Details that describe the task type and specifications.',
-                children: [
-                  ShadSelect<TaskPriority>(
-                    value: _selectedPriority,
-                    label: 'Priority *',
-                    hint: 'Select priority',
-                    prefixIcon: const Icon(Icons.flag, color: AppColors.primary),
-                    items: TaskPriority.values.map((priority) {
-                      String label;
-                      Color color;
-                      switch (priority) {
-                        case TaskPriority.high:
-                          label = 'High';
-                          color = AppColors.danger;
-                          break;
-                        case TaskPriority.medium:
-                          label = 'Medium';
-                          color = AppColors.warning;
-                          break;
-                        case TaskPriority.low:
-                          label = 'Low';
-                          color = AppColors.success;
-                          break;
-                      }
-                      return ShadSelectItem<TaskPriority>(
-                        value: priority,
-                        label: label,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 12,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: color,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: AppSpacing.sm),
-                            Text(label),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
-                          _selectedPriority = value;
-                        });
-                      }
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  ShadSelect<String>(
-                    value: _selectedAssignedTo,
-                    label: 'Assigned To *',
-                    hint: 'Select team member',
-                    prefixIcon: const Icon(Icons.person, color: AppColors.primary),
-                    items: teamMembers.map((member) {
-                      return ShadSelectItem<String>(
-                        value: member.name,
-                        label: '${member.name} - ${member.role}',
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            CircleAvatar(
-                              radius: 12,
-                              backgroundColor: AppColors.primarySoft,
+      body: _isLoadingForm
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: ResponsiveUtils.getPadding(context),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 720),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Dynamic Form from Firebase
+                        if (_defaultTaskForm != null) ...[
+                          EnhancedFormRenderer(
+                            form: _defaultTaskForm!,
+                            dynamicOptions: dynamicOptions,
+                            onChanged: (values) {
+                              setState(() {
+                                _formValues = values;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: AppSpacing.xl),
+                        ] else ...[
+                          // Fallback if form not loaded
+                          Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(AppSpacing.xl),
                               child: Text(
-                                member.name[0].toUpperCase(),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.bold,
+                                'Form template not available. Please create "Add Task Form" in Form Builder.',
+                                style: TextStyle(
+                                  color: AppColors.textMuted,
+                                  fontSize: 14,
                                 ),
+                                textAlign: TextAlign.center,
                               ),
                             ),
-                            const SizedBox(width: AppSpacing.sm),
-                            Flexible(
-                              child: Text(
-                                '${member.name} - ${member.role}',
-                                style: const TextStyle(fontWeight: FontWeight.w600),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedAssignedTo = value;
-                      });
-                    },
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please select an assignee';
-                      }
-                      return null;
-                    },
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: AppSpacing.xl),
+                          ),
+                        ],
 
               // Task Details Section
               _buildSection(

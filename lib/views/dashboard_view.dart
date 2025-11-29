@@ -13,6 +13,7 @@ import 'expenses/expenses_view.dart';
 import 'tasks/tasks_view.dart';
 import 'team/team_view.dart';
 import 'widgets/sidebar.dart';
+import '../features/form_builder/screens/form_builder_screen.dart';
 
 class DashboardView extends StatefulWidget {
   const DashboardView({super.key});
@@ -152,6 +153,8 @@ class _DashboardViewState extends State<DashboardView> {
         return const RealtimeChatView(key: ValueKey('chat'));
       case DashboardTab.expenses:
         return ExpensesView(key: ValueKey('expenses-${provider.activeTab}'));
+      case DashboardTab.formBuilder:
+        return const FormBuilderScreen(key: ValueKey('form_builder'));
     }
   }
 }
@@ -217,6 +220,9 @@ class _TopBarState extends State<_TopBar> {
         break;
       case DashboardTab.expenses:
         // Search is handled in ExpensesView
+        break;
+      case DashboardTab.formBuilder:
+        // No search for form builder
         break;
     }
   }

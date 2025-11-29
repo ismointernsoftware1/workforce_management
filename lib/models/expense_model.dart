@@ -31,6 +31,9 @@ class ExpenseModel {
     this.taxAmount,
     this.merchant,
     this.paymentMethod,
+    this.formId,
+    this.formDefinition,
+    this.formValues,
   });
 
   final String id;
@@ -54,6 +57,9 @@ class ExpenseModel {
   final double? taxAmount;
   final String? merchant;
   final String? paymentMethod;
+  final String? formId;
+  final Map<String, dynamic>? formDefinition;
+  final Map<String, dynamic>? formValues;
 
   factory ExpenseModel.fromSnapshot(DocumentSnapshot<Map<String, dynamic>> snap) {
     final data = snap.data() ?? <String, dynamic>{};
@@ -100,6 +106,15 @@ class ExpenseModel {
       taxAmount: (data['taxAmount'] as num?)?.toDouble(),
       merchant: data['merchant'] as String?,
       paymentMethod: data['paymentMethod'] as String?,
+      formId: data['formId'] as String?,
+      formDefinition: data['formDefinition'] != null
+          ? Map<String, dynamic>.from(
+              data['formDefinition'] as Map<String, dynamic>)
+          : null,
+      formValues: data['formValues'] != null
+          ? Map<String, dynamic>.from(
+              data['formValues'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -124,6 +139,9 @@ class ExpenseModel {
         if (taxAmount != null) 'taxAmount': taxAmount,
         if (merchant != null) 'merchant': merchant,
         if (paymentMethod != null) 'paymentMethod': paymentMethod,
+        if (formId != null) 'formId': formId,
+        if (formDefinition != null) 'formDefinition': formDefinition,
+        if (formValues != null) 'formValues': formValues,
       };
 
   ExpenseModel copyWith({
@@ -148,6 +166,9 @@ class ExpenseModel {
     double? taxAmount,
     String? merchant,
     String? paymentMethod,
+    String? formId,
+    Map<String, dynamic>? formDefinition,
+    Map<String, dynamic>? formValues,
   }) {
     return ExpenseModel(
       id: id ?? this.id,
@@ -171,6 +192,9 @@ class ExpenseModel {
       taxAmount: taxAmount ?? this.taxAmount,
       merchant: merchant ?? this.merchant,
       paymentMethod: paymentMethod ?? this.paymentMethod,
+      formId: formId ?? this.formId,
+      formDefinition: formDefinition ?? this.formDefinition,
+      formValues: formValues ?? this.formValues,
     );
   }
 }
