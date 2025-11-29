@@ -520,7 +520,13 @@ class RealtimeChatService {
   }
 
   // Get messages for a conversation (stream)
-  Stream<List<RealtimeChatMessage>> getMessagesStream(String conversationId) {
+  //
+  // IMPORTANT:
+  // We return the Firebase `onValue` stream directly mapped to a list of
+  // `RealtimeChatMessage`. This avoids using an intermediate StreamController,
+  // which can drop the first event if it fires before any listeners are added,
+  // causing the UI's StreamBuilder to stay in a perpetual loading state.
+  Stream<List<RealtimeChatMessage>> getMessagesStream(String conversationId) async* {
     try {
       print('Setting up messages stream for conversation: $conversationId');
       final messagesRef = _database
@@ -528,38 +534,17 @@ class RealtimeChatService {
           .child(conversationId)
           .child('messages');
 
-      final StreamController<List<RealtimeChatMessage>> controller = StreamController<List<RealtimeChatMessage>>.broadcast();
-      
-      // Set up Firebase listener immediately - don't wait for onListen
-      // This ensures the listener is active and will receive updates immediately
-      print('Setting up Firebase listener for conversation: $conversationId');
-      
-      // Helper function to process and emit messages
-      void processAndEmitMessages(DatabaseEvent event) {
-        print('Messages stream event received for conversation: $conversationId');
-        print('Event snapshot exists: ${event.snapshot.exists}');
-
-        if (!event.snapshot.exists || event.snapshot.value == null) {
+      List<RealtimeChatMessage> _parseSnapshot(DataSnapshot snapshot) {
+        if (!snapshot.exists || snapshot.value == null) {
           print('No messages found for conversation: $conversationId');
-          if (!controller.isClosed) {
-            controller.add(<RealtimeChatMessage>[]);
-          }
-          return;
+          return <RealtimeChatMessage>[];
         }
-
-        final data = event.snapshot.value;
-        print('Received data type: ${data.runtimeType}');
-
+        final data = snapshot.value;
         if (data is! Map) {
           print('Messages data is not a Map: ${data.runtimeType}');
-          if (!controller.isClosed) {
-            controller.add(<RealtimeChatMessage>[]);
-          }
-          return;
+          return <RealtimeChatMessage>[];
         }
-
         final messages = <RealtimeChatMessage>[];
-
         data.forEach((key, value) {
           try {
             if (value is Map) {
@@ -574,56 +559,36 @@ class RealtimeChatService {
             print('Error parsing message $key: $e');
           }
         });
-
         messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
         print('Parsed ${messages.length} messages for conversation: $conversationId');
-        if (messages.isNotEmpty) {
-          print('Latest message: ${messages.last.text} from ${messages.last.senderName}');
-        }
-        if (!controller.isClosed) {
-          controller.add(messages);
-        }
+        return messages;
       }
-      
-      final subscription = messagesRef
+
+      // Emit an initial snapshot immediately so the UI shows previous messages
+      try {
+        final initial = await messagesRef.orderByChild('timestamp').get()
+            .timeout(const Duration(seconds: 10));
+        yield _parseSnapshot(initial);
+      } catch (e) {
+        print('Initial messages fetch failed for $conversationId: $e');
+        // Even if initial fetch fails, still start the live stream
+        yield <RealtimeChatMessage>[];
+      }
+
+      // Then emit live updates
+      yield* messagesRef
           .orderByChild('timestamp')
           .onValue
-          .listen(
-            processAndEmitMessages,
-            onError: (error) {
-              print('Error in messages stream for conversation $conversationId: $error');
-              print('Error stack trace: ${StackTrace.current}');
-              if (!controller.isClosed) {
-                controller.add(<RealtimeChatMessage>[]);
-              }
-            },
-          );
-      
-      // Get initial value immediately
-      messagesRef
-          .orderByChild('timestamp')
-          .once()
-          .then((event) {
-            processAndEmitMessages(event);
-          })
-          .catchError((error) {
-            print('Error getting initial messages: $error');
+          .map((event) => _parseSnapshot(event.snapshot))
+          .handleError((error, stackTrace) {
+            print('Error in messages stream for conversation $conversationId: $error');
+            print('Error stack trace: $stackTrace');
+            return <RealtimeChatMessage>[];
           });
-      
-      // Clean up subscription when controller is closed
-      controller.onCancel = () {
-        print('Cancelling messages stream for conversation: $conversationId');
-        subscription.cancel();
-      };
-
-      return controller.stream;
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('Error setting up messages stream: $e');
-      print('Stack trace: ${StackTrace.current}');
-      final errorController =
-          StreamController<List<RealtimeChatMessage>>.broadcast();
-      errorController.add(<RealtimeChatMessage>[]);
-      return errorController.stream;
+      print('Stack trace: $stackTrace');
+      yield <RealtimeChatMessage>[];
     }
   }
 

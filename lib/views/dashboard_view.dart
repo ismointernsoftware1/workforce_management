@@ -227,6 +227,12 @@ class _TopBarState extends State<_TopBar> {
     final isMobile = ResponsiveUtils.isMobile(context);
     final isChat = widget.activeTab == DashboardTab.chat;
 
+    // For Chat tab, we want the chat layout to be truly full-screen with no
+    // extra header padding at the top, so we skip rendering this header row.
+    if (isChat) {
+      return const SizedBox.shrink();
+    }
+
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: isMobile ? AppSpacing.md : AppSpacing.xl,
@@ -252,19 +258,9 @@ class _TopBarState extends State<_TopBar> {
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: isChat
-                ? Text(
-                    'Chat',
-                    style: TextStyle(
-                      fontSize: ResponsiveUtils.getFontSize(
-                        context,
-                        mobile: 20,
-                        tablet: 24,
-                        desktop: 26,
-                      ),
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  )
+                // For chat, header and search are handled inside RealtimeChatView's sidebar,
+                // so we render an empty placeholder here to keep layout consistent.
+                ? const SizedBox.shrink()
                 : ShadInput(
                     controller: _searchController,
                     hintText: 'Search...',
@@ -279,4 +275,5 @@ class _TopBarState extends State<_TopBar> {
     );
   }
 }
+
 

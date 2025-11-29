@@ -22,11 +22,12 @@ class RealtimeChatProvider extends ChangeNotifier {
   RealtimeChatConversation? _selectedConversation;
   List<RealtimeChatConversation> _allConversations = [];
   Stream<List<RealtimeChatMessage>>? _messagesStream;
-  StreamSubscription<List<RealtimeChatMessage>>? _messagesSubscription;
   StreamSubscription<RealtimeChatConversation?>? _conversationSubscription;
   StreamSubscription<Map<String, String>>? _typingSubscription;
   StreamSubscription<List<RealtimeChatConversation>>? _conversationsStreamSubscription;
-  Map<String, String> _typingUsers = {};
+  Map<String, String> _typingUsers = {}; // For selected conversation
+  Map<String, Map<String, String>> _allConversationsTyping = {}; // For all conversations
+  Map<String, StreamSubscription<Map<String, String>>> _typingSubscriptions = {}; // Track subscriptions
 
   bool get isLoading => _isLoading;
   ChatTab get activeTab => _activeTab;
@@ -63,6 +64,11 @@ class RealtimeChatProvider extends ChangeNotifier {
   }
 
   Map<String, String> get typingUsers => _typingUsers;
+  
+  // Get typing users for a specific conversation
+  Map<String, String> getTypingUsersForConversation(String conversationId) {
+    return _allConversationsTyping[conversationId] ?? {};
+  }
 
   void setActiveTab(ChatTab tab) {
     if (_activeTab != tab) {
@@ -97,12 +103,8 @@ class RealtimeChatProvider extends ChangeNotifier {
       
       // Setup real-time listener for conversations
       _setupConversationsStream();
-      
-      if (_selectedConversationId == null && _allConversations.isNotEmpty) {
-        selectConversation(_allConversations.first.id);
-      } else {
-        notifyListeners();
-      }
+      // Do not auto-select any conversation; wait for user to choose
+      notifyListeners();
     } catch (e) {
       debugPrint('Error loading conversations: $e');
       _isLoading = false;
@@ -147,12 +149,61 @@ class RealtimeChatProvider extends ChangeNotifier {
               }
             }
             
+            // Set up typing listeners for all conversations
+            _setupTypingListenersForAllConversations();
+            
             notifyListeners();
           },
           onError: (error) {
             debugPrint('Error in conversations stream: $error');
           },
         );
+  }
+
+  // Set up typing listeners for all conversations
+  void _setupTypingListenersForAllConversations() {
+    final currentConversationIds = _allConversations.map((c) => c.id).toSet();
+    
+    // Cancel subscriptions for conversations that no longer exist
+    final subscriptionsToRemove = <String>[];
+    for (final conversationId in _typingSubscriptions.keys) {
+      if (!currentConversationIds.contains(conversationId)) {
+        _typingSubscriptions[conversationId]?.cancel();
+        subscriptionsToRemove.add(conversationId);
+        _allConversationsTyping.remove(conversationId);
+      }
+    }
+    for (final id in subscriptionsToRemove) {
+      _typingSubscriptions.remove(id);
+    }
+    
+    // Set up new subscriptions for conversations we don't have yet
+    for (final conversation in _allConversations) {
+      if (!_typingSubscriptions.containsKey(conversation.id)) {
+        final subscription = _controller
+            .getTypingStream(conversation.id)
+            .listen(
+              (typingUsers) {
+                // Filter out current user
+                final filteredUsers = Map<String, String>.from(typingUsers)
+                  ..removeWhere((userId, _) => userId == currentUserId);
+                
+                if (filteredUsers.isEmpty) {
+                  _allConversationsTyping.remove(conversation.id);
+                } else {
+                  _allConversationsTyping[conversation.id] = filteredUsers;
+                }
+                notifyListeners();
+              },
+              onError: (error) {
+                debugPrint('Error in typing stream for conversation ${conversation.id}: $error');
+                _allConversationsTyping.remove(conversation.id);
+                notifyListeners();
+              },
+            );
+        _typingSubscriptions[conversation.id] = subscription;
+      }
+    }
   }
 
   // Load conversations without triggering during build
@@ -216,26 +267,8 @@ class RealtimeChatProvider extends ChangeNotifier {
       }
     });
 
-    // Cancel previous messages subscription if exists
-    _messagesSubscription?.cancel();
-    _messagesSubscription = null;
-    
     // Setup messages stream - create new stream for this conversation
     _messagesStream = _controller.getMessagesStream(conversationId);
-    
-    // Subscribe to the stream to keep it active and ensure real-time updates
-    _messagesSubscription = _messagesStream!.listen(
-      (messages) {
-        // Stream is active and receiving updates
-        // The StreamBuilder will also listen, but this ensures the stream stays active
-        debugPrint('Messages stream update: ${messages.length} messages');
-        // Notify listeners so UI updates with new messages
-        notifyListeners();
-      },
-      onError: (error) {
-        debugPrint('Error in messages stream subscription: $error');
-      },
-    );
     
     // Notify listeners immediately so StreamBuilder can subscribe to new stream
     notifyListeners();
@@ -369,10 +402,14 @@ class RealtimeChatProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    _messagesSubscription?.cancel();
     _conversationSubscription?.cancel();
     _typingSubscription?.cancel();
     _conversationsStreamSubscription?.cancel();
+    // Cancel all typing subscriptions
+    for (final subscription in _typingSubscriptions.values) {
+      subscription.cancel();
+    }
+    _typingSubscriptions.clear();
     super.dispose();
   }
 }

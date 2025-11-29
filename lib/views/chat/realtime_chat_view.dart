@@ -14,8 +14,7 @@ import '../../models/realtime_chat_models.dart';
 import '../../models/user_model.dart';
 import '../../providers/realtime_chat_provider.dart';
 import '../../utils/responsive_utils.dart';
-import 'create_group_dialog.dart';
-import 'new_direct_message_dialog.dart';
+// Removed create_group_dialog and new_direct_message_dialog imports since actions were removed
 
 class RealtimeChatView extends StatefulWidget {
   const RealtimeChatView({super.key});
@@ -38,6 +37,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
   Timer? _typingTimer;
   bool _isTyping = false;
   RealtimeChatProvider? _providerRef;
+  Map<String, bool> _mutedConversations = {}; // Track muted conversations
 
   @override
   void initState() {
@@ -145,6 +145,44 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
     });
   }
 
+  // Group messages by date and return a list with date separators
+  List<dynamic> _groupMessagesByDate(List<RealtimeChatMessage> messages) {
+    if (messages.isEmpty) return [];
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    final grouped = <dynamic>[];
+    DateTime? currentDate;
+
+    for (final message in messages) {
+      final messageDate = DateTime.fromMillisecondsSinceEpoch(message.timestamp);
+      final messageDay = DateTime(messageDate.year, messageDate.month, messageDate.day);
+
+      // Check if we need to add a date separator
+      if (currentDate == null || !currentDate.isAtSameMomentAs(messageDay)) {
+        currentDate = messageDay;
+        
+        String dateLabel;
+        if (messageDay.isAtSameMomentAs(today)) {
+          dateLabel = 'Today';
+        } else if (messageDay.isAtSameMomentAs(yesterday)) {
+          dateLabel = 'Yesterday';
+        } else {
+          // Format as "MMM dd, yyyy" (e.g., "Jun 21, 2024")
+          dateLabel = DateFormat('MMM dd, yyyy').format(messageDate);
+        }
+        
+        grouped.add(dateLabel);
+      }
+
+      grouped.add(message);
+    }
+
+    return grouped;
+  }
+
   Future<void> _startConversationWithUser(BuildContext context, UserModel user) async {
     // Prevent multiple clicks
     if (_creatingConversationWithUserId == user.id) return;
@@ -219,14 +257,16 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
   Widget build(BuildContext context) {
     final isMobile = ResponsiveUtils.isMobile(context);
     final isTablet = ResponsiveUtils.isTablet(context);
-    final horizontalPadding =
-        isMobile ? AppSpacing.md : (isTablet ? AppSpacing.lg : AppSpacing.xl);
-    final EdgeInsets pagePadding = EdgeInsets.fromLTRB(
-      horizontalPadding,
-      0, // Remove top padding
-      horizontalPadding,
-      AppSpacing.lg,
-    );
+    // For desktop/tablet we want the chat layout to be full-width with no
+    // outer margins; on mobile we keep a small horizontal padding.
+    final EdgeInsets pagePadding = isMobile
+        ? EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            0,
+            AppSpacing.md,
+            AppSpacing.lg,
+          )
+        : EdgeInsets.zero;
     
     // On mobile, show either conversation list OR chat view, not both
     if (isMobile) {
@@ -250,7 +290,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
         children: [
           // Left sidebar with conversations
           SizedBox(
-            width: isTablet ? 240.0 : 280.0,
+            width: isTablet ? 260.0 : 300.0,
             child: _buildConversationList(context)
                 .animate()
                 .slideX(
@@ -260,22 +300,35 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                 )
                 .fadeIn(duration: AnimationUtils.normalDuration),
           ),
-          const SizedBox(width: AppSpacing.md),
+          // Remove visual gap between sidebar and chat area
+          const SizedBox(width: 0),
           // Main chat area
           Expanded(
-            child: _buildChatView(context, isMobile)
-                .animate()
-                .fade(
-                  duration: AnimationUtils.normalDuration,
-                  delay: AnimationUtils.mediumDelay,
-                )
-                .slide(
-                  begin: const Offset(0.1, 0),
-                  end: Offset.zero,
-                  duration: AnimationUtils.normalDuration,
-                  delay: AnimationUtils.mediumDelay,
-                  curve: Curves.easeOutCubic,
+            child: Container(
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                // Rounded only on the outer right side so it joins the
+                // sidebar without any visible gap.
+                borderRadius: BorderRadius.only(
+                  topRight: Radius.circular(8),
+                  bottomRight: Radius.circular(8),
                 ),
+                border: Border.fromBorderSide(BorderSide(color: AppColors.border)),
+              ),
+              child: _buildChatView(context, isMobile)
+                  .animate()
+                  .fade(
+                    duration: AnimationUtils.normalDuration,
+                    delay: AnimationUtils.mediumDelay,
+                  )
+                  .slide(
+                    begin: const Offset(0.1, 0),
+                    end: Offset.zero,
+                    duration: AnimationUtils.normalDuration,
+                    delay: AnimationUtils.mediumDelay,
+                    curve: Curves.easeOutCubic,
+                  ),
+            ),
           ),
         ],
       ),
@@ -287,7 +340,12 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
       height: double.infinity,
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        // Rounded only on the outer left side so it sits flush against
+        // the conversation panel with no gap in between.
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(8),
+          bottomLeft: Radius.circular(8),
+        ),
         border: Border.all(color: AppColors.border),
       ),
       child: Padding(
@@ -296,6 +354,27 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.max,
           children: [
+            // Chat header inside sidebar
+            Padding(
+              padding: const EdgeInsets.only(
+                left: AppSpacing.xs,
+                right: AppSpacing.xs,
+                bottom: AppSpacing.sm,
+              ),
+              child: Text(
+                'Chat',
+                style: TextStyle(
+                  fontSize: ResponsiveUtils.getFontSize(
+                    context,
+                    mobile: 18,
+                    tablet: 20,
+                    desktop: 22,
+                  ),
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
             // Search bar
             SizedBox(
               width: double.infinity,
@@ -391,11 +470,14 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                             conversation.id == provider.selectedConversationId;
                         final displayName =
                             provider.conversationTitle(conversation);
+                        final typingUsers = provider.getTypingUsersForConversation(conversation.id);
+                        final isTyping = typingUsers.isNotEmpty;
                         return RealtimeConversationTile(
                           conversation: conversation,
                           displayName: displayName,
                           isSelected: isSelected,
                           currentUserId: provider.currentUserId,
+                          isTyping: isTyping,
                           onTap: () {
                             provider.selectConversation(conversation.id);
                             // On mobile, hide conversation list after selection
@@ -423,37 +505,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                   },
                 ),
               ),
-              const SizedBox(height: AppSpacing.md),
-              // Action buttons
-              Consumer<RealtimeChatProvider>(
-                builder: (context, provider, _) {
-                  if (provider.activeTab == ChatTab.explore) {
-                    return ShadButton(
-                      onPressed: () => _showCreateGroupDialog(context, provider),
-                      variant: ShadButtonVariant.default_,
-                      size: ShadButtonSize.sm,
-                      icon: const Icon(Icons.add, size: 16),
-                      width: double.infinity,
-                      child: const Text(
-                        'Create Group',
-                        style: TextStyle(fontSize: 13),
-                      ),
-                    );
-                  } else {
-                    return ShadButton(
-                      onPressed: () => _showNewDirectMessageDialog(context, provider),
-                      variant: ShadButtonVariant.default_,
-                      size: ShadButtonSize.sm,
-                      icon: const Icon(Icons.add, size: 16),
-                      width: double.infinity,
-                      child: const Text(
-                        'New conversation',
-                        style: TextStyle(fontSize: 13),
-                      ),
-                    );
-                  }
-                },
-              ),
+              // Action buttons removed (\"New conversation\" / \"Create Group\") per design request
             ],
           ],
         ),
@@ -680,19 +732,297 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
 
         return Container(
                   height: double.infinity,
-                  color: AppColors.surface,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
                   child: Row(
                     children: [
                       Expanded(
                         child: Column(
                           mainAxisSize: MainAxisSize.max,
                           children: [
+                            // Header bar with conversation info
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md,
+                                vertical: AppSpacing.sm,
+                              ),
+                              decoration: const BoxDecoration(
+                                border: Border(
+                                  bottom: BorderSide(color: AppColors.border),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  // Back button for mobile
+                                  if (isMobile)
+                                    IconButton(
+                                      icon: const Icon(Icons.arrow_back, size: 20),
+                                      onPressed: () {
+                                        setState(() {
+                                          _showConversationList = true;
+                                        });
+                                      },
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                    ),
+                                  if (isMobile) const SizedBox(width: AppSpacing.xs),
+                                  // Avatar
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withValues(alpha: 0.1),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: AppColors.primary.withValues(alpha: 0.2),
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        provider.selectedConversationTitle.isNotEmpty
+                                            ? provider.selectedConversationTitle
+                                                .substring(0, 1)
+                                                .toUpperCase()
+                                            : '?',
+                                        style: const TextStyle(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  // Conversation name and member count
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          provider.selectedConversationTitle,
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        if (isGroupConversation) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            '${selectedConversation.memberIds.length} members',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              color: AppColors.textMuted,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                  // Silent / notifications toggle button
+                                  IconButton(
+                                    icon: Icon(
+                                      _mutedConversations[selectedConversation.id] == true
+                                          ? Icons.notifications_off_outlined
+                                          : Icons.notifications_none_outlined,
+                                      size: 18,
+                                      color: _mutedConversations[selectedConversation.id] == true
+                                          ? AppColors.textMuted
+                                          : AppColors.textPrimary,
+                                    ),
+                                    tooltip: _mutedConversations[selectedConversation.id] == true
+                                        ? 'Unmute notifications'
+                                        : 'Mute notifications',
+                                    onPressed: () {
+                                      _toggleMuteConversation(provider, selectedConversation.id);
+                                    },
+                                  ),
+                                  // Menu button
+                                  PopupMenuButton<String>(
+                                    icon: const Icon(Icons.more_vert, size: 20, color: AppColors.textPrimary),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 8,
+                                    color: AppColors.surface,
+                                    onSelected: (value) {
+                                      if (value == 'info') {
+                                        _showConversationInfo(context, provider, selectedConversation);
+                                      } else if (value == 'mute') {
+                                        _toggleMuteConversation(provider, selectedConversation.id);
+                                      } else if (value == 'members' && isGroupConversation) {
+                                        setState(() {
+                                          _showMembers = !_showMembers;
+                                        });
+                                      } else if (value == 'delete') {
+                                        _showDeleteConfirmation(context, provider, selectedConversation);
+                                      }
+                                    },
+                                    itemBuilder: (context) => [
+                                      // Only show Conversation Info for direct conversations
+                                      if (!isGroupConversation)
+                                        PopupMenuItem(
+                                          value: 'info',
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: AppSpacing.md,
+                                            vertical: AppSpacing.sm,
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.all(6),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.primary.withValues(alpha: 0.1),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.info_outline,
+                                                  size: 16,
+                                                  color: AppColors.primary,
+                                                ),
+                                              ),
+                                              const SizedBox(width: AppSpacing.sm),
+                                              const Text(
+                                                'Conversation Info',
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      PopupMenuItem(
+                                        value: 'mute',
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: AppSpacing.md,
+                                          vertical: AppSpacing.sm,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(6),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.primary.withValues(alpha: 0.1),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Icon(
+                                                _mutedConversations[selectedConversation.id] == true
+                                                    ? Icons.notifications
+                                                    : Icons.notifications_off_outlined,
+                                                size: 16,
+                                                color: AppColors.primary,
+                                              ),
+                                            ),
+                                            const SizedBox(width: AppSpacing.sm),
+                                            Text(
+                                              _mutedConversations[selectedConversation.id] == true
+                                                  ? 'Unmute Notifications'
+                                                  : 'Mute Notifications',
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      if (isGroupConversation)
+                                        PopupMenuItem(
+                                          value: 'members',
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: AppSpacing.md,
+                                            vertical: AppSpacing.sm,
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.all(6),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.primary.withValues(alpha: 0.1),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.group_outlined,
+                                                  size: 16,
+                                                  color: AppColors.primary,
+                                                ),
+                                              ),
+                                              const SizedBox(width: AppSpacing.sm),
+                                              const Text(
+                                                'View Members',
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      const PopupMenuDivider(
+                                        height: 1,
+                                      ),
+                                      PopupMenuItem(
+                                        value: 'delete',
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: AppSpacing.md,
+                                          vertical: AppSpacing.sm,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(6),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.danger.withValues(alpha: 0.1),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: const Icon(
+                                                Icons.delete_outline,
+                                                size: 16,
+                                                color: AppColors.danger,
+                                              ),
+                                            ),
+                                            const SizedBox(width: AppSpacing.sm),
+                                            const Text(
+                                              'Delete Conversation',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                                color: AppColors.danger,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
                             // Messages
                             Expanded(
                               child: StreamBuilder<List<RealtimeChatMessage>>(
                                 key: ValueKey(provider.selectedConversationId),
                                 stream: provider.messagesStream,
                                 builder: (context, snapshot) {
+                                  // Show loading only on first connection, not when we have data
+                                  if (snapshot.connectionState == ConnectionState.waiting && 
+                                      !snapshot.hasData && 
+                                      !snapshot.hasError) {
+                                    return const Center(
+                                      child: CircularProgressIndicator(),
+                                    );
+                                  }
+
                                   if (snapshot.hasError) {
                                     return Center(
                                       child: Column(
@@ -766,6 +1096,9 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                     _scrollToBottom();
                                   });
 
+                                  // Group messages by date
+                                  final groupedMessages = _groupMessagesByDate(messages);
+
                                   return Column(
                                     children: [
                                       Expanded(
@@ -775,32 +1108,40 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                             left: AppSpacing.lg,
                                             right: AppSpacing.lg,
                                             bottom: AppSpacing.md,
+                                            top: AppSpacing.sm,
                                           ),
-                                          itemCount: messages.length,
+                                          itemCount: groupedMessages.length,
                                           itemBuilder: (context, index) {
-                                            final message = messages[index];
-                                            final isMine = message.senderId ==
-                                                provider.currentUserId;
-                                            return RealtimeMessageBubble(
-                                              message: message,
-                                              isMine: isMine,
-                                            )
-                                                .animate()
-                                                .fade(
-                                                  duration: AnimationUtils.fastDuration,
-                                                  delay: AnimationUtils.shortDelay * (index % 5),
-                                                )
-                                                .slide(
-                                                  begin: Offset(isMine ? 0.1 : -0.1, 0),
-                                                  end: Offset.zero,
-                                                  duration: AnimationUtils.fastDuration,
-                                                  delay: AnimationUtils.shortDelay * (index % 5),
-                                                  curve: Curves.easeOutCubic,
-                                                );
+                                            final item = groupedMessages[index];
+                                            if (item is String) {
+                                              // Date separator
+                                              return _DateSeparator(dateLabel: item);
+                                            } else {
+                                              // Message
+                                              final message = item as RealtimeChatMessage;
+                                              final isMine = message.senderId ==
+                                                  provider.currentUserId;
+                                              return RealtimeMessageBubble(
+                                                message: message,
+                                                isMine: isMine,
+                                              )
+                                                  .animate()
+                                                  .fade(
+                                                    duration: AnimationUtils.fastDuration,
+                                                    delay: AnimationUtils.shortDelay * (index % 5),
+                                                  )
+                                                  .slide(
+                                                    begin: Offset(isMine ? 0.1 : -0.1, 0),
+                                                    end: Offset.zero,
+                                                    duration: AnimationUtils.fastDuration,
+                                                    delay: AnimationUtils.shortDelay * (index % 5),
+                                                    curve: Curves.easeOutCubic,
+                                                  );
+                                            }
                                           },
                                         ),
                                       ),
-                                      // Typing indicator
+                                      // Typing indicator with WhatsApp-style animation (only dots)
                                       Consumer<RealtimeChatProvider>(
                                         builder: (context, provider, _) {
                                           final typingUsers = provider.typingUsers;
@@ -808,29 +1149,41 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                             return const SizedBox.shrink();
                                           }
 
-                                          // Build typing text
-                                          String typingText;
-                                          final userNames = typingUsers.values.toList();
-                                          if (userNames.length == 1) {
-                                            typingText = '${userNames[0]} is typing...';
-                                          } else if (userNames.length == 2) {
-                                            typingText = '${userNames[0]} and ${userNames[1]} are typing...';
-                                          } else {
-                                            typingText = '${userNames.length} people are typing...';
-                                          }
-
-                                          return Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: AppSpacing.lg,
-                                              vertical: AppSpacing.xs,
+                                          return Padding(
+                                            padding: EdgeInsets.only(
+                                              left: AppSpacing.lg,
+                                              right: AppSpacing.lg,
+                                              bottom: AppSpacing.sm,
+                                              top: AppSpacing.xs,
                                             ),
-                                            alignment: Alignment.centerLeft,
-                                            child: Text(
-                                              typingText,
-                                              style: const TextStyle(
-                                                fontSize: 13,
-                                                color: AppColors.textMuted,
-                                                fontStyle: FontStyle.italic,
+                                            child: Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 10,
+                                                  vertical: 6,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.surface,
+                                                  border: Border.all(
+                                                    color: AppColors.border.withValues(alpha: 0.5),
+                                                    width: 1,
+                                                  ),
+                                                  borderRadius: const BorderRadius.only(
+                                                    topLeft: Radius.circular(12),
+                                                    topRight: Radius.circular(12),
+                                                    bottomLeft: Radius.circular(4),
+                                                    bottomRight: Radius.circular(12),
+                                                  ),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.black.withValues(alpha: 0.03),
+                                                      blurRadius: 4,
+                                                      offset: const Offset(0, 1),
+                                                    ),
+                                                  ],
+                                                ),
+                                                child: const _TypingDots(),
                                               ),
                                             ),
                                           );
@@ -984,76 +1337,204 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
     });
   }
 
-  void _showCreateGroupDialog(
+  void _showConversationInfo(
     BuildContext context,
     RealtimeChatProvider provider,
-  ) async {
-    try {
-      final users = await provider.getUsers();
-      if (!mounted) return;
-
-      if (users.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No other members available to add.'),
-          ),
-        );
-        return;
-      }
-
-      showDialog(
-        context: context,
-        builder: (context) => CreateGroupDialog(
-          users: users,
-          provider: provider,
-          onGroupCreated: (groupId) {
-            provider.loadConversations();
-            provider.selectConversation(groupId);
-          },
+    RealtimeChatConversation conversation,
+  ) {
+    final isGroup = conversation.type == ConversationType.group;
+    final memberCount = conversation.memberIds.length;
+    final memberNames = conversation.memberNames.values.toList()..sort();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to load members: $e')),
-      );
-    }
+        title: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.2),
+                  width: 1.5,
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  provider.conversationTitle(conversation).isNotEmpty
+                      ? provider.conversationTitle(conversation).substring(0, 1).toUpperCase()
+                      : '?',
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    provider.conversationTitle(conversation),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (isGroup) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      '$memberCount members',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (isGroup && memberNames.isNotEmpty) ...[
+                const Text(
+                  'Members:',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                ...memberNames.take(10).map((name) => Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            name.isNotEmpty ? name.substring(0, 1).toUpperCase() : '?',
+                            style: const TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+                if (memberNames.length > 10)
+                  Text(
+                    'and ${memberNames.length - 10} more...',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+              ] else ...[
+                const Text(
+                  'Direct conversation',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
-  void _showNewDirectMessageDialog(
+  void _toggleMuteConversation(
+    RealtimeChatProvider provider,
+    String conversationId,
+  ) {
+    setState(() {
+      _mutedConversations[conversationId] = !(_mutedConversations[conversationId] ?? false);
+    });
+  }
+
+  void _showDeleteConfirmation(
     BuildContext context,
     RealtimeChatProvider provider,
-  ) async {
-    try {
-      final users = await provider.getUsers();
-      if (!mounted) return;
-
-      if (users.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No other users available. Add more team members first.'),
-          ),
-        );
-        return;
-      }
-
-      showDialog(
-        context: context,
-        builder: (context) => NewDirectMessageDialog(
-          users: users,
-          provider: provider,
-          onConversationCreated: (conversationId) {
-            provider.loadConversations();
-            provider.selectConversation(conversationId);
-          },
+    RealtimeChatConversation conversation,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to load users: $e')),
-      );
-    }
+        title: const Text('Delete Conversation'),
+        content: Text(
+          'Are you sure you want to delete this conversation? This action cannot be undone.',
+          style: const TextStyle(color: AppColors.textPrimary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // TODO: Implement delete conversation functionality
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Delete conversation functionality coming soon'),
+                  ),
+                );
+              }
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.danger,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
   }
 
 }
@@ -1177,6 +1658,7 @@ class RealtimeConversationTile extends StatelessWidget {
     required this.isSelected,
     required this.onTap,
     this.currentUserId,
+    this.isTyping = false,
   });
 
   final RealtimeChatConversation conversation;
@@ -1184,6 +1666,7 @@ class RealtimeConversationTile extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
   final String? currentUserId;
+  final bool isTyping;
 
   @override
   Widget build(BuildContext context) {
@@ -1236,15 +1719,23 @@ class RealtimeConversationTile extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      conversation.lastMessage,
-                      style: const TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 11,
+                    if (isTyping)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const _TypingDots(),
+                        ],
+                      )
+                    else
+                      Text(
+                        conversation.lastMessage,
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 11,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
                   ],
                 ),
               ),
@@ -1316,19 +1807,19 @@ class RealtimeMessageBubble extends StatelessWidget {
     final time = DateTime.fromMillisecondsSinceEpoch(message.timestamp);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 1.5),
       child: Align(
         alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 320),
+          constraints: const BoxConstraints(maxWidth: 260),
           margin: EdgeInsets.only(
-            bottom: 4,
-            right: isMine ? 0 : 8,
-            left: isMine ? 8 : 0,
+            bottom: 2,
+            right: isMine ? 4 : 8,
+            left: isMine ? 8 : 4,
           ),
           padding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 10,
+            horizontal: 10,
+            vertical: 8,
           ),
           decoration: BoxDecoration(
             color: isMine ? AppColors.primary : AppColors.surface,
@@ -1370,19 +1861,19 @@ class RealtimeMessageBubble extends StatelessWidget {
                   message.senderName,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    fontSize: 12,
+                    fontSize: 11,
                     color: AppColors.textPrimary,
                     letterSpacing: 0.1,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
               ],
               Text(
                 message.text,
                 style: TextStyle(
                   color: isMine ? Colors.white : AppColors.textPrimary,
-                  fontSize: 14,
-                  height: 1.4,
+                  fontSize: 13,
+                  height: 1.3,
                   letterSpacing: 0.1,
                 ),
               ),
@@ -1455,7 +1946,7 @@ class RealtimeMessageBubble extends StatelessWidget {
                   color: isMine
                       ? Colors.white.withValues(alpha: 0.8)
                       : AppColors.textMuted,
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: FontWeight.w500,
                   letterSpacing: 0.2,
                 ),
@@ -1497,6 +1988,120 @@ class RealtimeMessageBubble extends StatelessWidget {
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+}
+
+// Date separator widget
+class _DateSeparator extends StatelessWidget {
+  const _DateSeparator({required this.dateLabel});
+
+  final String dateLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+      child: Row(
+        children: [
+          Expanded(
+            child: Divider(
+              color: AppColors.border.withValues(alpha: 0.5),
+              thickness: 1,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: 4,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceAlt,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                dateLabel,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Divider(
+              color: AppColors.border.withValues(alpha: 0.5),
+              thickness: 1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// WhatsApp-style typing dots animation
+class _TypingDots extends StatefulWidget {
+  const _TypingDots();
+
+  @override
+  State<_TypingDots> createState() => _TypingDotsState();
+}
+
+class _TypingDotsState extends State<_TypingDots>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(3, (index) {
+        return AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            // Create a wave effect where each dot animates with a delay
+            final delay = index * 0.2;
+            final cycle = (_controller.value + delay) % 1.0;
+            // Make dots fade in and out smoothly
+            final opacity = (cycle < 0.5) 
+                ? (cycle * 2) // Fade in from 0 to 1
+                : (2 - cycle * 2); // Fade out from 1 to 0
+            
+            return Opacity(
+              opacity: opacity.clamp(0.4, 1.0), // Keep minimum opacity for visibility
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: AppColors.textMuted,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            );
+          },
+        );
+      }),
+    );
   }
 }
 
