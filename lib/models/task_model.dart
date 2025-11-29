@@ -56,6 +56,9 @@ class TaskModel {
     this.approvals = const [],
     this.templateId,
     this.hasLocation = false,
+    this.formId,
+    this.formDefinition,
+    this.formValues,
   });
 
   final String id;
@@ -76,6 +79,9 @@ class TaskModel {
   final List<TaskApproval> approvals;
   final String? templateId;
   final bool hasLocation;
+  final String? formId;
+  final Map<String, dynamic>? formDefinition;
+  final Map<String, dynamic>? formValues;
 
   factory TaskModel.fromSnapshot(DocumentSnapshot<Map<String, dynamic>> snap) {
     final data = snap.data() ?? <String, dynamic>{};
@@ -125,6 +131,15 @@ class TaskModel {
           .toList(),
       templateId: data['templateId'] as String?,
       hasLocation: data['hasLocation'] as bool? ?? false,
+      formId: data['formId'] as String?,
+      formDefinition: data['formDefinition'] != null
+          ? Map<String, dynamic>.from(
+              data['formDefinition'] as Map<String, dynamic>)
+          : null,
+      formValues: data['formValues'] != null
+          ? Map<String, dynamic>.from(
+              data['formValues'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -145,6 +160,9 @@ class TaskModel {
         'approvals': approvals.map((app) => app.toMap()).toList(),
         if (templateId != null) 'templateId': templateId,
         'hasLocation': hasLocation,
+        if (formId != null) 'formId': formId,
+        if (formDefinition != null) 'formDefinition': formDefinition,
+        if (formValues != null) 'formValues': formValues,
       };
 
   TaskModel copyWith({
@@ -165,6 +183,9 @@ class TaskModel {
     List<TaskApproval>? approvals,
     String? templateId,
     bool? hasLocation,
+    String? formId,
+    Map<String, dynamic>? formDefinition,
+    Map<String, dynamic>? formValues,
   }) {
     return TaskModel(
       id: id ?? this.id,
@@ -184,6 +205,9 @@ class TaskModel {
       approvals: approvals ?? this.approvals,
       templateId: templateId ?? this.templateId,
       hasLocation: hasLocation ?? this.hasLocation,
+      formId: formId ?? this.formId,
+      formDefinition: formDefinition ?? this.formDefinition,
+      formValues: formValues ?? this.formValues,
     );
   }
 }

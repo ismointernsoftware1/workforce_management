@@ -10,7 +10,7 @@ import '../models/team_member.dart';
 import '../models/team_model.dart';
 import '../models/user_model.dart';
 
-enum DashboardTab { tasks, team, chat, expenses }
+enum DashboardTab { tasks, team, chat, expenses, formBuilder }
 
 class DashboardProvider extends ChangeNotifier {
   DashboardProvider({
