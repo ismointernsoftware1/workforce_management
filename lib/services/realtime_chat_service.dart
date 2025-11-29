@@ -520,13 +520,8 @@ class RealtimeChatService {
   }
 
   // Get messages for a conversation (stream)
-  //
-  // IMPORTANT:
-  // We return the Firebase `onValue` stream directly mapped to a list of
-  // `RealtimeChatMessage`. This avoids using an intermediate StreamController,
-  // which can drop the first event if it fires before any listeners are added,
-  // causing the UI's StreamBuilder to stay in a perpetual loading state.
-  Stream<List<RealtimeChatMessage>> getMessagesStream(String conversationId) async* {
+  // Returns a broadcast stream to allow multiple listeners
+  Stream<List<RealtimeChatMessage>> getMessagesStream(String conversationId) {
     try {
       print('Setting up messages stream for conversation: $conversationId');
       final messagesRef = _database
@@ -564,31 +559,75 @@ class RealtimeChatService {
         return messages;
       }
 
-      // Emit an initial snapshot immediately so the UI shows previous messages
-      try {
-        final initial = await messagesRef.orderByChild('timestamp').get()
-            .timeout(const Duration(seconds: 10));
-        yield _parseSnapshot(initial);
-      } catch (e) {
-        print('Initial messages fetch failed for $conversationId: $e');
-        // Even if initial fetch fails, still start the live stream
-        yield <RealtimeChatMessage>[];
+      // Create a broadcast stream controller
+      final controller = StreamController<List<RealtimeChatMessage>>.broadcast();
+      StreamSubscription<DatabaseEvent>? subscription;
+      bool hasEmittedInitial = false;
+
+      // Function to emit messages
+      void emitMessages(DataSnapshot snapshot) {
+        if (controller.isClosed) return;
+        final messages = _parseSnapshot(snapshot);
+        controller.add(messages);
+        if (!hasEmittedInitial) {
+          hasEmittedInitial = true;
+          print('Emitted initial ${messages.length} messages for conversation: $conversationId');
+        }
       }
 
-      // Then emit live updates
-      yield* messagesRef
+      // Get initial snapshot first and emit immediately
+      // This ensures we have data as soon as the stream is subscribed to
+      messagesRef.orderByChild('timestamp').get().then((initial) {
+        if (!controller.isClosed && !hasEmittedInitial) {
+          emitMessages(initial);
+        }
+      }).catchError((e) {
+        print('Initial messages fetch failed for $conversationId: $e');
+        if (!controller.isClosed && !hasEmittedInitial) {
+          hasEmittedInitial = true;
+          controller.add(<RealtimeChatMessage>[]);
+        }
+      });
+
+      // Set up live listener for real-time updates
+      subscription = messagesRef
           .orderByChild('timestamp')
           .onValue
-          .map((event) => _parseSnapshot(event.snapshot))
-          .handleError((error, stackTrace) {
-            print('Error in messages stream for conversation $conversationId: $error');
-            print('Error stack trace: $stackTrace');
-            return <RealtimeChatMessage>[];
-          });
+          .listen(
+            (event) {
+              // Only emit if we've already emitted initial data
+              // This prevents duplicate emissions
+              if (hasEmittedInitial) {
+                emitMessages(event.snapshot);
+              } else {
+                // If initial hasn't been emitted yet, use this as initial
+                emitMessages(event.snapshot);
+              }
+            },
+            onError: (error, stackTrace) {
+              print('Error in messages stream for conversation $conversationId: $error');
+              print('Error stack trace: $stackTrace');
+              if (!controller.isClosed && !hasEmittedInitial) {
+                hasEmittedInitial = true;
+                controller.add(<RealtimeChatMessage>[]);
+              }
+            },
+            cancelOnError: false,
+          );
+
+      // Clean up when stream is cancelled
+      controller.onCancel = () {
+        print('Cancelling messages stream for conversation: $conversationId');
+        subscription?.cancel();
+      };
+
+      return controller.stream;
     } catch (e, stackTrace) {
       print('Error setting up messages stream: $e');
       print('Stack trace: $stackTrace');
-      yield <RealtimeChatMessage>[];
+      final errorController = StreamController<List<RealtimeChatMessage>>.broadcast();
+      errorController.add(<RealtimeChatMessage>[]);
+      return errorController.stream;
     }
   }
 

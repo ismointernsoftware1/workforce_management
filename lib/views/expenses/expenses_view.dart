@@ -684,145 +684,206 @@ class _ExpensesTable extends StatelessWidget {
         ],
       ),
       child: isMobile
-          ? Column(
-              children: expenses.asMap().entries.map((entry) {
-                final viewState = context.findAncestorStateOfType<_ExpensesViewState>();
-                return _ExpenseMobileCard(
-                  expense: entry.value,
-                  dateFormatter: dateFormatter,
-                  currencyFormatter: currencyFormatter,
-                  viewState: viewState,
-                )
-                    .animate()
-                    .fade(
-                      duration: AnimationUtils.normalDuration,
-                      delay: AnimationUtils.shortDelay * (entry.key + 1),
-                    )
-                    .slide(
-                      begin: const Offset(0, 20),
-                      end: Offset.zero,
-                      duration: AnimationUtils.normalDuration,
-                      delay: AnimationUtils.shortDelay * (entry.key + 1),
-                      curve: Curves.easeOutCubic,
-                    );
-              }).toList(),
+          ? SizedBox(
+              height: MediaQuery.of(context).size.height * 0.5,
+              child: ListView(
+                children: expenses.asMap().entries.map((entry) {
+                  final viewState = context.findAncestorStateOfType<_ExpensesViewState>();
+                  return _ExpenseMobileCard(
+                    expense: entry.value,
+                    dateFormatter: dateFormatter,
+                    currencyFormatter: currencyFormatter,
+                    viewState: viewState,
+                  )
+                      .animate()
+                      .fade(
+                        duration: AnimationUtils.normalDuration,
+                        delay: AnimationUtils.shortDelay * (entry.key + 1),
+                      )
+                      .slide(
+                        begin: const Offset(0, 20),
+                        end: Offset.zero,
+                        duration: AnimationUtils.normalDuration,
+                        delay: AnimationUtils.shortDelay * (entry.key + 1),
+                        curve: Curves.easeOutCubic,
+                      );
+                }).toList(),
+              ),
             )
-          : Column(
-              children: [
-                // Table Header
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceAlt,
-                    border: Border(
-                      bottom: BorderSide(
-                        color: AppColors.border.withValues(alpha: 0.5),
-                        width: 1,
+          : SizedBox(
+              height: MediaQuery.of(context).size.height * 
+                  (ResponsiveUtils.isMobile(context) ? 0.5 : 0.65),
+              child: Column(
+                children: [
+                  // Table Header
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: ResponsiveUtils.isTablet(context) 
+                          ? AppSpacing.md 
+                          : AppSpacing.lg,
+                      vertical: AppSpacing.md,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceAlt,
+                      border: Border(
+                        bottom: BorderSide(
+                          color: AppColors.border.withValues(alpha: 0.5),
+                          width: 1,
+                        ),
                       ),
                     ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: ResponsiveUtils.isTablet(context) ? 2 : 3,
+                          child: Text(
+                            'Description',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                              fontSize: ResponsiveUtils.getFontSize(
+                                context,
+                                mobile: 12,
+                                tablet: 13,
+                                desktop: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: ResponsiveUtils.isTablet(context) ? 1 : 2,
+                          child: Text(
+                            'Category',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                              fontSize: ResponsiveUtils.getFontSize(
+                                context,
+                                mobile: 12,
+                                tablet: 13,
+                                desktop: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: ResponsiveUtils.isTablet(context) ? 1 : 2,
+                          child: Text(
+                            'Employee',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                              fontSize: ResponsiveUtils.getFontSize(
+                                context,
+                                mobile: 12,
+                                tablet: 13,
+                                desktop: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 1,
+                          child: Text(
+                            'Amount',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                              fontSize: ResponsiveUtils.getFontSize(
+                                context,
+                                mobile: 12,
+                                tablet: 13,
+                                desktop: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 1,
+                          child: Text(
+                            'Date',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                              fontSize: ResponsiveUtils.getFontSize(
+                                context,
+                                mobile: 12,
+                                tablet: 13,
+                                desktop: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 1,
+                          child: Text(
+                            'Status',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                              fontSize: ResponsiveUtils.getFontSize(
+                                context,
+                                mobile: 12,
+                                tablet: 13,
+                                desktop: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: ResponsiveUtils.isTablet(context) ? 2 : 3,
+                          child: Text(
+                            'Actions',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                              fontSize: ResponsiveUtils.getFontSize(
+                                context,
+                                mobile: 12,
+                                tablet: 13,
+                                desktop: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: Text(
-                          'Description',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          'Category',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          'Employee',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 1,
-                        child: Text(
-                          'Amount',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 1,
-                        child: Text(
-                          'Date',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 1,
-                        child: Text(
-                          'Status',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 3,
-                        child: Text(
-                          'Actions',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                    ],
+                  // Table Rows - make scrollable
+                  Expanded(
+                    child: Builder(
+                      builder: (context) {
+                        final viewState = context.findAncestorStateOfType<_ExpensesViewState>();
+                        return ListView.builder(
+                          shrinkWrap: false,
+                          itemCount: expenses.length,
+                          itemBuilder: (context, index) {
+                            final expense = expenses[index];
+                            return _ExpenseTableRow(
+                              expense: expense,
+                              dateFormatter: dateFormatter,
+                              currencyFormatter: currencyFormatter,
+                              viewState: viewState,
+                            )
+                                .animate()
+                                .fade(
+                                  duration: AnimationUtils.normalDuration,
+                                  delay: AnimationUtils.shortDelay * (index + 1),
+                                )
+                                .slide(
+                                  begin: const Offset(0, 20),
+                                  end: Offset.zero,
+                                  duration: AnimationUtils.normalDuration,
+                                  delay: AnimationUtils.shortDelay * (index + 1),
+                                  curve: Curves.easeOutCubic,
+                                );
+                          },
+                        );
+                      },
+                    ),
                   ),
-                ),
-                // Table Rows
-                Builder(
-                  builder: (context) {
-                    final viewState = context.findAncestorStateOfType<_ExpensesViewState>();
-                    return Column(
-                      children: expenses.asMap().entries.map((entry) => _ExpenseTableRow(
-                            expense: entry.value,
-                            dateFormatter: dateFormatter,
-                            currencyFormatter: currencyFormatter,
-                            viewState: viewState,
-                          )
-                              .animate()
-                              .fade(
-                                duration: AnimationUtils.normalDuration,
-                                delay: AnimationUtils.shortDelay * (entry.key + 1),
-                              )
-                              .slide(
-                                begin: const Offset(0, 20),
-                                end: Offset.zero,
-                                duration: AnimationUtils.normalDuration,
-                                delay: AnimationUtils.shortDelay * (entry.key + 1),
-                                curve: Curves.easeOutCubic,
-                              )).toList(),
-                    );
-                  },
-                ),
-              ],
+                ],
+              ),
             ),
     );
   }
@@ -857,26 +918,50 @@ class _ExpenseTableRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            flex: 3,
+            flex: ResponsiveUtils.isTablet(context) ? 2 : 3,
             child: Text(
               expense.description,
-              style: TextStyle(color: AppColors.textPrimary),
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: ResponsiveUtils.getFontSize(
+                  context,
+                  mobile: 12,
+                  tablet: 13,
+                  desktop: 14,
+                ),
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
           Expanded(
-            flex: 2,
+            flex: ResponsiveUtils.isTablet(context) ? 1 : 2,
             child: Text(
               expense.category.name,
-              style: TextStyle(color: AppColors.textMuted),
+              style: TextStyle(
+                color: AppColors.textMuted,
+                fontSize: ResponsiveUtils.getFontSize(
+                  context,
+                  mobile: 12,
+                  tablet: 13,
+                  desktop: 14,
+                ),
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
           Expanded(
-            flex: 2,
+            flex: ResponsiveUtils.isTablet(context) ? 1 : 2,
             child: Text(
               expense.employeeName,
-              style: TextStyle(color: AppColors.textMuted),
+              style: TextStyle(
+                color: AppColors.textMuted,
+                fontSize: ResponsiveUtils.getFontSize(
+                  context,
+                  mobile: 12,
+                  tablet: 13,
+                  desktop: 14,
+                ),
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -887,6 +972,12 @@ class _ExpenseTableRow extends StatelessWidget {
               style: TextStyle(
                 color: AppColors.textPrimary,
                 fontWeight: FontWeight.w600,
+                fontSize: ResponsiveUtils.getFontSize(
+                  context,
+                  mobile: 12,
+                  tablet: 13,
+                  desktop: 14,
+                ),
               ),
             ),
           ),
@@ -894,7 +985,15 @@ class _ExpenseTableRow extends StatelessWidget {
             flex: 1,
             child: Text(
               dateFormatter.format(expense.expenseDate),
-              style: TextStyle(color: AppColors.textMuted),
+              style: TextStyle(
+                color: AppColors.textMuted,
+                fontSize: ResponsiveUtils.getFontSize(
+                  context,
+                  mobile: 12,
+                  tablet: 13,
+                  desktop: 14,
+                ),
+              ),
             ),
           ),
           Expanded(
@@ -902,7 +1001,7 @@ class _ExpenseTableRow extends StatelessWidget {
             child: _StatusBadge(status: expense.status),
           ),
           Expanded(
-            flex: 3,
+            flex: ResponsiveUtils.isTablet(context) ? 2 : 3,
             child: Wrap(
               spacing: AppSpacing.xs,
               runSpacing: AppSpacing.xs,

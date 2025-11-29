@@ -5,6 +5,7 @@ import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/user_model.dart';
 import '../../providers/realtime_chat_provider.dart';
+import '../../utils/responsive_utils.dart';
 
 class CreateGroupDialog extends StatefulWidget {
   const CreateGroupDialog({
@@ -89,14 +90,27 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveUtils.isMobile(context);
+    final isDesktop = ResponsiveUtils.isDesktop(context);
+    
     return Dialog(
-      child: Container(
-        width: 420,
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : (isDesktop ? 120 : 40),
+        vertical: isMobile ? 20 : 60,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      backgroundColor: const Color(0xFFF4F5FA),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: isMobile ? double.infinity : 500,
+          maxHeight: isMobile ? MediaQuery.of(context).size.height * 0.8 : 600,
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(isMobile ? 16 : 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             const Text(
               'Create Group',
               style: TextStyle(
@@ -119,117 +133,150 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
               ),
             ),
             const SizedBox(height: AppSpacing.sm),
-            Container(
-              constraints: const BoxConstraints(maxHeight: 280),
-              decoration: BoxDecoration(
-                border: Border.all(color: AppColors.border),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: _users.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(AppSpacing.md),
-                        child: Text(
-                          'No members available',
-                          style: TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 13,
+            Expanded(
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: isMobile 
+                      ? MediaQuery.of(context).size.height * 0.4 
+                      : 280,
+                ),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: _users.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          child: Text(
+                            'No members available',
+                            style: TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
-                      ),
-                    )
-                  : ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: _users.length,
-                      itemBuilder: (context, index) {
-                        final user = _users[index];
-                        final isSelected = _selectedMemberIds.contains(user.id);
+                      )
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: _users.length,
+                        itemBuilder: (context, index) {
+                          final user = _users[index];
+                          final isSelected = _selectedMemberIds.contains(user.id);
 
-                        return InkWell(
-                          onTap: () => _toggleMember(user.id, user.name),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.sm,
-                              vertical: AppSpacing.xs,
-                            ),
-                            child: Row(
-                              children: [
-                                Checkbox(
-                                  value: isSelected,
-                                  onChanged: (_) => _toggleMember(user.id, user.name),
-                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                  visualDensity: VisualDensity.compact,
+                          return Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () => _toggleMember(user.id, user.name),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.sm,
+                                  vertical: AppSpacing.xs,
                                 ),
-                                CircleAvatar(
-                                  radius: 16,
-                                  backgroundColor: AppColors.primary.withValues(alpha: 0.2),
-                                  child: Text(
-                                    user.name.substring(0, 1).toUpperCase(),
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
+                                child: Row(
+                                  children: [
+                                    Checkbox(
+                                      value: isSelected,
+                                      onChanged: (_) => _toggleMember(user.id, user.name),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      visualDensity: VisualDensity.compact,
                                     ),
-                                  ),
-                                ),
-                                const SizedBox(width: AppSpacing.sm),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        user.name,
+                                    CircleAvatar(
+                                      radius: 16,
+                                      backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+                                      child: Text(
+                                        user.name.isNotEmpty
+                                            ? user.name.substring(0, 1).toUpperCase()
+                                            : '?',
                                         style: const TextStyle(
-                                          fontSize: 13,
+                                          fontSize: 12,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        user.email,
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: AppColors.textMuted,
-                                        ),
+                                    ),
+                                    const SizedBox(width: AppSpacing.sm),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            user.name,
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            user.email,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: AppColors.textMuted,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                    ),
+                          );
+                        },
+                      ),
+              ),
             ),
             const SizedBox(height: AppSpacing.md),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                ShadButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  variant: ShadButtonVariant.outline,
-                  size: ShadButtonSize.sm,
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(fontSize: 13),
+            isMobile
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ShadButton(
+                        onPressed: _createGroup,
+                        variant: ShadButtonVariant.default_,
+                        size: ShadButtonSize.sm,
+                        child: const Text('Create Group'),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      ShadButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        variant: ShadButtonVariant.outline,
+                        size: ShadButtonSize.sm,
+                        child: const Text('Cancel'),
+                      ),
+                    ],
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      ShadButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        variant: ShadButtonVariant.outline,
+                        size: ShadButtonSize.sm,
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(fontSize: 13),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      ShadButton(
+                        onPressed: _createGroup,
+                        variant: ShadButtonVariant.default_,
+                        size: ShadButtonSize.sm,
+                        child: const Text(
+                          'Create Group',
+                          style: TextStyle(fontSize: 13),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                ShadButton(
-                  onPressed: _createGroup,
-                  variant: ShadButtonVariant.default_,
-                  size: ShadButtonSize.sm,
-                  child: const Text(
-                    'Create Group',
-                    style: TextStyle(fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
           ],
         ),
       ),
+    ),
     );
   }
 }

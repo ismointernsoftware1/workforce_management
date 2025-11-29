@@ -13,8 +13,10 @@ import '../../constants/app_spacing.dart';
 import '../../models/realtime_chat_models.dart';
 import '../../models/user_model.dart';
 import '../../providers/realtime_chat_provider.dart';
+import '../../providers/dashboard_provider.dart';
 import '../../utils/responsive_utils.dart';
-// Removed create_group_dialog and new_direct_message_dialog imports since actions were removed
+import '../widgets/sidebar.dart';
+import 'create_group_dialog.dart';
 
 class RealtimeChatView extends StatefulWidget {
   const RealtimeChatView({super.key});
@@ -253,6 +255,35 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
     }
   }
 
+  void _showMobileSidebar(BuildContext context) {
+    final dashboardProvider = context.read<DashboardProvider>();
+    final isMobile = ResponsiveUtils.isMobile(context);
+    
+    // Show sidebar dialog - responsive width
+    final dialogWidth = isMobile 
+        ? MediaQuery.of(context).size.width * 0.85
+        : (ResponsiveUtils.isTablet(context) ? 300.0 : 280.0);
+    
+    showDialog(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        alignment: Alignment.centerLeft,
+        insetPadding: EdgeInsets.zero,
+        backgroundColor: Colors.transparent,
+        child: SizedBox(
+          width: dialogWidth,
+          child: Sidebar(
+            activeTab: dashboardProvider.activeTab,
+            onTabChanged: (tab) {
+              dashboardProvider.changeTab(tab);
+              Navigator.of(dialogContext).pop();
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isMobile = ResponsiveUtils.isMobile(context);
@@ -273,7 +304,13 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
       if (_showConversationList) {
         return Padding(
           padding: pagePadding,
-          child: _buildConversationList(context),
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height - 
+                MediaQuery.of(context).padding.top - 
+                MediaQuery.of(context).padding.bottom - 
+                (pagePadding.top + pagePadding.bottom),
+            child: _buildConversationList(context),
+          ),
         );
       } else {
         return Padding(
@@ -288,9 +325,11 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
       padding: pagePadding,
       child: Row(
         children: [
-          // Left sidebar with conversations
+          // Left sidebar with conversations - responsive width
           SizedBox(
-            width: isTablet ? 260.0 : 300.0,
+            width: ResponsiveUtils.isDesktop(context) 
+                ? 320.0 
+                : (isTablet ? 280.0 : 260.0),
             child: _buildConversationList(context)
                 .animate()
                 .slideX(
@@ -336,43 +375,74 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
   }
 
   Widget _buildConversationList(BuildContext context) {
-    return Container(
-      height: double.infinity,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        // Rounded only on the outer left side so it sits flush against
-        // the conversation panel with no gap in between.
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(8),
-          bottomLeft: Radius.circular(8),
-        ),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.max,
-          children: [
-            // Chat header inside sidebar
+    final isMobile = ResponsiveUtils.isMobile(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          height: isMobile ? constraints.maxHeight : null,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            // Rounded only on the outer left side so it sits flush against
+            // the conversation panel with no gap in between.
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(8),
+              bottomLeft: Radius.circular(8),
+            ),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.max,
+              children: [
+            // Chat header inside sidebar with hamburger menu
             Padding(
               padding: const EdgeInsets.only(
                 left: AppSpacing.xs,
                 right: AppSpacing.xs,
                 bottom: AppSpacing.sm,
               ),
-              child: Text(
-                'Chat',
-                style: TextStyle(
-                  fontSize: ResponsiveUtils.getFontSize(
-                    context,
-                    mobile: 18,
-                    tablet: 20,
-                    desktop: 22,
+              child: Row(
+                children: [
+                  // Hamburger menu button - visible on all screen sizes
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => _showMobileSidebar(context),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isMobile ? Colors.transparent : AppColors.surfaceAlt,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.menu,
+                          size: 24,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
                   ),
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
+                  const SizedBox(width: AppSpacing.sm),
+                  // Chat title
+                  Expanded(
+                    child: Text(
+                      'Chat',
+                      style: TextStyle(
+                        fontSize: ResponsiveUtils.getFontSize(
+                          context,
+                          mobile: 18,
+                          tablet: 20,
+                          desktop: 22,
+                        ),
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             // Search bar
@@ -424,6 +494,24 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                 },
               ),
               const SizedBox(height: AppSpacing.sm),
+              // Create Group button (only show in Group tab)
+              Consumer<RealtimeChatProvider>(
+                builder: (context, provider, _) {
+                  if (provider.activeTab == ChatTab.explore) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: ShadButton(
+                        onPressed: () => _showCreateGroupDialog(context, provider),
+                        variant: ShadButtonVariant.default_,
+                        size: ShadButtonSize.sm,
+                        icon: const Icon(Icons.group_add, size: 18),
+                        child: const Text('Create Group'),
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
               // Conversations list
               Expanded(
                 child: Consumer<RealtimeChatProvider>(
@@ -511,6 +599,8 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
         ),
       ),
     );
+      },
+    );
   }
 
   Widget _buildSearchResults(BuildContext context) {
@@ -545,9 +635,11 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
       itemBuilder: (context, index) {
         final user = _filteredUsers[index];
         final isCreating = _creatingConversationWithUserId == user.id;
-        return InkWell(
-          onTap: isCreating ? null : () => _startConversationWithUser(context, user),
-          child: Container(
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: isCreating ? null : () => _startConversationWithUser(context, user),
+            child: Container(
             padding: const EdgeInsets.symmetric(
               vertical: AppSpacing.sm,
               horizontal: AppSpacing.xs,
@@ -621,6 +713,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
               ],
             ),
           ),
+        ),
         );
       },
     );
@@ -1014,9 +1107,10 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                 key: ValueKey(provider.selectedConversationId),
                                 stream: provider.messagesStream,
                                 builder: (context, snapshot) {
-                                  // Show loading only on first connection, not when we have data
+                                  // Show loading only if we're actively waiting for the first data
+                                  // onValue emits immediately, so this should be brief
                                   if (snapshot.connectionState == ConnectionState.waiting && 
-                                      !snapshot.hasData && 
+                                      snapshot.data == null && 
                                       !snapshot.hasError) {
                                     return const Center(
                                       child: CircularProgressIndicator(),
@@ -1304,6 +1398,56 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
     );
   }
 
+  Future<void> _showCreateGroupDialog(
+    BuildContext context,
+    RealtimeChatProvider provider,
+  ) async {
+    try {
+      // Load users if not already loaded
+      if (_allUsers.isEmpty) {
+        setState(() {
+          _isLoadingUsers = true;
+        });
+        final users = await provider.getUsers();
+        if (mounted) {
+          setState(() {
+            _allUsers = users;
+            _isLoadingUsers = false;
+          });
+        }
+      }
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (context) => CreateGroupDialog(
+          users: _allUsers,
+          provider: provider,
+          onGroupCreated: (groupId) {
+            // Select the newly created group
+            provider.selectConversation(groupId);
+            // On mobile, hide conversation list after selection
+            if (ResponsiveUtils.isMobile(context)) {
+              setState(() {
+                _showConversationList = false;
+              });
+            }
+          },
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading users: ${e.toString()}'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
   void _sendMessage(RealtimeChatProvider provider) {
     final text = _messageController.text.trim();
     if (text.isEmpty || provider.selectedConversationId == null) return;
@@ -1345,10 +1489,15 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
     final isGroup = conversation.type == ConversationType.group;
     final memberCount = conversation.memberIds.length;
     final memberNames = conversation.memberNames.values.toList()..sort();
+    final isMobile = ResponsiveUtils.isMobile(context);
     
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        insetPadding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 16 : 40,
+          vertical: isMobile ? 20 : 80,
+        ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -1675,10 +1824,12 @@ class RealtimeConversationTile extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: AnimatedContainer(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.sm,
@@ -1785,6 +1936,7 @@ class RealtimeConversationTile extends StatelessWidget {
               ),
             ],
           ),
+        ),
         ),
       ),
     );
@@ -2120,10 +2272,12 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
         padding: const EdgeInsets.symmetric(
           horizontal: 8,
           vertical: 6,
@@ -2157,6 +2311,7 @@ class _TabButton extends StatelessWidget {
               ),
             ),
           ],
+        ),
         ),
       ),
     );

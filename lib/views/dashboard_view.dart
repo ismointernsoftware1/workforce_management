@@ -123,6 +123,11 @@ class _DashboardViewState extends State<DashboardView> {
   }
 
   void _showMobileSidebar(BuildContext context, DashboardProvider provider) {
+    final isMobile = ResponsiveUtils.isMobile(context);
+    final dialogWidth = isMobile 
+        ? MediaQuery.of(context).size.width * 0.85
+        : (ResponsiveUtils.isTablet(context) ? 300.0 : 280.0);
+    
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -130,7 +135,7 @@ class _DashboardViewState extends State<DashboardView> {
         insetPadding: EdgeInsets.zero,
         backgroundColor: Colors.transparent,
         child: SizedBox(
-          width: 280,
+          width: dialogWidth,
           child: Sidebar(
             activeTab: provider.activeTab,
             onTabChanged: (tab) {

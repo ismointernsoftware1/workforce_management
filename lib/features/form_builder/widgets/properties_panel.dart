@@ -39,25 +39,27 @@ class PropertiesPanel extends StatelessWidget {
           ),
           const Divider(height: 1),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: field != null
-                  ? _FieldProperties(
-                      key: ValueKey(field.id), // Force rebuild when field changes
-                      controller: controller,
-                      field: field,
-                    )
-                  : section != null
-                      ? _SectionProperties(
-                          controller: controller,
-                          section: section,
-                        )
-                      : const Center(
-                          child: Text(
-                            'Select a field or section',
-                            style: TextStyle(color: AppColors.textMuted),
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: field != null
+                    ? _FieldProperties(
+                        key: ValueKey(field.id), // Force rebuild when field changes
+                        controller: controller,
+                        field: field,
+                      )
+                    : section != null
+                        ? _SectionProperties(
+                            controller: controller,
+                            section: section,
+                          )
+                        : const Center(
+                            child: Text(
+                              'Select a field or section',
+                              style: TextStyle(color: AppColors.textMuted),
+                            ),
                           ),
-                        ),
+              ),
             ),
           ),
         ],

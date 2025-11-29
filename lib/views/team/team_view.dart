@@ -436,53 +436,94 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
               ),
             )
           else
-            Container(
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: AppColors.border.withValues(alpha: 0.5),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.textPrimary.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-                ),
-                child: filteredUsers.isEmpty
-                  ? Container(
-                      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl * 2),
-                      child: const Center(
-                        child: Text(
-                          'No employees match the current filters.',
-                          style: TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 16,
-                          ),
-                        ),
-                        ),
-                      )
-                  : isMobile
-                      ? Column(
-                          children: filteredUsers.map((user) {
-                            return _buildMobileUserCard(user, provider);
-                          }).toList(),
-                        )
-                      : Column(
-                          children: [
-                            _buildTableHeader(),
-                            ...filteredUsers.asMap().entries.map((entry) {
-                              final index = entry.key;
-                              final user = entry.value;
-                              final isLast = index == filteredUsers.length - 1;
-                              return _buildTableRow(user, provider, isLast: isLast);
-                            }).toList(),
-                          ],
+            isMobile
+                ? Container(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppColors.border.withValues(alpha: 0.5),
+                        width: 1,
                       ),
-              ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.textPrimary.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: filteredUsers.isEmpty
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl * 2),
+                            child: const Center(
+                              child: Text(
+                                'No employees match the current filters.',
+                                style: TextStyle(
+                                  color: AppColors.textMuted,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          )
+                        : ListView(
+                            shrinkWrap: true,
+                            children: filteredUsers.map((user) {
+                              return _buildMobileUserCard(user, provider);
+                            }).toList(),
+                          ),
+                  )
+                : Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: AppColors.border.withValues(alpha: 0.5),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.textPrimary.withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: filteredUsers.isEmpty
+                          ? Container(
+                              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl * 2),
+                              child: const Center(
+                                child: Text(
+                                  'No employees match the current filters.',
+                                  style: TextStyle(
+                                    color: AppColors.textMuted,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : Column(
+                              children: [
+                                _buildTableHeader(),
+                                Expanded(
+                                  child: ListView.builder(
+                                    shrinkWrap: false,
+                                    itemCount: filteredUsers.length,
+                                    itemBuilder: (context, index) {
+                                      final user = filteredUsers[index];
+                                      final isLast = index == filteredUsers.length - 1;
+                                      return _buildTableRow(user, provider, isLast: isLast);
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
           const SizedBox(height: AppSpacing.xl),
         ],
       ),
