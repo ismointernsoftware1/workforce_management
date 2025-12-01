@@ -221,11 +221,35 @@ TaskPriority _priorityFrom(dynamic raw) {
 }
 
 TaskStatus _statusFrom(dynamic raw) {
-  final value = raw?.toString().replaceAll(' ', '').toLowerCase() ?? 'pending';
-  return TaskStatus.values.firstWhere(
-    (s) => s.name.toLowerCase() == value,
-    orElse: () => TaskStatus.pending,
-  );
+  if (raw == null) return TaskStatus.pending;
+  
+  final rawString = raw.toString().trim();
+  final normalizedValue = rawString.replaceAll(' ', '').replaceAll('-', '').replaceAll('_', '').toLowerCase();
+  
+  // First, try to match by enum name exactly (handles "inProgress", "pending", "completed")
+  for (final status in TaskStatus.values) {
+    if (status.name == rawString || status.name.toLowerCase() == normalizedValue) {
+      return status;
+    }
+  }
+  
+  // Handle various status format variations
+  if (normalizedValue == 'inprogress' || 
+      rawString.toLowerCase().contains('inprogress') ||
+      rawString.toLowerCase().contains('in progress')) {
+    return TaskStatus.inProgress;
+  } else if (normalizedValue == 'completed' || 
+             normalizedValue == 'done' ||
+             rawString.toLowerCase() == 'completed') {
+    return TaskStatus.completed;
+  } else if (normalizedValue == 'pending' || 
+             rawString.toLowerCase() == 'pending') {
+    return TaskStatus.pending;
+  }
+  
+  // Default fallback
+  debugPrint('Warning: Could not parse task status: "$rawString", defaulting to pending');
+  return TaskStatus.pending;
 }
 
 TaskApprovalType _approvalTypeFrom(dynamic raw) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../components/shadcn/shadcn.dart';
@@ -8,6 +9,7 @@ import '../../constants/app_spacing.dart';
 import '../../models/task_approval.dart';
 import '../../models/task_attachment.dart';
 import '../../models/task_model.dart';
+import '../../providers/dashboard_provider.dart';
 import '../../utils/responsive_utils.dart';
 
 class TaskDetailView extends StatelessWidget {
@@ -225,30 +227,40 @@ class TaskDetailView extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   ...task.subTasks.map((sub) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                      child: Row(
-                        children: [
-                          Icon(
-                            sub.isDone ? Icons.check_circle : Icons.radio_button_unchecked,
-                            color: sub.isDone ? AppColors.success : AppColors.textMuted,
-                            size: 20,
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          Expanded(
-                            child: Text(
-                              sub.label,
-                              style: TextStyle(
-                                color: sub.isDone
-                                    ? AppColors.textMuted
-                                    : AppColors.textPrimary,
-                                decoration: sub.isDone
-                                    ? TextDecoration.lineThrough
-                                    : null,
+                    return InkWell(
+                      onTap: () => _toggleSubtask(context, sub.id),
+                      borderRadius: BorderRadius.circular(4),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: Checkbox(
+                                value: sub.isDone,
+                                onChanged: (_) => _toggleSubtask(context, sub.id),
+                                activeColor: AppColors.success,
+                                side: const BorderSide(color: AppColors.border, width: 1.5),
+                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: Text(
+                                sub.label,
+                                style: TextStyle(
+                                  color: sub.isDone
+                                      ? AppColors.textMuted
+                                      : AppColors.textPrimary,
+                                  decoration: sub.isDone
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   }),
@@ -268,6 +280,53 @@ class TaskDetailView extends StatelessWidget {
         return ShadBadgeVariant.secondary;
       case TaskStatus.pending:
         return ShadBadgeVariant.outline;
+    }
+  }
+
+  Future<void> _toggleSubtask(BuildContext context, String subtaskId) async {
+    final provider = Provider.of<DashboardProvider>(context, listen: false);
+    try {
+      // Find the subtask and toggle its completion status
+      final updatedSubTasks = task.subTasks.map((sub) {
+        if (sub.id == subtaskId) {
+          return SubTask(
+            id: sub.id,
+            label: sub.label,
+            isDone: !sub.isDone,
+          );
+        }
+        return sub;
+      }).toList();
+
+      // Update the task with the new subtasks
+      final updatedTask = task.copyWith(subTasks: updatedSubTasks);
+      await provider.updateTask(updatedTask);
+      
+      // Refresh the view by popping and pushing again with updated task
+      if (context.mounted) {
+        Navigator.of(context).pop();
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => TaskDetailView(task: updatedTask),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: ShadAlert(
+              title: 'Error',
+              description: 'Failed to update subtask: ${e.toString()}',
+              variant: ShadAlertVariant.destructive,
+            ),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            padding: const EdgeInsets.all(16),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 }
