@@ -26,6 +26,7 @@ class AddTaskView extends StatefulWidget {
 class _AddTaskViewState extends State<AddTaskView> {
   final _formKey = GlobalKey<FormState>();
   final _subTaskControllers = <TextEditingController>[];
+  final _subTaskDoneStates = <bool>[];
 
   bool _isLoading = false;
   bool _isLoadingForm = true;
@@ -84,6 +85,7 @@ class _AddTaskViewState extends State<AddTaskView> {
   void _addSubTaskField() {
     setState(() {
       _subTaskControllers.add(TextEditingController());
+      _subTaskDoneStates.add(false);
     });
   }
 
@@ -91,6 +93,13 @@ class _AddTaskViewState extends State<AddTaskView> {
     setState(() {
       _subTaskControllers[index].dispose();
       _subTaskControllers.removeAt(index);
+      _subTaskDoneStates.removeAt(index);
+    });
+  }
+
+  void _toggleSubTaskDone(int index) {
+    setState(() {
+      _subTaskDoneStates[index] = !_subTaskDoneStates[index];
     });
   }
 
@@ -131,6 +140,23 @@ class _AddTaskViewState extends State<AddTaskView> {
     }
   }
 
+  TaskStatus _parseStatus(String? statusStr) {
+    if (statusStr == null) return TaskStatus.pending;
+    final status = statusStr.toLowerCase().replaceAll(' ', '');
+    switch (status) {
+      case 'inprogress':
+      case 'in-progress':
+      case 'in progress':
+        return TaskStatus.inProgress;
+      case 'completed':
+      case 'done':
+        return TaskStatus.completed;
+      case 'pending':
+      default:
+        return TaskStatus.pending;
+    }
+  }
+
   Future<void> _saveTask() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -142,6 +168,7 @@ class _AddTaskViewState extends State<AddTaskView> {
     final dueDate = _getFormDateValue('Due Date');
     final priorityStr = _getFormValue('Priority');
     final assignedTo = _getFormValue('Assigned To') ?? '';
+    final statusStr = _getFormValue('Status');
 
     if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -203,16 +230,19 @@ class _AddTaskViewState extends State<AddTaskView> {
       
       // Build subtasks list
       final subTasks = _subTaskControllers
-          .map((controller) => controller.text.trim())
-          .where((text) => text.isNotEmpty)
-          .toList()
           .asMap()
           .entries
-          .map((entry) => SubTask(
-                id: 'sub-${entry.key}',
-                label: entry.value,
-                isDone: false,
-              ))
+          .where((entry) => entry.value.text.trim().isNotEmpty)
+          .map((entry) {
+            final index = entry.key;
+            return SubTask(
+              id: 'sub-$index',
+              label: entry.value.text.trim(),
+              isDone: index < _subTaskDoneStates.length 
+                  ? _subTaskDoneStates[index] 
+                  : false,
+            );
+          })
           .toList();
 
       // Snapshot form definition and values
@@ -238,7 +268,7 @@ class _AddTaskViewState extends State<AddTaskView> {
         priority: _parsePriority(priorityStr),
         dueDate: dueDate,
         assignedTo: assignedTo,
-        status: TaskStatus.pending,
+        status: _parseStatus(statusStr),
         subTasks: subTasks,
         attachments: _attachments,
         location: _selectedLocation,
@@ -466,15 +496,37 @@ class _AddTaskViewState extends State<AddTaskView> {
                   const SizedBox(height: AppSpacing.md),
                   // Subtask Fields
                   ...List.generate(_subTaskControllers.length, (index) {
+                    final isDone = index < _subTaskDoneStates.length 
+                        ? _subTaskDoneStates[index] 
+                        : false;
                     return Padding(
                       padding: const EdgeInsets.only(bottom: AppSpacing.md),
                       child: Row(
                         children: [
+                          InkWell(
+                            onTap: () => _toggleSubTaskDone(index),
+                            borderRadius: BorderRadius.circular(4),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                border: isDone
+                                    ? Border.all(color: AppColors.primary, width: 2)
+                                    : Border.all(color: AppColors.border, width: 1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Icon(
+                                isDone ? Icons.check_box : Icons.check_box_outline_blank,
+                                size: 20,
+                                color: isDone ? AppColors.primary : AppColors.textMuted,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.xs),
                           Expanded(
                             child: ShadInput(
                               controller: _subTaskControllers[index],
                               hintText: 'Enter subtask ${index + 1}',
-                              prefixIcon: const Icon(Icons.check_box_outline_blank, size: 20),
+                              enabled: !isDone,
                             ),
                           ),
                           const SizedBox(width: AppSpacing.sm),

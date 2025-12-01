@@ -6,6 +6,7 @@ import '../../components/shadcn/shadcn.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/task_model.dart';
+import '../../models/team_member.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../utils/responsive_utils.dart';
 
@@ -23,6 +24,7 @@ class _EditTaskViewState extends State<EditTaskView> {
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
   late final List<TextEditingController> _subTaskControllers;
+  late final List<bool> _subTaskDoneStates;
 
   late DateTime _selectedDueDate;
   late TaskPriority _selectedPriority;
@@ -36,9 +38,13 @@ class _EditTaskViewState extends State<EditTaskView> {
     _descriptionController = TextEditingController(text: widget.task.description);
     _selectedDueDate = widget.task.dueDate;
     _selectedPriority = widget.task.priority;
+    // Extract name from "name - role" format or use as-is
     _selectedAssignedTo = widget.task.assignedTo;
     _subTaskControllers = widget.task.subTasks
         .map((sub) => TextEditingController(text: sub.label))
+        .toList();
+    _subTaskDoneStates = widget.task.subTasks
+        .map((sub) => sub.isDone)
         .toList();
   }
 
@@ -79,6 +85,7 @@ class _EditTaskViewState extends State<EditTaskView> {
   void _addSubTaskField() {
     setState(() {
       _subTaskControllers.add(TextEditingController());
+      _subTaskDoneStates.add(false);
     });
   }
 
@@ -86,7 +93,39 @@ class _EditTaskViewState extends State<EditTaskView> {
     setState(() {
       _subTaskControllers[index].dispose();
       _subTaskControllers.removeAt(index);
+      _subTaskDoneStates.removeAt(index);
     });
+  }
+
+  void _toggleSubTaskDone(int index) {
+    setState(() {
+      _subTaskDoneStates[index] = !_subTaskDoneStates[index];
+    });
+  }
+
+  String? _getMatchingAssigneeValue(List<TeamMember> teamMembers) {
+    if (_selectedAssignedTo.isEmpty) return null;
+    
+    // Try exact match first
+    for (final member in teamMembers) {
+      final displayValue = '${member.name} - ${member.role}';
+      if (displayValue == _selectedAssignedTo) {
+        return displayValue;
+      }
+    }
+    
+    // Try to match by name only (extract name from "name - role" format)
+    final nameParts = _selectedAssignedTo.split(' - ');
+    final nameOnly = nameParts.isNotEmpty ? nameParts[0].trim() : _selectedAssignedTo;
+    
+    for (final member in teamMembers) {
+      if (member.name == nameOnly) {
+        return '${member.name} - ${member.role}';
+      }
+    }
+    
+    // If no match found, return null to avoid dropdown error
+    return null;
   }
 
   Future<void> _updateTask() async {
@@ -120,26 +159,21 @@ class _EditTaskViewState extends State<EditTaskView> {
       
       // Build subtasks list
       final subTasks = _subTaskControllers
-          .map((controller) => controller.text.trim())
-          .where((text) => text.isNotEmpty)
-          .toList()
           .asMap()
           .entries
+          .where((entry) => entry.value.text.trim().isNotEmpty)
           .map((entry) {
-            // Preserve existing subtask if it matches
-            if (entry.key < widget.task.subTasks.length) {
-              final existing = widget.task.subTasks[entry.key];
-              if (existing.label == entry.value) {
-                return existing;
-              }
-            }
+            final index = entry.key;
+            final label = entry.value.text.trim();
+            // Preserve existing subtask ID if it matches
+            final existingId = index < widget.task.subTasks.length
+                ? widget.task.subTasks[index].id
+                : 'sub-$index';
             return SubTask(
-              id: entry.key < widget.task.subTasks.length
-                  ? widget.task.subTasks[entry.key].id
-                  : 'sub-${entry.key}',
-              label: entry.value,
-              isDone: entry.key < widget.task.subTasks.length
-                  ? widget.task.subTasks[entry.key].isDone
+              id: existingId,
+              label: label,
+              isDone: index < _subTaskDoneStates.length
+                  ? _subTaskDoneStates[index]
                   : false,
             );
           })
@@ -368,14 +402,15 @@ class _EditTaskViewState extends State<EditTaskView> {
 
               // Assigned To Dropdown
               ShadSelect<String>(
-                value: _selectedAssignedTo,
+                value: _getMatchingAssigneeValue(teamMembers),
                 label: 'Assigned To *',
                 hint: 'Select team member',
                 prefixIcon: const Icon(Icons.person, color: AppColors.primary),
                 items: teamMembers.map((member) {
+                  final displayValue = '${member.name} - ${member.role}';
                   return ShadSelectItem<String>(
-                    value: member.name,
-                    label: '${member.name} - ${member.role}',
+                    value: displayValue,
+                    label: displayValue,
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -383,7 +418,9 @@ class _EditTaskViewState extends State<EditTaskView> {
                           radius: 12,
                           backgroundColor: AppColors.primarySoft,
                           child: Text(
-                            member.name[0].toUpperCase(),
+                            member.name.isNotEmpty
+                                ? member.name[0].toUpperCase()
+                                : '?',
                             style: const TextStyle(
                               fontSize: 12,
                               color: AppColors.primary,
@@ -394,7 +431,7 @@ class _EditTaskViewState extends State<EditTaskView> {
                         const SizedBox(width: AppSpacing.sm),
                         Flexible(
                           child: Text(
-                            '${member.name} - ${member.role}',
+                            displayValue,
                             style: const TextStyle(fontWeight: FontWeight.w600),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -463,15 +500,31 @@ class _EditTaskViewState extends State<EditTaskView> {
               
               // Subtask Fields
               ...List.generate(_subTaskControllers.length, (index) {
+                final isDone = index < _subTaskDoneStates.length 
+                    ? _subTaskDoneStates[index] 
+                    : false;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: AppSpacing.md),
                   child: Row(
                     children: [
+                      InkWell(
+                        onTap: () => _toggleSubTaskDone(index),
+                        borderRadius: BorderRadius.circular(4),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          child: Icon(
+                            isDone ? Icons.check_box : Icons.check_box_outline_blank,
+                            size: 20,
+                            color: isDone ? AppColors.primary : AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
                       Expanded(
                         child: ShadInput(
                           controller: _subTaskControllers[index],
                           hintText: 'Enter subtask ${index + 1}',
-                          prefixIcon: const Icon(Icons.check_box_outline_blank, size: 20),
+                          enabled: !isDone,
                         ),
                       ),
                       const SizedBox(width: AppSpacing.sm),
