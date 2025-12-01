@@ -44,13 +44,18 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
   @override
   void initState() {
     super.initState();
-    // Load conversations after the first frame using microtask to avoid setState during build
+    // Load conversations after the first frame using delayed callback to avoid blocking UI
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        // Use a small delay to ensure UI is fully rendered before loading data
+        Future.delayed(const Duration(milliseconds: 200), () {
       if (mounted) {
         final provider = context.read<RealtimeChatProvider>();
         _providerRef = provider;
         provider.scheduleLoadConversations();
         _loadUsers();
+          }
+        });
       }
     });
     _searchController.addListener(_onSearchChanged);
@@ -295,7 +300,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
             AppSpacing.md,
             0,
             AppSpacing.md,
-            AppSpacing.lg,
+      AppSpacing.lg,
           )
         : EdgeInsets.zero;
     
@@ -309,7 +314,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                 MediaQuery.of(context).padding.top - 
                 MediaQuery.of(context).padding.bottom - 
                 (pagePadding.top + pagePadding.bottom),
-            child: _buildConversationList(context),
+          child: _buildConversationList(context),
           ),
         );
       } else {
@@ -354,20 +359,20 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                 ),
                 border: Border.fromBorderSide(BorderSide(color: AppColors.border)),
               ),
-              child: _buildChatView(context, isMobile)
-                  .animate()
-                  .fade(
-                    duration: AnimationUtils.normalDuration,
-                    delay: AnimationUtils.mediumDelay,
-                  )
-                  .slide(
-                    begin: const Offset(0.1, 0),
-                    end: Offset.zero,
-                    duration: AnimationUtils.normalDuration,
-                    delay: AnimationUtils.mediumDelay,
-                    curve: Curves.easeOutCubic,
+            child: _buildChatView(context, isMobile)
+                .animate()
+                .fade(
+                  duration: AnimationUtils.normalDuration,
+                  delay: AnimationUtils.mediumDelay,
+                )
+                .slide(
+                  begin: const Offset(0.1, 0),
+                  end: Offset.zero,
+                  duration: AnimationUtils.normalDuration,
+                  delay: AnimationUtils.mediumDelay,
+                  curve: Curves.easeOutCubic,
                   ),
-            ),
+                ),
           ),
         ],
       ),
@@ -378,24 +383,24 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
     final isMobile = ResponsiveUtils.isMobile(context);
     return LayoutBuilder(
       builder: (context, constraints) {
-        return Container(
+    return Container(
           height: isMobile ? constraints.maxHeight : null,
-          decoration: BoxDecoration(
-            color: AppColors.surface,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
             // Rounded only on the outer left side so it sits flush against
             // the conversation panel with no gap in between.
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(8),
               bottomLeft: Radius.circular(8),
             ),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.max,
-              children: [
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.max,
+          children: [
             // Chat header inside sidebar with hamburger menu
             Padding(
               padding: const EdgeInsets.only(
@@ -638,8 +643,8 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
         return Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: isCreating ? null : () => _startConversationWithUser(context, user),
-            child: Container(
+          onTap: isCreating ? null : () => _startConversationWithUser(context, user),
+          child: Container(
             padding: const EdgeInsets.symmetric(
               vertical: AppSpacing.sm,
               horizontal: AppSpacing.xs,
@@ -712,8 +717,8 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                   ),
               ],
             ),
+            ),
           ),
-        ),
         );
       },
     );
@@ -826,7 +831,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
         return Container(
                   height: double.infinity,
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
+                  color: AppColors.surface,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppColors.border),
                   ),
@@ -1107,10 +1112,12 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                 key: ValueKey(provider.selectedConversationId),
                                 stream: provider.messagesStream,
                                 builder: (context, snapshot) {
+                                  // Debug logging
+                                  debugPrint('StreamBuilder state: connectionState=${snapshot.connectionState}, hasData=${snapshot.hasData}, hasError=${snapshot.hasError}, dataLength=${snapshot.data?.length ?? 0}');
+
                                   // Show loading only if we're actively waiting for the first data
-                                  // onValue emits immediately, so this should be brief
                                   if (snapshot.connectionState == ConnectionState.waiting && 
-                                      snapshot.data == null && 
+                                      !snapshot.hasData && 
                                       !snapshot.hasError) {
                                     return const Center(
                                       child: CircularProgressIndicator(),
@@ -1118,6 +1125,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                   }
 
                                   if (snapshot.hasError) {
+                                    debugPrint('StreamBuilder error: ${snapshot.error}');
                                     return Center(
                                       child: Column(
                                         mainAxisAlignment:
@@ -1151,6 +1159,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                   }
 
                                   final messages = snapshot.data ?? [];
+                                  debugPrint('Displaying ${messages.length} messages');
 
                                   if (messages.isEmpty) {
                                     return Center(
@@ -1213,24 +1222,24 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                             } else {
                                               // Message
                                               final message = item as RealtimeChatMessage;
-                                              final isMine = message.senderId ==
-                                                  provider.currentUserId;
-                                              return RealtimeMessageBubble(
-                                                message: message,
-                                                isMine: isMine,
-                                              )
-                                                  .animate()
-                                                  .fade(
-                                                    duration: AnimationUtils.fastDuration,
-                                                    delay: AnimationUtils.shortDelay * (index % 5),
-                                                  )
-                                                  .slide(
-                                                    begin: Offset(isMine ? 0.1 : -0.1, 0),
-                                                    end: Offset.zero,
-                                                    duration: AnimationUtils.fastDuration,
-                                                    delay: AnimationUtils.shortDelay * (index % 5),
-                                                    curve: Curves.easeOutCubic,
-                                                  );
+                                            final isMine = message.senderId ==
+                                                provider.currentUserId;
+                                            return RealtimeMessageBubble(
+                                              message: message,
+                                              isMine: isMine,
+                                            )
+                                                .animate()
+                                                .fade(
+                                                  duration: AnimationUtils.fastDuration,
+                                                  delay: AnimationUtils.shortDelay * (index % 5),
+                                                )
+                                                .slide(
+                                                  begin: Offset(isMine ? 0.1 : -0.1, 0),
+                                                  end: Offset.zero,
+                                                  duration: AnimationUtils.fastDuration,
+                                                  delay: AnimationUtils.shortDelay * (index % 5),
+                                                  curve: Curves.easeOutCubic,
+                                                );
                                             }
                                           },
                                         ),
@@ -1251,7 +1260,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                               top: AppSpacing.xs,
                                             ),
                                             child: Align(
-                                              alignment: Alignment.centerLeft,
+                                            alignment: Alignment.centerLeft,
                                               child: Container(
                                                 padding: const EdgeInsets.symmetric(
                                                   horizontal: 10,
@@ -1490,9 +1499,9 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
     final memberCount = conversation.memberIds.length;
     final memberNames = conversation.memberNames.values.toList()..sort();
     final isMobile = ResponsiveUtils.isMobile(context);
-    
-    showDialog(
-      context: context,
+
+      showDialog(
+        context: context,
       builder: (context) => AlertDialog(
         insetPadding: EdgeInsets.symmetric(
           horizontal: isMobile ? 16 : 40,
@@ -1525,7 +1534,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                     fontSize: 20,
                   ),
                 ),
-              ),
+        ),
             ),
             const SizedBox(width: AppSpacing.md),
             Expanded(
@@ -1631,7 +1640,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
           ),
         ],
       ),
-    );
+      );
   }
 
   void _toggleMuteConversation(
@@ -1669,21 +1678,21 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
               Navigator.pop(context);
               // TODO: Implement delete conversation functionality
               if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
                     content: Text('Delete conversation functionality coming soon'),
-                  ),
-                );
+          ),
+        );
               }
             },
             style: TextButton.styleFrom(
               foregroundColor: AppColors.danger,
-            ),
+        ),
             child: const Text('Delete'),
           ),
         ],
       ),
-    );
+      );
   }
 
 }
@@ -1826,10 +1835,10 @@ class RealtimeConversationTile extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: AppSpacing.xs),
       child: Material(
         color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(8),
-          onTap: onTap,
-          child: AnimatedContainer(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.sm,
@@ -1878,15 +1887,15 @@ class RealtimeConversationTile extends StatelessWidget {
                         ],
                       )
                     else
-                      Text(
-                        conversation.lastMessage,
-                        style: const TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 11,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    Text(
+                      conversation.lastMessage,
+                      style: const TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 11,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
               ),
@@ -1936,7 +1945,7 @@ class RealtimeConversationTile extends StatelessWidget {
               ),
             ],
           ),
-        ),
+          ),
         ),
       ),
     );
@@ -2275,9 +2284,9 @@ class _TabButton extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(6),
-        child: Container(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
         padding: const EdgeInsets.symmetric(
           horizontal: 8,
           vertical: 6,

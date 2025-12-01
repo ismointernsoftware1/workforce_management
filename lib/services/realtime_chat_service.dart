@@ -471,7 +471,10 @@ class RealtimeChatService {
           _database.child('userConversations').child(userId);
       final snapshot = await userConversationsRef
           .get()
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 5), onTimeout: () {
+        print('Timeout loading conversations for user: $userId');
+        throw TimeoutException('Loading conversations timed out');
+      });
 
       if (!snapshot.exists) {
         print('No conversations found for user: $userId');
@@ -568,39 +571,47 @@ class RealtimeChatService {
       void emitMessages(DataSnapshot snapshot) {
         if (controller.isClosed) return;
         final messages = _parseSnapshot(snapshot);
-        controller.add(messages);
+        final wasInitial = !hasEmittedInitial;
         if (!hasEmittedInitial) {
           hasEmittedInitial = true;
           print('Emitted initial ${messages.length} messages for conversation: $conversationId');
         }
+        controller.add(messages);
+        if (wasInitial) {
+          print('Initial messages emitted successfully: ${messages.length}');
+        }
       }
 
-      // Get initial snapshot first and emit immediately
-      // This ensures we have data as soon as the stream is subscribed to
+      // Get initial snapshot FIRST and emit immediately
+      // This ensures data is available as soon as stream is subscribed
       messagesRef.orderByChild('timestamp').get().then((initial) {
-        if (!controller.isClosed && !hasEmittedInitial) {
+        if (!controller.isClosed) {
           emitMessages(initial);
+          print('Initial snapshot loaded: ${_parseSnapshot(initial).length} messages');
         }
       }).catchError((e) {
         print('Initial messages fetch failed for $conversationId: $e');
         if (!controller.isClosed && !hasEmittedInitial) {
           hasEmittedInitial = true;
           controller.add(<RealtimeChatMessage>[]);
+          print('Emitted empty list due to initial fetch error');
         }
       });
 
       // Set up live listener for real-time updates
+      // This will emit updates after the initial snapshot
       subscription = messagesRef
           .orderByChild('timestamp')
           .onValue
           .listen(
             (event) {
-              // Only emit if we've already emitted initial data
-              // This prevents duplicate emissions
+              // Only emit if we haven't already emitted initial data from .get()
+              // or if this is a new update
               if (hasEmittedInitial) {
+                // This is a real-time update, emit it
                 emitMessages(event.snapshot);
               } else {
-                // If initial hasn't been emitted yet, use this as initial
+                // Initial data from stream listener (backup if .get() failed)
                 emitMessages(event.snapshot);
               }
             },

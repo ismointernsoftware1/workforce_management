@@ -25,6 +25,7 @@ class RealtimeChatProvider extends ChangeNotifier {
   StreamSubscription<RealtimeChatConversation?>? _conversationSubscription;
   StreamSubscription<Map<String, String>>? _typingSubscription;
   StreamSubscription<List<RealtimeChatConversation>>? _conversationsStreamSubscription;
+  StreamSubscription<List<RealtimeChatMessage>>? _messagesStreamSubscription;
   Map<String, String> _typingUsers = {}; // For selected conversation
   Map<String, Map<String, String>> _allConversationsTyping = {}; // For all conversations
   Map<String, StreamSubscription<Map<String, String>>> _typingSubscriptions = {}; // Track subscriptions
@@ -121,94 +122,126 @@ class RealtimeChatProvider extends ChangeNotifier {
         .getUserConversationsStream()
         .listen(
           (conversations) {
-            // Update conversations list with correct unread counts for current user
-            _allConversations = conversations.map((c) {
-              return RealtimeChatConversation(
-                id: c.id,
-                type: c.type,
-                name: c.name,
-                lastMessage: c.lastMessage,
-                lastMessageTime: c.lastMessageTime,
-                memberIds: c.memberIds,
-                memberNames: c.memberNames,
-                unreadCounts: c.unreadCounts,
-                unreadCount: c.getUnreadCountForUser(currentUserId),
-                createdBy: c.createdBy,
-                createdAt: c.createdAt,
-              );
-            }).toList();
-            
-            // Update selected conversation if it exists
-            if (_selectedConversationId != null) {
-              final updatedConversation = _allConversations.firstWhere(
-                (c) => c.id == _selectedConversationId,
-                orElse: () => _selectedConversation!,
-              );
-              if (updatedConversation.id == _selectedConversationId) {
-                _selectedConversation = updatedConversation;
+            try {
+              // Update conversations list with correct unread counts for current user
+              _allConversations = conversations.map((c) {
+                return RealtimeChatConversation(
+                  id: c.id,
+                  type: c.type,
+                  name: c.name,
+                  lastMessage: c.lastMessage,
+                  lastMessageTime: c.lastMessageTime,
+                  memberIds: c.memberIds,
+                  memberNames: c.memberNames,
+                  unreadCounts: c.unreadCounts,
+                  unreadCount: c.getUnreadCountForUser(currentUserId),
+                  createdBy: c.createdBy,
+                  createdAt: c.createdAt,
+                );
+              }).toList();
+              
+              // Update selected conversation if it exists
+              if (_selectedConversationId != null) {
+                try {
+                  final updatedConversation = _allConversations.firstWhere(
+                    (c) => c.id == _selectedConversationId,
+                    orElse: () => _selectedConversation!,
+                  );
+                  if (updatedConversation.id == _selectedConversationId) {
+                    _selectedConversation = updatedConversation;
+                  }
+                } catch (e) {
+                  debugPrint('Error updating selected conversation: $e');
+                }
               }
+              
+              // Set up typing listeners for all conversations (with debounce to avoid excessive calls)
+              Future.microtask(() {
+                _setupTypingListenersForAllConversations();
+              });
+              
+              notifyListeners();
+            } catch (e) {
+              debugPrint('Error processing conversations stream: $e');
             }
-            
-            // Set up typing listeners for all conversations
-            _setupTypingListenersForAllConversations();
-            
-            notifyListeners();
           },
           onError: (error) {
             debugPrint('Error in conversations stream: $error');
+            _isLoading = false;
+            notifyListeners();
           },
+          cancelOnError: false,
         );
   }
 
+  bool _isSettingUpTypingListeners = false;
+  
   // Set up typing listeners for all conversations
   void _setupTypingListenersForAllConversations() {
-    final currentConversationIds = _allConversations.map((c) => c.id).toSet();
+    // Prevent recursive calls
+    if (_isSettingUpTypingListeners) {
+      debugPrint('Already setting up typing listeners, skipping...');
+      return;
+    }
     
-    // Cancel subscriptions for conversations that no longer exist
-    final subscriptionsToRemove = <String>[];
-    for (final conversationId in _typingSubscriptions.keys) {
-      if (!currentConversationIds.contains(conversationId)) {
-        _typingSubscriptions[conversationId]?.cancel();
-        subscriptionsToRemove.add(conversationId);
-        _allConversationsTyping.remove(conversationId);
+    _isSettingUpTypingListeners = true;
+    
+    try {
+      final currentConversationIds = _allConversations.map((c) => c.id).toSet();
+      
+      // Cancel subscriptions for conversations that no longer exist
+      final subscriptionsToRemove = <String>[];
+      for (final conversationId in _typingSubscriptions.keys) {
+        if (!currentConversationIds.contains(conversationId)) {
+          _typingSubscriptions[conversationId]?.cancel();
+          subscriptionsToRemove.add(conversationId);
+          _allConversationsTyping.remove(conversationId);
+        }
       }
-    }
-    for (final id in subscriptionsToRemove) {
-      _typingSubscriptions.remove(id);
-    }
-    
-    // Set up new subscriptions for conversations we don't have yet
-    for (final conversation in _allConversations) {
-      if (!_typingSubscriptions.containsKey(conversation.id)) {
-        final subscription = _controller
-            .getTypingStream(conversation.id)
-            .listen(
-              (typingUsers) {
-                // Filter out current user
-                final filteredUsers = Map<String, String>.from(typingUsers)
-                  ..removeWhere((userId, _) => userId == currentUserId);
-                
-                if (filteredUsers.isEmpty) {
+      for (final id in subscriptionsToRemove) {
+        _typingSubscriptions.remove(id);
+      }
+      
+      // Set up new subscriptions for conversations we don't have yet
+      for (final conversation in _allConversations) {
+        if (!_typingSubscriptions.containsKey(conversation.id)) {
+          final subscription = _controller
+              .getTypingStream(conversation.id)
+              .listen(
+                (typingUsers) {
+                  // Filter out current user
+                  final filteredUsers = Map<String, String>.from(typingUsers)
+                    ..removeWhere((userId, _) => userId == currentUserId);
+                  
+                  if (filteredUsers.isEmpty) {
+                    _allConversationsTyping.remove(conversation.id);
+                  } else {
+                    _allConversationsTyping[conversation.id] = filteredUsers;
+                  }
+                  notifyListeners();
+                },
+                onError: (error) {
+                  debugPrint('Error in typing stream for conversation ${conversation.id}: $error');
                   _allConversationsTyping.remove(conversation.id);
-                } else {
-                  _allConversationsTyping[conversation.id] = filteredUsers;
-                }
-                notifyListeners();
-              },
-              onError: (error) {
-                debugPrint('Error in typing stream for conversation ${conversation.id}: $error');
-                _allConversationsTyping.remove(conversation.id);
-                notifyListeners();
-              },
-            );
-        _typingSubscriptions[conversation.id] = subscription;
+                  notifyListeners();
+                },
+              );
+          _typingSubscriptions[conversation.id] = subscription;
+        }
       }
+    } finally {
+      _isSettingUpTypingListeners = false;
     }
   }
 
   // Load conversations without triggering during build
   void scheduleLoadConversations() {
-    Future.microtask(() => loadConversations());
+    // Use a delayed future to avoid blocking the UI thread
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (!_isLoading) {
+        loadConversations();
+      }
+    });
   }
 
   void selectConversation(String conversationId) {
@@ -267,6 +300,10 @@ class RealtimeChatProvider extends ChangeNotifier {
       }
     });
 
+    // Cancel previous messages stream subscription if exists
+    _messagesStreamSubscription?.cancel();
+    _messagesStream = null;
+    
     // Setup messages stream - create new stream for this conversation
     _messagesStream = _controller.getMessagesStream(conversationId);
     
@@ -405,6 +442,7 @@ class RealtimeChatProvider extends ChangeNotifier {
     _conversationSubscription?.cancel();
     _typingSubscription?.cancel();
     _conversationsStreamSubscription?.cancel();
+    _messagesStreamSubscription?.cancel();
     // Cancel all typing subscriptions
     for (final subscription in _typingSubscriptions.values) {
       subscription.cancel();
