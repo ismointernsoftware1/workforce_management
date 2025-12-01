@@ -23,6 +23,7 @@ class _EditTaskViewState extends State<EditTaskView> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
+  late final TextEditingController _dueDateController;
   late final List<TextEditingController> _subTaskControllers;
   late final List<bool> _subTaskDoneStates;
 
@@ -37,6 +38,9 @@ class _EditTaskViewState extends State<EditTaskView> {
     _titleController = TextEditingController(text: widget.task.title);
     _descriptionController = TextEditingController(text: widget.task.description);
     _selectedDueDate = widget.task.dueDate;
+    _dueDateController = TextEditingController(
+      text: DateFormat('MM/dd/yyyy').format(_selectedDueDate),
+    );
     _selectedPriority = widget.task.priority;
     // Extract name from "name - role" format or use as-is
     _selectedAssignedTo = widget.task.assignedTo;
@@ -52,6 +56,7 @@ class _EditTaskViewState extends State<EditTaskView> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _dueDateController.dispose();
     for (var controller in _subTaskControllers) {
       controller.dispose();
     }
@@ -62,8 +67,8 @@ class _EditTaskViewState extends State<EditTaskView> {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDueDate,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now().add(const Duration(days: 3650)),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -75,9 +80,10 @@ class _EditTaskViewState extends State<EditTaskView> {
         );
       },
     );
-    if (picked != null && picked != _selectedDueDate) {
+    if (picked != null) {
       setState(() {
         _selectedDueDate = picked;
+        _dueDateController.text = DateFormat('MM/dd/yyyy').format(picked);
       });
     }
   }
@@ -332,10 +338,11 @@ class _EditTaskViewState extends State<EditTaskView> {
               // Due Date
               ShadInput(
                 label: 'Due Date *',
-                hintText: DateFormat('MM/dd/yyyy').format(_selectedDueDate),
+                hintText: 'Select due date',
                 prefixIcon: const Icon(Icons.calendar_today, color: AppColors.primary),
                 suffixIcon: const Icon(Icons.arrow_drop_down, color: AppColors.textMuted),
                 readOnly: true,
+                controller: _dueDateController,
                 onTap: _selectDueDate,
               ),
               const SizedBox(height: AppSpacing.lg),

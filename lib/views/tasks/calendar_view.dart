@@ -5,6 +5,7 @@ import '../../components/shadcn/shadcn.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/task_model.dart';
+import '../../utils/responsive_utils.dart';
 
 class CalendarView extends StatefulWidget {
   const CalendarView({
@@ -78,6 +79,7 @@ class _CalendarViewState extends State<CalendarView> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveUtils.isMobile(context);
     final groupedTasks = _groupTasksByDate();
     final days = _getDaysInMonth();
     final today = DateTime.now();
@@ -86,144 +88,177 @@ class _CalendarViewState extends State<CalendarView> {
     final highPriorityCount = widget.tasks.where((t) => t.priority == TaskPriority.high).length;
     final normalPriorityCount = widget.tasks.where((t) => t.priority == TaskPriority.medium || t.priority == TaskPriority.low).length;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Calendar Grid
-        Expanded(
-          child: Container(
-            margin: const EdgeInsets.all(AppSpacing.lg),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
+    final priorityLegend = Container(
+      width: isMobile ? double.infinity : 200,
+      margin: EdgeInsets.only(
+        top: AppSpacing.lg,
+        right: isMobile ? 0 : AppSpacing.lg,
+        bottom: AppSpacing.lg,
+        left: isMobile ? AppSpacing.lg : 0,
+      ),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Priority',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
             ),
-            child: Column(
-              children: [
-                // Month Navigation
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: AppColors.border.withValues(alpha: 0.5),
-                      ),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.chevron_left, color: AppColors.textPrimary),
-                        onPressed: () {
-                          setState(() {
-                            _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
-                          });
-                        },
-                      ),
-                      Expanded(
-                        child: Text(
-                          DateFormat('MMMM yyyy').format(_currentMonth),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.chevron_right, color: AppColors.textPrimary),
-                        onPressed: () {
-                          setState(() {
-                            _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                // Day Headers
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: AppColors.border.withValues(alpha: 0.5),
-                      ),
-                    ),
-                  ),
-                  child: Row(
-                    children: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-                        .map((day) => Expanded(
-                              child: Text(
-                                day,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textMuted,
-                                ),
-                              ),
-                            ))
-                        .toList(),
-                  ),
-                ),
-                // Calendar Grid
-                Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      // Calculate how many columns we can fit (7 for days of week)
-                      final crossAxisCount = 7;
-                      final itemWidth = (constraints.maxWidth - (crossAxisCount - 1) * 4) / crossAxisCount;
-                      
-                      return GridView.builder(
-                        padding: const EdgeInsets.all(AppSpacing.sm),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: crossAxisCount,
-                          childAspectRatio: itemWidth / (itemWidth * 1.2),
-                          crossAxisSpacing: 4,
-                          mainAxisSpacing: 4,
-                        ),
-                        itemCount: days.length,
-                        itemBuilder: (context, index) {
-                          final date = days[index];
-                          final isToday = date.year == today.year &&
-                              date.month == today.month &&
-                              date.day == today.day;
-                          // Create a date key to match with grouped tasks
-                          final dateKey = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-                          final dayTasks = groupedTasks[dateKey] ?? [];
-                          final maxVisibleTasks = 3;
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _PriorityLegendItem(
+            label: 'High Priority',
+            count: highPriorityCount,
+            color: AppColors.danger,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _PriorityLegendItem(
+            label: 'Normal Priority',
+            count: normalPriorityCount,
+            color: AppColors.primary,
+          ),
+        ],
+      ),
+    );
 
-                          return Container(
-                            decoration: BoxDecoration(
-                              color: isToday
-                                  ? AppColors.primarySoft.withValues(alpha: 0.3)
-                                  : AppColors.surface,
-                              border: Border.all(
-                                color: isToday
-                                    ? AppColors.primary
-                                    : AppColors.border.withValues(alpha: 0.3),
-                                width: isToday ? 2 : 1,
-                              ),
-                              borderRadius: BorderRadius.circular(4),
+    Widget _buildCalendarContent() {
+      return Container(
+        margin: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
+        ),
+        child: Column(
+          children: [
+            // Month Navigation
+            Container(
+              padding: EdgeInsets.all(isMobile ? AppSpacing.sm : AppSpacing.md),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: AppColors.border.withValues(alpha: 0.5),
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.chevron_left, color: AppColors.textPrimary, size: isMobile ? 20 : 24),
+                    onPressed: () {
+                      setState(() {
+                        _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
+                      });
+                    },
+                  ),
+                  Expanded(
+                    child: Text(
+                      DateFormat('MMMM yyyy').format(_currentMonth),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: isMobile ? 16 : 18,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.chevron_right, color: AppColors.textPrimary, size: isMobile ? 20 : 24),
+                    onPressed: () {
+                      setState(() {
+                        _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            // Day Headers
+            Container(
+              padding: EdgeInsets.symmetric(vertical: isMobile ? AppSpacing.xs : AppSpacing.sm),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: AppColors.border.withValues(alpha: 0.5),
+                  ),
+                ),
+              ),
+              child: Row(
+                children: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                    .map((day) => Expanded(
+                          child: Text(
+                            day,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: isMobile ? 11 : 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textMuted,
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                            // Date Number
+                          ),
+                        ))
+                    .toList(),
+              ),
+            ),
+            // Calendar Grid
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final crossAxisCount = 7;
+                  final itemWidth = (constraints.maxWidth - (crossAxisCount - 1) * 4) / crossAxisCount;
+                  
+                  return GridView.builder(
+                    padding: EdgeInsets.all(isMobile ? AppSpacing.xs : AppSpacing.sm),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      childAspectRatio: itemWidth / (itemWidth * (isMobile ? 1.5 : 1.2)),
+                      crossAxisSpacing: isMobile ? 2 : 4,
+                      mainAxisSpacing: isMobile ? 2 : 4,
+                    ),
+                    itemCount: days.length,
+                    itemBuilder: (context, index) {
+                      final date = days[index];
+                      final isToday = date.year == today.year &&
+                          date.month == today.month &&
+                          date.day == today.day;
+                      final dateKey = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+                      final dayTasks = groupedTasks[dateKey] ?? [];
+                      final maxVisibleTasks = isMobile ? 2 : 3;
+
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: isToday
+                              ? AppColors.primarySoft.withValues(alpha: 0.3)
+                              : AppColors.surface,
+                          border: Border.all(
+                            color: isToday
+                                ? AppColors.primary
+                                : AppColors.border.withValues(alpha: 0.3),
+                            width: isToday ? 2 : 1,
+                          ),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Padding(
-                              padding: const EdgeInsets.all(4),
+                              padding: EdgeInsets.all(isMobile ? 2 : 4),
                               child: Text(
                                 '${date.day}',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: isMobile ? 11 : 12,
                                   fontWeight: isToday ? FontWeight.bold : FontWeight.w500,
                                   color: isToday ? AppColors.primary : AppColors.textPrimary,
                                 ),
                               ),
                             ),
-                            // Tasks
                             Expanded(
                               child: dayTasks.isEmpty
                                   ? const SizedBox.shrink()
@@ -235,16 +270,16 @@ class _CalendarViewState extends State<CalendarView> {
                                       itemBuilder: (context, taskIndex) {
                                         final task = dayTasks[taskIndex];
                                         return Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 2,
-                                            vertical: 1,
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: isMobile ? 1 : 2,
+                                            vertical: isMobile ? 0.5 : 1,
                                           ),
                                           child: InkWell(
                                             onTap: () => widget.onTaskTap(task),
                                             child: Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 4,
-                                                vertical: 2,
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: isMobile ? 2 : 4,
+                                                vertical: isMobile ? 1 : 2,
                                               ),
                                               decoration: BoxDecoration(
                                                 color: _getTaskColor(task),
@@ -257,7 +292,7 @@ class _CalendarViewState extends State<CalendarView> {
                                               child: Text(
                                                 task.title,
                                                 style: TextStyle(
-                                                  fontSize: 9,
+                                                  fontSize: isMobile ? 8 : 9,
                                                   fontWeight: FontWeight.w500,
                                                   color: AppColors.textPrimary,
                                                 ),
@@ -270,76 +305,49 @@ class _CalendarViewState extends State<CalendarView> {
                                       },
                                     ),
                             ),
-                            // View More Link
                             if (dayTasks.length > maxVisibleTasks)
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                padding: EdgeInsets.symmetric(horizontal: isMobile ? 2 : 4),
                                 child: InkWell(
                                   onTap: () => _showDayTasksDialog(context, date, dayTasks),
                                   child: Text(
                                     'View more',
                                     style: TextStyle(
-                                      fontSize: 9,
+                                      fontSize: isMobile ? 8 : 9,
                                       color: AppColors.primary,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                 ),
                               ),
-                              ],
-                            ),
-                          );
-                        },
+                          ],
+                        ),
                       );
                     },
-                  ),
-                ),
-              ],
+                  );
+                },
+              ),
             ),
-          ),
+          ],
         ),
-        // Priority Legend Sidebar
-        Container(
-          width: 200,
-          margin: const EdgeInsets.only(
-            top: AppSpacing.lg,
-            right: AppSpacing.lg,
-            bottom: AppSpacing.lg,
-          ),
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
-          ),
-          child: Column(
+      );
+    }
+
+    return isMobile
+        ? Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Priority',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              _PriorityLegendItem(
-                label: 'High Priority',
-                count: highPriorityCount,
-                color: AppColors.danger,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              _PriorityLegendItem(
-                label: 'Normal Priority',
-                count: normalPriorityCount,
-                color: AppColors.primary,
-              ),
+              Expanded(child: _buildCalendarContent()),
+              priorityLegend,
             ],
-          ),
-        ),
-      ],
-    );
+          )
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _buildCalendarContent()),
+              priorityLegend,
+            ],
+          );
   }
 
   void _showDayTasksDialog(BuildContext context, DateTime date, List<TaskModel> tasks) {

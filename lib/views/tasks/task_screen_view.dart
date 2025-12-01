@@ -9,6 +9,7 @@ import '../../models/task_model.dart';
 import '../../models/team_member.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../controllers/task_screen_controller.dart';
+import '../../utils/responsive_utils.dart';
 import 'add_task_view.dart';
 import 'edit_task_view.dart';
 import 'task_detail_view.dart';
@@ -102,10 +103,18 @@ class _TaskScreenViewState extends State<TaskScreenView> {
   Widget build(BuildContext context) {
     final provider = context.watch<DashboardProvider>();
 
+    final isMobile = ResponsiveUtils.isMobile(context);
     return ChangeNotifierProvider.value(
       value: _controller,
       child: Scaffold(
         backgroundColor: AppColors.background,
+        floatingActionButton: isMobile
+            ? FloatingActionButton(
+                onPressed: () => _openAddTask(context),
+                backgroundColor: AppColors.primary,
+                child: const Icon(Icons.add, color: Colors.white),
+              )
+            : null,
         body: Column(
           children: [
             // Navigation Tabs
@@ -139,6 +148,7 @@ class _TaskScreenViewState extends State<TaskScreenView> {
   Widget _buildNavigationTabs() {
     return Consumer<TaskScreenController>(
       builder: (context, controller, _) {
+        final isMobile = ResponsiveUtils.isMobile(context);
         return Container(
           decoration: BoxDecoration(
             color: AppColors.surface,
@@ -154,6 +164,7 @@ class _TaskScreenViewState extends State<TaskScreenView> {
               Expanded(
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
+                  padding: EdgeInsets.symmetric(horizontal: isMobile ? AppSpacing.sm : AppSpacing.lg),
                   child: Row(
                     children: [
                       _buildTab(
@@ -161,30 +172,34 @@ class _TaskScreenViewState extends State<TaskScreenView> {
                         TaskViewMode.overview,
                         controller.currentView == TaskViewMode.overview,
                         () => controller.setView(TaskViewMode.overview),
+                        isMobile: isMobile,
                       ),
                       _buildTab(
                         'List',
                         TaskViewMode.list,
                         controller.currentView == TaskViewMode.list,
                         () => controller.setView(TaskViewMode.list),
+                        isMobile: isMobile,
                       ),
                       _buildTab(
                         'Board',
                         TaskViewMode.board,
                         controller.currentView == TaskViewMode.board,
                         () => controller.setView(TaskViewMode.board),
+                        isMobile: isMobile,
                       ),
-              _buildTab(
-                'Calendar',
-                TaskViewMode.calendar,
-                controller.currentView == TaskViewMode.calendar,
-                () => controller.setView(TaskViewMode.calendar),
-              ),
+                      _buildTab(
+                        'Calendar',
+                        TaskViewMode.calendar,
+                        controller.currentView == TaskViewMode.calendar,
+                        () => controller.setView(TaskViewMode.calendar),
+                        isMobile: isMobile,
+                      ),
                     ],
                   ),
                 ),
               ),
-              Padding(
+              if (!isMobile) Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                 child: ShadButton(
                   onPressed: () => _openAddTask(context),
@@ -201,12 +216,12 @@ class _TaskScreenViewState extends State<TaskScreenView> {
     );
   }
 
-  Widget _buildTab(String label, TaskViewMode mode, bool isActive, VoidCallback onTap) {
+  Widget _buildTab(String label, TaskViewMode mode, bool isActive, VoidCallback onTap, {bool isMobile = false}) {
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg,
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? AppSpacing.md : AppSpacing.lg,
           vertical: AppSpacing.md,
         ),
         decoration: BoxDecoration(
@@ -220,7 +235,7 @@ class _TaskScreenViewState extends State<TaskScreenView> {
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 14,
+            fontSize: isMobile ? 13 : 14,
             fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
             color: isActive ? AppColors.primary : AppColors.textMuted,
           ),
@@ -232,9 +247,10 @@ class _TaskScreenViewState extends State<TaskScreenView> {
   Widget _buildFilterSection(DashboardProvider provider) {
     return Consumer<TaskScreenController>(
       builder: (context, controller, _) {
+        final isMobile = ResponsiveUtils.isMobile(context);
         return Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
+          padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? AppSpacing.md : AppSpacing.lg,
             vertical: AppSpacing.md,
           ),
           decoration: BoxDecoration(
@@ -246,40 +262,79 @@ class _TaskScreenViewState extends State<TaskScreenView> {
               ),
             ),
           ),
-          child: Row(
-            children: [
-              // Due Date Filter
-              _buildFilterDropdown(
-                label: _getDueDateLabel(controller),
-                items: ['This Week', 'This Month', 'Custom'],
-                onSelected: (value) {
-                  if (value == 'Custom') {
-                    _showDateRangePicker(context, controller);
-                  } else {
-                    controller.setDueDateFilter(value);
-                  }
-                },
-              ),
-              const SizedBox(width: AppSpacing.md),
-              // Assignee Filter
-              _buildFilterDropdown(
-                label: controller.selectedAssigneeFilter ?? 'All',
-                items: ['All', ...provider.members.map((m) => m.name)],
-                onSelected: (value) {
-                  controller.setAssigneeFilter(value == 'All' ? null : value);
-                },
-              ),
-              const SizedBox(width: AppSpacing.md),
-              // Priority Filter
-              _buildFilterDropdown(
-                label: controller.selectedPriorityFilter ?? 'All',
-                items: ['All', 'High', 'Medium', 'Low'],
-                onSelected: (value) {
-                  controller.setPriorityFilter(value == 'All' ? null : value);
-                },
-              ),
-            ],
-          ),
+          child: isMobile
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Due Date Filter
+                    _buildFilterDropdown(
+                      label: _getDueDateLabel(controller),
+                      items: ['This Week', 'This Month', 'Custom'],
+                      onSelected: (value) {
+                        if (value == 'Custom') {
+                          _showDateRangePicker(context, controller);
+                        } else {
+                          controller.setDueDateFilter(value);
+                        }
+                      },
+                      isMobile: true,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    // Assignee Filter
+                    _buildFilterDropdown(
+                      label: controller.selectedAssigneeFilter ?? 'All',
+                      items: ['All', ...provider.members.map((m) => m.name)],
+                      onSelected: (value) {
+                        controller.setAssigneeFilter(value == 'All' ? null : value);
+                      },
+                      isMobile: true,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    // Priority Filter
+                    _buildFilterDropdown(
+                      label: controller.selectedPriorityFilter ?? 'All',
+                      items: ['All', 'High', 'Medium', 'Low'],
+                      onSelected: (value) {
+                        controller.setPriorityFilter(value == 'All' ? null : value);
+                      },
+                      isMobile: true,
+                    ),
+                  ],
+                )
+              : Row(
+                  children: [
+                    // Due Date Filter
+                    _buildFilterDropdown(
+                      label: _getDueDateLabel(controller),
+                      items: ['This Week', 'This Month', 'Custom'],
+                      onSelected: (value) {
+                        if (value == 'Custom') {
+                          _showDateRangePicker(context, controller);
+                        } else {
+                          controller.setDueDateFilter(value);
+                        }
+                      },
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    // Assignee Filter
+                    _buildFilterDropdown(
+                      label: controller.selectedAssigneeFilter ?? 'All',
+                      items: ['All', ...provider.members.map((m) => m.name)],
+                      onSelected: (value) {
+                        controller.setAssigneeFilter(value == 'All' ? null : value);
+                      },
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    // Priority Filter
+                    _buildFilterDropdown(
+                      label: controller.selectedPriorityFilter ?? 'All',
+                      items: ['All', 'High', 'Medium', 'Low'],
+                      onSelected: (value) {
+                        controller.setPriorityFilter(value == 'All' ? null : value);
+                      },
+                    ),
+                  ],
+                ),
         );
       },
     );
@@ -298,19 +353,21 @@ class _TaskScreenViewState extends State<TaskScreenView> {
     required String label,
     required List<String> items,
     required Function(String?) onSelected,
+    bool isMobile = false,
   }) {
     return PopupMenuButton<String>(
       child: Container(
-        padding: const EdgeInsets.symmetric(
+        padding: EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
           vertical: AppSpacing.sm,
         ),
+        width: isMobile ? double.infinity : null,
         decoration: BoxDecoration(
           border: Border.all(color: AppColors.border),
           borderRadius: BorderRadius.circular(6),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: isMobile ? MainAxisSize.max : MainAxisSize.min,
           children: [
             Text(
               label,
@@ -354,6 +411,7 @@ class _TaskScreenViewState extends State<TaskScreenView> {
   Widget _buildListView(DashboardProvider provider) {
     return Consumer<TaskScreenController>(
       builder: (context, controller, _) {
+        final isMobile = ResponsiveUtils.isMobile(context);
         final filteredTasks = controller.filterTasks(
           provider.tasks,
           members: provider.members,
@@ -361,7 +419,7 @@ class _TaskScreenViewState extends State<TaskScreenView> {
         final grouped = controller.groupTasksByStatus(filteredTasks);
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.lg),
+          padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.lg),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -372,7 +430,7 @@ class _TaskScreenViewState extends State<TaskScreenView> {
                 Colors.grey,
                 Icons.radio_button_unchecked,
               ),
-              const SizedBox(height: AppSpacing.md),
+              SizedBox(height: isMobile ? AppSpacing.sm : AppSpacing.md),
               _buildListSection(
                 'In Progress',
                 TaskStatus.inProgress,
@@ -380,7 +438,7 @@ class _TaskScreenViewState extends State<TaskScreenView> {
                 AppColors.warning,
                 Icons.access_time,
               ),
-              const SizedBox(height: AppSpacing.md),
+              SizedBox(height: isMobile ? AppSpacing.sm : AppSpacing.md),
               _buildListSection(
                 'Completed',
                 TaskStatus.completed,
@@ -421,12 +479,62 @@ class _TaskScreenViewState extends State<TaskScreenView> {
   Widget _buildBoardView(DashboardProvider provider) {
     return Consumer<TaskScreenController>(
       builder: (context, controller, _) {
+        final isMobile = ResponsiveUtils.isMobile(context);
         final filteredTasks = controller.filterTasks(
           provider.tasks,
           members: provider.members,
         );
         final grouped = controller.groupTasksByStatus(filteredTasks);
 
+        if (isMobile) {
+          // Horizontal scrollable board on mobile
+          return Container(
+            color: AppColors.background,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.85,
+                    child: _buildBoardColumn(
+                      'Pending',
+                      TaskStatus.pending,
+                      grouped[TaskStatus.pending] ?? [],
+                      Colors.grey,
+                      Icons.radio_button_unchecked,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.85,
+                    child: _buildBoardColumn(
+                      'In Progress',
+                      TaskStatus.inProgress,
+                      grouped[TaskStatus.inProgress] ?? [],
+                      AppColors.warning,
+                      Icons.access_time,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.85,
+                    child: _buildBoardColumn(
+                      'Completed',
+                      TaskStatus.completed,
+                      grouped[TaskStatus.completed] ?? [],
+                      AppColors.success,
+                      Icons.check_circle,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // Desktop: 3 columns side by side
         return Container(
           color: AppColors.background,
           child: Row(
@@ -581,6 +689,8 @@ class _TaskScreenViewState extends State<TaskScreenView> {
   Widget _buildOverviewView(DashboardProvider provider) {
     return Consumer<TaskScreenController>(
       builder: (context, controller, _) {
+        // Use all tasks for overview statistics, not filtered
+        final allTasks = provider.tasks;
         final filteredTasks = controller.filterTasks(
           provider.tasks,
           members: provider.members,
@@ -614,15 +724,59 @@ class _TaskScreenViewState extends State<TaskScreenView> {
           });
         final recentTasksList = recentTasks.take(10).toList();
         
-        // Upcoming deadlines (next 7 days)
+        // Upcoming deadlines (this week + overdue tasks)
+        // Use ALL tasks, not filtered, to show all upcoming deadlines
         final now = DateTime.now();
-        final nextWeek = now.add(const Duration(days: 7));
-        final upcomingTasks = filteredTasks.where((task) {
-          return task.dueDate.isAfter(now) && 
-                 task.dueDate.isBefore(nextWeek) &&
-                 task.status != TaskStatus.completed;
+        final today = DateTime(now.year, now.month, now.day);
+        
+        // Calculate start of current week (Monday)
+        final weekday = today.weekday; // 1 = Monday, 7 = Sunday
+        final daysFromMonday = weekday - 1;
+        final startOfWeek = today.subtract(Duration(days: daysFromMonday));
+        
+        // Calculate end of current week (Sunday)
+        final endOfWeek = startOfWeek.add(const Duration(days: 6));
+        
+        final upcomingTasks = allTasks.where((task) {
+          // Exclude completed tasks
+          if (task.status == TaskStatus.completed) return false;
+          
+          // Normalize task due date to just year/month/day (remove time component)
+          final taskDate = DateTime(task.dueDate.year, task.dueDate.month, task.dueDate.day);
+          
+          // Include:
+          // 1. Overdue tasks (past due) - show last 30 days of overdue
+          // 2. Tasks due this week (from Monday to Sunday of current week)
+          final thirtyDaysAgo = today.subtract(const Duration(days: 30));
+          final isOverdue = taskDate.compareTo(today) < 0 && taskDate.compareTo(thirtyDaysAgo) >= 0;
+          // Include tasks from start of week to end of week (inclusive)
+          final isDueThisWeek = taskDate.compareTo(startOfWeek) >= 0 && taskDate.compareTo(endOfWeek) <= 0;
+          
+          // Show overdue tasks
+          if (isOverdue) return true;
+          // Show tasks due this week
+          if (isDueThisWeek) return true;
+          
+          return false;
         }).toList()
-          ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+          ..sort((a, b) {
+            // Sort: overdue first (most overdue first), then due today, then upcoming (earliest first)
+            final aDate = DateTime(a.dueDate.year, a.dueDate.month, a.dueDate.day);
+            final bDate = DateTime(b.dueDate.year, b.dueDate.month, b.dueDate.day);
+            final aIsOverdue = aDate.compareTo(today) < 0;
+            final bIsOverdue = bDate.compareTo(today) < 0;
+            final aIsDueToday = aDate.compareTo(today) == 0;
+            final bIsDueToday = bDate.compareTo(today) == 0;
+            
+            // Overdue tasks first
+            if (aIsOverdue && !bIsOverdue) return -1;
+            if (!aIsOverdue && bIsOverdue) return 1;
+            // Then tasks due today
+            if (aIsDueToday && !bIsDueToday) return -1;
+            if (!aIsDueToday && bIsDueToday) return 1;
+            // Then sort by date
+            return aDate.compareTo(bDate);
+          });
         
         // Team performance
         final tasksByAssignee = <String, int>{};
@@ -648,17 +802,15 @@ class _TaskScreenViewState extends State<TaskScreenView> {
           return task.updatedAt!.isAfter(monthStart);
         }).length;
 
+        final isMobile = ResponsiveUtils.isMobile(context);
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.lg),
+          padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.lg),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Statistics Cards Row
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final isMobile = constraints.maxWidth < 600;
-                  if (isMobile) {
-                    return Column(
+              isMobile
+                  ? Column(
                       children: [
                         _buildStatCard('Total Tasks', totalTasks.toString(), Icons.task, AppColors.primary),
                         const SizedBox(height: AppSpacing.md),
@@ -673,35 +825,29 @@ class _TaskScreenViewState extends State<TaskScreenView> {
                         const SizedBox(height: AppSpacing.md),
                         _buildStatCard('Overdue', overdueCount.toString(), Icons.warning, AppColors.danger),
                       ],
-                    );
-                  }
-                  return Row(
-                    children: [
-                      Expanded(child: _buildStatCard('Total Tasks', totalTasks.toString(), Icons.task, AppColors.primary)),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(child: _buildStatCard('Pending', pendingCount.toString(), Icons.pending, Colors.grey,
-                        subtitle: totalTasks > 0 ? '${((pendingCount / totalTasks) * 100).round()}%' : '0%')),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(child: _buildStatCard('In Progress', inProgressCount.toString(), Icons.access_time, AppColors.warning,
-                        subtitle: totalTasks > 0 ? '${((inProgressCount / totalTasks) * 100).round()}%' : '0%')),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(child: _buildStatCard('Completed', completedCount.toString(), Icons.check_circle, AppColors.success,
-                        subtitle: totalTasks > 0 ? '${((completedCount / totalTasks) * 100).round()}%' : '0%')),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(child: _buildStatCard('Overdue', overdueCount.toString(), Icons.warning, AppColors.danger)),
-                    ],
-                  );
-                },
-              ),
+                    )
+                  : Row(
+                      children: [
+                        Expanded(child: _buildStatCard('Total Tasks', totalTasks.toString(), Icons.task, AppColors.primary)),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(child: _buildStatCard('Pending', pendingCount.toString(), Icons.pending, Colors.grey,
+                          subtitle: totalTasks > 0 ? '${((pendingCount / totalTasks) * 100).round()}%' : '0%')),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(child: _buildStatCard('In Progress', inProgressCount.toString(), Icons.access_time, AppColors.warning,
+                          subtitle: totalTasks > 0 ? '${((inProgressCount / totalTasks) * 100).round()}%' : '0%')),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(child: _buildStatCard('Completed', completedCount.toString(), Icons.check_circle, AppColors.success,
+                          subtitle: totalTasks > 0 ? '${((completedCount / totalTasks) * 100).round()}%' : '0%')),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(child: _buildStatCard('Overdue', overdueCount.toString(), Icons.warning, AppColors.danger)),
+                      ],
+                    ),
               
-              const SizedBox(height: AppSpacing.xl),
+              SizedBox(height: isMobile ? AppSpacing.lg : AppSpacing.xl),
               
               // Second Row: Priority Distribution, Completion Rate, Quick Actions
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final isMobile = constraints.maxWidth < 900;
-                  if (isMobile) {
-                    return Column(
+              isMobile
+                  ? Column(
                       children: [
                         _buildPriorityDistribution(highPriorityCount, mediumPriorityCount, lowPriorityCount, totalTasks),
                         const SizedBox(height: AppSpacing.lg),
@@ -709,91 +855,76 @@ class _TaskScreenViewState extends State<TaskScreenView> {
                         const SizedBox(height: AppSpacing.lg),
                         _buildQuickActions(context),
                       ],
-                    );
-                  }
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: _buildPriorityDistribution(highPriorityCount, mediumPriorityCount, lowPriorityCount, totalTasks),
-                      ),
-                      const SizedBox(width: AppSpacing.lg),
-                      Expanded(
-                        flex: 2,
-                        child: _buildCompletionRate(completionRate, totalTasks, completedCount),
-                      ),
-                      const SizedBox(width: AppSpacing.lg),
-                      Expanded(
-                        flex: 1,
-                        child: _buildQuickActions(context),
-                      ),
-                    ],
-                  );
-                },
-              ),
+                    )
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: _buildPriorityDistribution(highPriorityCount, mediumPriorityCount, lowPriorityCount, totalTasks),
+                        ),
+                        const SizedBox(width: AppSpacing.lg),
+                        Expanded(
+                          flex: 2,
+                          child: _buildCompletionRate(completionRate, totalTasks, completedCount),
+                        ),
+                        const SizedBox(width: AppSpacing.lg),
+                        Expanded(
+                          flex: 1,
+                          child: _buildQuickActions(context),
+                        ),
+                      ],
+                    ),
               
-              const SizedBox(height: AppSpacing.xl),
+              SizedBox(height: isMobile ? AppSpacing.lg : AppSpacing.xl),
               
               // Third Row: Recent Tasks and Upcoming Deadlines
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final isMobile = constraints.maxWidth < 900;
-                  if (isMobile) {
-                    return Column(
+              isMobile
+                  ? Column(
                       children: [
                         _buildRecentTasks(context, recentTasksList, provider),
                         const SizedBox(height: AppSpacing.lg),
                         _buildUpcomingDeadlines(context, upcomingTasks, provider),
                       ],
-                    );
-                  }
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: _buildRecentTasks(context, recentTasksList, provider),
-                      ),
-                      const SizedBox(width: AppSpacing.lg),
-                      Expanded(
-                        child: _buildUpcomingDeadlines(context, upcomingTasks, provider),
-                      ),
-                    ],
-                  );
-                },
-              ),
+                    )
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _buildRecentTasks(context, recentTasksList, provider),
+                        ),
+                        const SizedBox(width: AppSpacing.lg),
+                        Expanded(
+                          child: _buildUpcomingDeadlines(context, upcomingTasks, provider),
+                        ),
+                      ],
+                    ),
               
-              const SizedBox(height: AppSpacing.xl),
+              SizedBox(height: isMobile ? AppSpacing.lg : AppSpacing.xl),
               
               // Fourth Row: Team Performance and Summary Widgets
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final isMobile = constraints.maxWidth < 900;
-                  if (isMobile) {
-                    return Column(
+              isMobile
+                  ? Column(
                       children: [
                         _buildTeamPerformance(context, sortedAssignees, provider),
                         const SizedBox(height: AppSpacing.lg),
                         _buildSummaryWidgets(thisWeekCompleted, thisMonthCompleted, totalTasks),
                       ],
-                    );
-                  }
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: _buildTeamPerformance(context, sortedAssignees, provider),
-                      ),
-                      const SizedBox(width: AppSpacing.lg),
-                      Expanded(
-                        flex: 1,
-                        child: _buildSummaryWidgets(thisWeekCompleted, thisMonthCompleted, totalTasks),
-                      ),
-                    ],
-                  );
-                },
-              ),
+                    )
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: _buildTeamPerformance(context, sortedAssignees, provider),
+                        ),
+                        const SizedBox(width: AppSpacing.lg),
+                        Expanded(
+                          flex: 1,
+                          child: _buildSummaryWidgets(thisWeekCompleted, thisMonthCompleted, totalTasks),
+                        ),
+                      ],
+                    ),
             ],
           ),
         );
@@ -1244,8 +1375,12 @@ class _TaskScreenViewState extends State<TaskScreenView> {
           else
             ...tasks.take(7).map((task) {
               final assignee = _findAssigneeFromTask(provider, task.assignedTo);
-              final daysUntil = task.dueDate.difference(DateTime.now()).inDays;
-              final isOverdue = task.dueDate.isBefore(DateTime.now());
+              // Normalize dates for accurate day calculation
+              final now = DateTime.now();
+              final today = DateTime(now.year, now.month, now.day);
+              final taskDate = DateTime(task.dueDate.year, task.dueDate.month, task.dueDate.day);
+              final daysUntil = taskDate.difference(today).inDays;
+              final isOverdue = taskDate.compareTo(today) < 0;
               return InkWell(
                 onTap: () {
                   Navigator.of(context).push(
@@ -1776,15 +1911,16 @@ class _ListTaskRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormatter = DateFormat('MMM d - hh:mm a', 'en_US');
+    final isMobile = ResponsiveUtils.isMobile(context);
+    final dateFormatter = DateFormat(isMobile ? 'MMM d' : 'MMM d - hh:mm a', 'en_US');
     final isOverdue = task.dueDate.isBefore(DateTime.now()) && task.status != TaskStatus.completed;
     final assignee = _findAssigneeFromTask(provider, task.assignedTo);
 
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? AppSpacing.sm : AppSpacing.md,
           vertical: AppSpacing.sm,
         ),
         decoration: BoxDecoration(
@@ -1794,75 +1930,168 @@ class _ListTaskRow extends StatelessWidget {
             ),
           ),
         ),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 40,
-              child: task.status == TaskStatus.completed
-                  ? const Icon(Icons.check_circle, size: 20, color: AppColors.success)
-                  : task.status == TaskStatus.inProgress
-                      ? InkWell(
-                          onTap: () => _updateTaskStatus(context, task, TaskStatus.completed),
-                          child: Container(
-                            width: 16,
-                            height: 16,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: AppColors.warning,
-                                width: 2,
-                              ),
-                            ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.access_time,
-                                size: 10,
-                                color: AppColors.warning,
-                              ),
+        child: isMobile
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 32,
+                        child: task.status == TaskStatus.completed
+                            ? const Icon(Icons.check_circle, size: 18, color: AppColors.success)
+                            : task.status == TaskStatus.inProgress
+                                ? InkWell(
+                                    onTap: () => _updateTaskStatus(context, task, TaskStatus.completed),
+                                    child: Container(
+                                      width: 16,
+                                      height: 16,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: AppColors.warning,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.access_time,
+                                          size: 10,
+                                          color: AppColors.warning,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : Checkbox(
+                                    value: false,
+                                    onChanged: (value) {
+                                      if (value == true) {
+                                        _updateTaskStatus(context, task, TaskStatus.inProgress);
+                                      }
+                                    },
+                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          task.title,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textPrimary,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Row(
+                    children: [
+                      if (task.assignedTo.isNotEmpty)
+                        CircleAvatar(
+                          radius: 10,
+                          backgroundColor: AppColors.primarySoft,
+                          child: Text(
+                            assignee.name.isNotEmpty
+                                ? assignee.name[0].toUpperCase()
+                                : '?',
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         )
-                      : Checkbox(
-                          value: false,
-                          onChanged: (value) {
-                            if (value == true) {
-                              _updateTaskStatus(context, task, TaskStatus.inProgress);
-                            }
-                          },
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-            ),
-            Expanded(
-              flex: 3,
-              child: Text(
-                task.title,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Row(
-                children: [
-                  if (task.assignedTo.isNotEmpty)
-                    CircleAvatar(
-                      radius: 12,
-                      backgroundColor: AppColors.primarySoft,
-                      child: Text(
-                        assignee.name.isNotEmpty
-                            ? assignee.name[0].toUpperCase()
-                            : '?',
-                        style: const TextStyle(
+                      else
+                        const SizedBox.shrink(),
+                      if (task.assignedTo.isNotEmpty) const SizedBox(width: AppSpacing.xs),
+                      Icon(Icons.calendar_today, size: 11, color: AppColors.textMuted),
+                      const SizedBox(width: 4),
+                      Text(
+                        dateFormatter.format(task.dueDate),
+                        style: TextStyle(
                           fontSize: 10,
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.bold,
+                          color: isOverdue ? AppColors.danger : AppColors.textMuted,
+                          fontWeight: isOverdue ? FontWeight.w600 : FontWeight.normal,
                         ),
                       ),
-                    )
-                  else
+                      const Spacer(),
+                      _buildPriorityIcon(task.priority),
+                    ],
+                  ),
+                ],
+              )
+            : Row(
+                children: [
+                  SizedBox(
+                    width: 40,
+                    child: task.status == TaskStatus.completed
+                        ? const Icon(Icons.check_circle, size: 20, color: AppColors.success)
+                        : task.status == TaskStatus.inProgress
+                            ? InkWell(
+                                onTap: () => _updateTaskStatus(context, task, TaskStatus.completed),
+                                child: Container(
+                                  width: 16,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: AppColors.warning,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.access_time,
+                                      size: 10,
+                                      color: AppColors.warning,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : Checkbox(
+                                value: false,
+                                onChanged: (value) {
+                                  if (value == true) {
+                                    _updateTaskStatus(context, task, TaskStatus.inProgress);
+                                  }
+                                },
+                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      task.title,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Row(
+                      children: [
+                        if (task.assignedTo.isNotEmpty)
+                          CircleAvatar(
+                            radius: 12,
+                            backgroundColor: AppColors.primarySoft,
+                            child: Text(
+                              assignee.name.isNotEmpty
+                                  ? assignee.name[0].toUpperCase()
+                                  : '?',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          )
+                        else
                     const Icon(Icons.person_add, size: 16, color: AppColors.textMuted),
                   const SizedBox(width: AppSpacing.xs),
                   Expanded(
