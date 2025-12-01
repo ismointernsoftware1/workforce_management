@@ -1115,14 +1115,25 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                   // Debug logging
                                   debugPrint('StreamBuilder state: connectionState=${snapshot.connectionState}, hasData=${snapshot.hasData}, hasError=${snapshot.hasError}, dataLength=${snapshot.data?.length ?? 0}');
 
-                                  // Show loading only if we're actively waiting for the first data
-                                  if (snapshot.connectionState == ConnectionState.waiting && 
-                                      !snapshot.hasData && 
-                                      !snapshot.hasError) {
+                                  // Show loading ONLY if we're actively waiting AND don't have data yet
+                                  // The stream emits empty list immediately, then updates with real data
+                                  if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                                    // Still waiting for first data - show loading briefly
                                     return const Center(
                                       child: CircularProgressIndicator(),
                                     );
                                   }
+                                  
+                                  // If we have data (even if empty), proceed to show it
+                                  if (!snapshot.hasData && snapshot.connectionState != ConnectionState.done) {
+                                    // Still waiting
+                                    return const Center(
+                                      child: CircularProgressIndicator(),
+                                    );
+                                  }
+                                  
+                                  // At this point, we have data (even if empty) or are in active/done state
+                                  // Proceed to show the data
 
                                   if (snapshot.hasError) {
                                     debugPrint('StreamBuilder error: ${snapshot.error}');

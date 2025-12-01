@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../constants/app_colors.dart';
 import '../../../constants/app_spacing.dart';
 import '../../../utils/responsive_utils.dart';
+import '../../../utils/rbac_utils.dart';
 import '../../form_builder/controllers/form_builder_controller.dart';
 import '../../form_builder/services/form_builder_firestore_service.dart';
 import '../../form_builder/services/default_forms_initializer.dart';
@@ -57,13 +58,60 @@ class _FormBuilderScreenState extends State<FormBuilderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<FormBuilderController>.value(
-      value: _controller,
-      child: _isInitializing
-          ? const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            )
-          : const _FormBuilderBody(),
+    return FutureBuilder<bool>(
+      future: RBACUtils.isSuperAdmin(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        
+        if (snapshot.data != true) {
+          // User is not super admin, show access denied
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.lock_outline,
+                    size: 64,
+                    color: AppColors.textMuted,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  Text(
+                    'Access Denied',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'This page is only accessible to Super Administrators.',
+                    style: TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 16,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        
+        return ChangeNotifierProvider<FormBuilderController>.value(
+          value: _controller,
+          child: _isInitializing
+              ? const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                )
+              : const _FormBuilderBody(),
+        );
+      },
     );
   }
 }

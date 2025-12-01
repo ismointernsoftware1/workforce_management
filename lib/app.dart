@@ -15,6 +15,7 @@ import 'providers/realtime_chat_provider.dart';
 import 'services/auth_service.dart';
 import 'services/firebase_service.dart';
 import 'services/realtime_chat_service.dart';
+import 'utils/rbac_utils.dart';
 import 'views/auth/login_view.dart';
 import 'views/dashboard_view.dart';
 
@@ -45,8 +46,15 @@ class WorkforceApp extends StatelessWidget {
 
               final user = snapshot.data;
               if (user == null) {
+                // Clear RBAC cache on logout
+                RBACUtils.clearCache();
                 return _buildMaterialApp(const LoginView());
               }
+
+              // Clear RBAC cache on new login to ensure fresh data
+              print('RBAC: User logged in - UID: ${user.uid}, Email: ${user.email}');
+              print('RBAC: Clearing cache to fetch fresh user data...');
+              RBACUtils.clearCache();
 
               final realtimeChatController = RealtimeChatController(
                 service: RealtimeChatService(),

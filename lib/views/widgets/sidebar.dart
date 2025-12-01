@@ -7,16 +7,19 @@ import '../../constants/app_spacing.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../services/auth_service.dart';
 import '../../utils/responsive_utils.dart';
+import '../../utils/rbac_utils.dart';
 
 class Sidebar extends StatelessWidget {
   const Sidebar({
     super.key,
     required this.activeTab,
     required this.onTabChanged,
+    this.isSuperAdmin,
   });
 
   final DashboardTab activeTab;
   final ValueChanged<DashboardTab> onTabChanged;
+  final bool? isSuperAdmin;
 
   @override
   Widget build(BuildContext context) {
@@ -42,17 +45,60 @@ class Sidebar extends StatelessWidget {
             _SidebarHeader(onTabChanged: onTabChanged),
             const SizedBox(height: AppSpacing.xl),
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: DashboardTab.values.map(
-                    (tab) => _SidebarItem(
-                      label: _labelFor(tab),
-                      icon: _iconFor(tab),
-                      isActive: activeTab == tab,
-                      onTap: () => onTabChanged(tab),
+              child: Builder(
+                builder: (context) {
+                  // Use provided isSuperAdmin value or show loading
+                  if (isSuperAdmin == null) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(AppSpacing.lg),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                        ),
+                      ),
+                    );
+                  }
+                  
+                  // Filter tabs based on user role
+                  final availableTabs = DashboardTab.values.where((tab) {
+                    if (isSuperAdmin == true) {
+                      // Super Admin: Show ONLY Form Builder
+                      return tab == DashboardTab.formBuilder;
+                    } else {
+                      // Non-Super Admin: Show all tabs EXCEPT Form Builder
+                      return tab != DashboardTab.formBuilder;
+                    }
+                  }).toList();
+                  
+                  // If no tabs available, show message
+                  if (availableTabs.isEmpty) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        child: Text(
+                          'No tabs available',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.7),
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  
+                  return SingleChildScrollView(
+                    child: Column(
+                      children: availableTabs.map(
+                        (tab) => _SidebarItem(
+                          label: _labelFor(tab),
+                          icon: _iconFor(tab),
+                          isActive: activeTab == tab,
+                          onTap: () => onTabChanged(tab),
+                        ),
+                      ).toList(),
                     ),
-                  ).toList(),
-                ),
+                  );
+                },
               ),
             ),
             _CurrentUserTile(),
@@ -234,6 +280,9 @@ class _CurrentUserTile extends StatelessWidget {
 
     if (confirm == true && context.mounted) {
       try {
+        // Clear RBAC cache before logout
+        RBACUtils.clearCache();
+        
         final authService = Provider.of<AuthService>(context, listen: false);
         await authService.signOut();
       } catch (e) {

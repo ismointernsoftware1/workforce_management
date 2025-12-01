@@ -531,30 +531,45 @@ class RealtimeChatService {
           .child('conversations')
           .child(conversationId)
           .child('messages');
+      
 
       List<RealtimeChatMessage> _parseSnapshot(DataSnapshot snapshot) {
+        print('Parsing snapshot for conversation: $conversationId');
+        print('Snapshot exists: ${snapshot.exists}, value is null: ${snapshot.value == null}');
+        
         if (!snapshot.exists || snapshot.value == null) {
-          print('No messages found for conversation: $conversationId');
+          print('No messages found for conversation: $conversationId (snapshot does not exist or value is null)');
           return <RealtimeChatMessage>[];
         }
+        
         final data = snapshot.value;
+        print('Snapshot value type: ${data.runtimeType}');
+        
         if (data is! Map) {
-          print('Messages data is not a Map: ${data.runtimeType}');
+          print('Messages data is not a Map: ${data.runtimeType}, value: $data');
           return <RealtimeChatMessage>[];
         }
+        
+        print('Messages data is a Map with ${data.length} entries');
         final messages = <RealtimeChatMessage>[];
         data.forEach((key, value) {
           try {
             if (value is Map) {
+              print('Parsing message with key: $key');
               messages.add(
                 RealtimeChatMessage.fromMap(
                   value,
                   key.toString(),
                 ),
               );
+              print('Successfully parsed message: $key');
+            } else {
+              print('Message value is not a Map for key $key: ${value.runtimeType}');
             }
-          } catch (e) {
+          } catch (e, stackTrace) {
             print('Error parsing message $key: $e');
+            print('Stack trace: $stackTrace');
+            print('Message data: $value');
           }
         });
         messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
@@ -566,60 +581,62 @@ class RealtimeChatService {
       final controller = StreamController<List<RealtimeChatMessage>>.broadcast();
       StreamSubscription<DatabaseEvent>? subscription;
       bool hasEmittedInitial = false;
-
-      // Function to emit messages
-      void emitMessages(DataSnapshot snapshot) {
-        if (controller.isClosed) return;
-        final messages = _parseSnapshot(snapshot);
-        final wasInitial = !hasEmittedInitial;
-        if (!hasEmittedInitial) {
-          hasEmittedInitial = true;
-          print('Emitted initial ${messages.length} messages for conversation: $conversationId');
-        }
-        controller.add(messages);
-        if (wasInitial) {
-          print('Initial messages emitted successfully: ${messages.length}');
-        }
-      }
-
-      // Get initial snapshot FIRST and emit immediately
-      // This ensures data is available as soon as stream is subscribed
-      messagesRef.orderByChild('timestamp').get().then((initial) {
-        if (!controller.isClosed) {
-          emitMessages(initial);
-          print('Initial snapshot loaded: ${_parseSnapshot(initial).length} messages');
-        }
-      }).catchError((e) {
-        print('Initial messages fetch failed for $conversationId: $e');
-        if (!controller.isClosed && !hasEmittedInitial) {
+      
+      // When someone subscribes, emit empty list immediately to prevent waiting state
+      controller.onListen = () {
+        print('Stream listener subscribed for conversation: $conversationId');
+        // Emit empty list immediately so StreamBuilder doesn't get stuck in waiting
+        if (!hasEmittedInitial && !controller.isClosed) {
           hasEmittedInitial = true;
           controller.add(<RealtimeChatMessage>[]);
-          print('Emitted empty list due to initial fetch error');
+          print('Emitted empty list immediately on subscription');
         }
-      });
+      };
+      
+      // Fetch initial data immediately
+      messagesRef
+          .orderByChild('timestamp')
+          .get()
+          .then((snapshot) {
+            print('Initial snapshot received for conversation: $conversationId');
+            final messages = _parseSnapshot(snapshot);
+            print('Parsed ${messages.length} messages from initial snapshot');
+            if (!controller.isClosed) {
+              controller.add(messages);
+              print('Emitted ${messages.length} messages from initial fetch');
+            }
+          })
+          .catchError((e, stackTrace) {
+            print('Initial snapshot fetch failed for $conversationId: $e');
+            print('Stack trace: $stackTrace');
+            if (!controller.isClosed) {
+              controller.add(<RealtimeChatMessage>[]);
+            }
+          });
 
       // Set up live listener for real-time updates
-      // This will emit updates after the initial snapshot
+      // onValue fires immediately with current data when listener is set up
       subscription = messagesRef
           .orderByChild('timestamp')
           .onValue
           .listen(
             (event) {
-              // Only emit if we haven't already emitted initial data from .get()
-              // or if this is a new update
-              if (hasEmittedInitial) {
-                // This is a real-time update, emit it
-                emitMessages(event.snapshot);
+              // This fires immediately with current data when listener is set up
+              print('Stream listener received event for conversation: $conversationId');
+              final messages = _parseSnapshot(event.snapshot);
+              
+              if (!controller.isClosed) {
+                print('Emitting ${messages.length} messages from stream listener');
+                controller.add(messages);
               } else {
-                // Initial data from stream listener (backup if .get() failed)
-                emitMessages(event.snapshot);
+                print('Controller is closed, not emitting messages');
               }
             },
             onError: (error, stackTrace) {
               print('Error in messages stream for conversation $conversationId: $error');
               print('Error stack trace: $stackTrace');
-              if (!controller.isClosed && !hasEmittedInitial) {
-                hasEmittedInitial = true;
+              // Emit empty list on error
+              if (!controller.isClosed) {
                 controller.add(<RealtimeChatMessage>[]);
               }
             },
@@ -632,6 +649,8 @@ class RealtimeChatService {
         subscription?.cancel();
       };
 
+      // Return the controller stream directly
+      // The onValue listener fires immediately, so we should get data right away
       return controller.stream;
     } catch (e, stackTrace) {
       print('Error setting up messages stream: $e');
@@ -855,4 +874,3 @@ class RealtimeChatService {
     }
   }
 }
-

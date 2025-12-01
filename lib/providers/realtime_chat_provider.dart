@@ -36,6 +36,8 @@ class RealtimeChatProvider extends ChangeNotifier {
   RealtimeChatConversation? get selectedConversation => _selectedConversation;
   Stream<List<RealtimeChatMessage>> get messagesStream {
     if (_messagesStream == null) {
+      // Return a stream that emits empty list immediately
+      // This prevents StreamBuilder from being stuck in waiting state
       return Stream<List<RealtimeChatMessage>>.value(const <RealtimeChatMessage>[]);
     }
     return _messagesStream!;

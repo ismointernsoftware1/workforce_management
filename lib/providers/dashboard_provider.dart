@@ -9,6 +9,7 @@ import '../models/task_model.dart';
 import '../models/team_member.dart';
 import '../models/team_model.dart';
 import '../models/user_model.dart';
+import '../utils/rbac_utils.dart';
 
 enum DashboardTab { tasks, team, chat, expenses, formBuilder }
 
@@ -28,6 +29,7 @@ class DashboardProvider extends ChangeNotifier {
   DashboardTab activeTab = DashboardTab.tasks;
   bool isLoading = false;
   String? lastError;
+  bool? _isSuperAdmin;
 
   List<TaskModel> tasks = const [];
   List<UserModel> allUsers = const [];
@@ -50,6 +52,21 @@ class DashboardProvider extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
 
+    // Set initial tab based on user role
+    print('DashboardProvider: Initializing and checking RBAC...');
+    _isSuperAdmin = await RBACUtils.isSuperAdmin();
+    print('DashboardProvider: isSuperAdmin = $_isSuperAdmin');
+    
+    if (_isSuperAdmin == true) {
+      print('DashboardProvider: Setting activeTab to formBuilder');
+      activeTab = DashboardTab.formBuilder;
+    } else {
+      print('DashboardProvider: Setting activeTab to tasks');
+      activeTab = DashboardTab.tasks;
+    }
+    
+    notifyListeners(); // Notify after setting tab
+
     await Future.wait([
       _loadTasks(),
       refreshUsers(),
@@ -61,6 +78,8 @@ class DashboardProvider extends ChangeNotifier {
     isLoading = false;
     notifyListeners();
   }
+
+  bool? get isSuperAdmin => _isSuperAdmin;
 
   Future<void> _loadTasks() async {
     try {
@@ -169,6 +188,23 @@ class DashboardProvider extends ChangeNotifier {
 
   void changeTab(DashboardTab tab) {
     if (activeTab == tab) return;
+    
+    // Use cached isSuperAdmin value
+    final isSuperAdmin = _isSuperAdmin ?? false;
+    
+    // Check RBAC restrictions
+    if (isSuperAdmin) {
+      // Super Admin: Only allow Form Builder tab
+      if (tab != DashboardTab.formBuilder) {
+        return;
+      }
+    } else {
+      // Non-Super Admin: Don't allow Form Builder tab
+      if (tab == DashboardTab.formBuilder) {
+        return;
+      }
+    }
+    
     activeTab = tab;
     notifyListeners();
   }

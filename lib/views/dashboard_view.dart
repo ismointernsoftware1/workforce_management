@@ -25,6 +25,7 @@ class DashboardView extends StatefulWidget {
 class _DashboardViewState extends State<DashboardView> {
   bool _sidebarOpen = true; // Sidebar open by default on web
 
+
   @override
   Widget build(BuildContext context) {
     return Consumer<DashboardProvider>(
@@ -44,6 +45,7 @@ class _DashboardViewState extends State<DashboardView> {
                   Sidebar(
                     activeTab: provider.activeTab,
                     onTabChanged: provider.changeTab,
+                    isSuperAdmin: provider.isSuperAdmin,
                   )
                       .animate()
                       .slideX(
@@ -142,6 +144,7 @@ class _DashboardViewState extends State<DashboardView> {
               provider.changeTab(tab);
               Navigator.of(context).pop();
             },
+            isSuperAdmin: provider.isSuperAdmin,
           ),
         ),
       ),
@@ -149,6 +152,83 @@ class _DashboardViewState extends State<DashboardView> {
   }
 
   Widget _buildTab(DashboardProvider provider) {
+    // Use cached isSuperAdmin value from provider
+    final isSuperAdmin = provider.isSuperAdmin ?? false;
+    
+    // Show loading if RBAC status not yet determined
+    if (provider.isSuperAdmin == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    
+    // Super Admin: Only allow Form Builder
+    if (isSuperAdmin && provider.activeTab != DashboardTab.formBuilder) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.lock_outline,
+              size: 64,
+              color: AppColors.textMuted,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'Access Restricted',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Super Administrators can only access Form Builder.',
+              style: TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 16,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // Non-Super Admin: Don't allow Form Builder
+    if (!isSuperAdmin && provider.activeTab == DashboardTab.formBuilder) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.lock_outline,
+              size: 64,
+              color: AppColors.textMuted,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'Access Denied',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'This page is only accessible to Super Administrators.',
+              style: TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 16,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // Render the appropriate view
     switch (provider.activeTab) {
       case DashboardTab.tasks:
         return TasksView(key: ValueKey('tasks-${provider.activeTab}'));
