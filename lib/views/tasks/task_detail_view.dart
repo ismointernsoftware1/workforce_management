@@ -11,6 +11,68 @@ import '../../models/task_attachment.dart';
 import '../../models/task_model.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../utils/responsive_utils.dart';
+import '../../models/team_member.dart';
+
+// Helper function to get all assignees from a task
+List<TeamMember> _findAllAssigneesFromTask(DashboardProvider provider, TaskModel task) {
+  final assignees = <TeamMember>[];
+  
+  // First, try to use assignedToUsers list if available
+  if (task.assignedToUsers.isNotEmpty) {
+    for (final assignedUser in task.assignedToUsers) {
+      // Extract name from "name - role" format
+      final nameParts = assignedUser.split(' - ');
+      final nameOnly = nameParts.isNotEmpty ? nameParts[0].trim() : assignedUser;
+      
+      try {
+        final member = provider.members.firstWhere(
+          (m) => m.name == nameOnly || assignedUser.contains(m.name),
+        );
+        assignees.add(member);
+      } catch (e) {
+        // If not found, create a fallback
+        assignees.add(TeamMember(
+          id: '',
+          name: nameOnly,
+          email: '',
+          role: nameParts.length > 1 ? nameParts[1].trim() : '',
+          department: '',
+          isOnline: false,
+        ));
+      }
+    }
+  } else if (task.assignedTo.isNotEmpty) {
+    // Fallback to assignedTo string (backward compatibility)
+    // Handle comma-separated list
+    final assignedList = task.assignedTo.contains(',')
+        ? task.assignedTo.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList()
+        : [task.assignedTo];
+    
+    for (final assignedUser in assignedList) {
+      final nameParts = assignedUser.split(' - ');
+      final nameOnly = nameParts.isNotEmpty ? nameParts[0].trim() : assignedUser;
+      
+      try {
+        final member = provider.members.firstWhere(
+          (m) => m.name == nameOnly || assignedUser.contains(m.name),
+        );
+        assignees.add(member);
+      } catch (e) {
+        // If not found, create a fallback
+        assignees.add(TeamMember(
+          id: '',
+          name: nameOnly,
+          email: '',
+          role: nameParts.length > 1 ? nameParts[1].trim() : '',
+          department: '',
+          isOnline: false,
+        ));
+      }
+    }
+  }
+  
+  return assignees;
+}
 
 class TaskDetailView extends StatelessWidget {
   const TaskDetailView({
@@ -20,17 +82,6 @@ class TaskDetailView extends StatelessWidget {
 
   final TaskModel task;
 
-  Future<void> _openLocation(BuildContext context) async {
-    if (task.location == null || task.location!.isEmpty) return;
-
-    final url = Uri.parse(
-      'https://www.google.com/maps/search/?api=1&query=${task.location!.latitude},${task.location!.longitude}',
-    );
-
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -105,64 +156,6 @@ class TaskDetailView extends StatelessWidget {
             // Details Grid
             _DetailGrid(task: task, dateFormatter: dateFormatter),
             const SizedBox(height: AppSpacing.xl),
-
-            // Location
-            if (task.hasLocation && task.location != null && !task.location!.isEmpty)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Location',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  InkWell(
-                    onTap: () => _openLocation(context),
-                    child: Container(
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceAlt,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.location_on, color: AppColors.primary),
-                          const SizedBox(width: AppSpacing.md),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (task.location!.placeName != null)
-                                  Text(
-                                    task.location!.placeName!,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                Text(
-                                  task.location!.address,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: AppColors.textMuted,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Icon(Icons.open_in_new, size: 18, color: AppColors.textMuted),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                ],
-              ),
 
             // Attachments
             if (task.attachments.isNotEmpty)
@@ -368,10 +361,19 @@ class _DetailGrid extends StatelessWidget {
           label: 'Due Date',
           value: dateFormatter.format(task.dueDate),
         ),
-        _DetailChip(
-          icon: Icons.person,
-          label: 'Assigned To',
-          value: task.assignedTo,
+        Builder(
+          builder: (context) {
+            final provider = Provider.of<DashboardProvider>(context, listen: false);
+            final assignees = _findAllAssigneesFromTask(provider, task);
+            final assigneeText = assignees.isEmpty
+                ? 'Unassigned'
+                : assignees.map((a) => a.name).join(', ');
+            return _DetailChip(
+              icon: Icons.person,
+              label: 'Assigned To',
+              value: assigneeText,
+            );
+          },
         ),
         if (task.createdAt != null)
           _DetailChip(

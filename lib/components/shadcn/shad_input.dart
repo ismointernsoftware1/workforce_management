@@ -19,6 +19,7 @@ class ShadInput extends StatelessWidget {
     this.maxLines = 1,
     this.enabled = true,
     this.keyboardType,
+    this.focusNode,
   });
 
   final TextEditingController? controller;
@@ -34,11 +35,13 @@ class ShadInput extends StatelessWidget {
   final int maxLines;
   final bool enabled;
   final TextInputType? keyboardType;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
     final input = TextFormField(
       controller: controller,
+      focusNode: focusNode,
       obscureText: obscureText,
       readOnly: readOnly,
       onTap: onTap,
@@ -50,7 +53,14 @@ class ShadInput extends StatelessWidget {
       style: const TextStyle(
         color: AppColors.textPrimary,
         fontSize: 14,
+        fontWeight: FontWeight.w400,
+        decorationColor: AppColors.textPrimary,
       ),
+      cursorColor: AppColors.primary,
+      cursorWidth: 2.0,
+      cursorRadius: const Radius.circular(1),
+      selectionControls: MaterialTextSelectionControls(),
+      enableInteractiveSelection: true,
       decoration: InputDecoration(
         hintText: hintText,
         labelText: label,

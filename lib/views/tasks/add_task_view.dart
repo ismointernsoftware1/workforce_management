@@ -5,7 +5,6 @@ import '../../components/shadcn/shadcn.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/task_attachment.dart';
-import '../../models/task_location.dart';
 import '../../models/task_model.dart';
 import '../../features/form_builder/models/form_models.dart';
 import '../../features/form_builder/services/form_builder_firestore_service.dart';
@@ -14,7 +13,6 @@ import '../../features/form_builder/widgets/enhanced_form_renderer.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../utils/responsive_utils.dart';
 import '../widgets/attachment_picker.dart';
-import '../widgets/location_picker.dart';
 
 class AddTaskView extends StatefulWidget {
   const AddTaskView({super.key});
@@ -31,7 +29,6 @@ class _AddTaskViewState extends State<AddTaskView> {
   bool _isLoading = false;
   bool _isLoadingForm = true;
   List<TaskAttachment> _attachments = [];
-  TaskLocation? _selectedLocation;
   final _formService = FormBuilderFirestoreService();
   final _formInitializer = DefaultFormsInitializer(FormBuilderFirestoreService());
   FormModel? _defaultTaskForm;
@@ -109,11 +106,38 @@ class _AddTaskViewState extends State<AddTaskView> {
     for (final section in _defaultTaskForm!.sections) {
       for (final field in section.fields) {
         if (field.label == label) {
-          return _formValues[field.id]?.toString();
+          final value = _formValues[field.id];
+          if (value is Set<String>) {
+            // For checkbox fields, return comma-separated string
+            return value.join(', ');
+          }
+          return value?.toString();
         }
       }
     }
     return null;
+  }
+
+  // Helper to extract list of values from form by field label (for multiple selections)
+  List<String> _getFormValueList(String label) {
+    if (_defaultTaskForm == null) return [];
+    for (final section in _defaultTaskForm!.sections) {
+      for (final field in section.fields) {
+        if (field.label == label) {
+          final value = _formValues[field.id];
+          if (value is Set<String>) {
+            return value.toList();
+          } else if (value is List) {
+            return value.map((e) => e.toString()).toList();
+          } else if (value is String && value.isNotEmpty) {
+            // Handle comma-separated string
+            return value.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+          }
+          return [];
+        }
+      }
+    }
+    return [];
   }
 
   DateTime? _getFormDateValue(String label) {
@@ -167,7 +191,10 @@ class _AddTaskViewState extends State<AddTaskView> {
     final description = _getFormValue('Task Description') ?? '';
     final dueDate = _getFormDateValue('Due Date');
     final priorityStr = _getFormValue('Priority');
-    final assignedTo = _getFormValue('Assigned To') ?? '';
+    final assignedToUsers = _getFormValueList('Assigned To');
+    final assignedTo = assignedToUsers.isNotEmpty 
+        ? assignedToUsers.join(', ') 
+        : _getFormValue('Assigned To') ?? '';
     final statusStr = _getFormValue('Status');
 
     if (title.isEmpty) {
@@ -204,12 +231,12 @@ class _AddTaskViewState extends State<AddTaskView> {
       return;
     }
 
-    if (assignedTo.isEmpty) {
+    if (assignedToUsers.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: ShadAlert(
             title: 'Validation Error',
-            description: 'Please select an assignee',
+            description: 'Please select at least one assignee',
             variant: ShadAlertVariant.destructive,
           ),
           backgroundColor: Colors.transparent,
@@ -267,12 +294,11 @@ class _AddTaskViewState extends State<AddTaskView> {
         description: description,
         priority: _parsePriority(priorityStr),
         dueDate: dueDate,
-        assignedTo: assignedTo,
+        assignedTo: assignedTo, // For backward compatibility
+        assignedToUsers: assignedToUsers, // New field for multiple users
         status: _parseStatus(statusStr),
         subTasks: subTasks,
         attachments: _attachments,
-        location: _selectedLocation,
-        hasLocation: _selectedLocation != null && !_selectedLocation!.isEmpty,
         formId: formId,
         formDefinition: formDefinition,
         formValues: formValues,
@@ -452,17 +478,8 @@ class _AddTaskViewState extends State<AddTaskView> {
               // Task Details Section
               _buildSection(
                 title: 'Task Details',
-                subtitle: 'Essential location and attachment information.',
+                subtitle: 'Essential attachment information.',
                 children: [
-                  LocationPicker(
-                    location: _selectedLocation,
-                    onLocationChanged: (location) {
-                      setState(() {
-                        _selectedLocation = location;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
                   AttachmentPicker(
                     attachments: _attachments,
                     onAttachmentsChanged: (attachments) {

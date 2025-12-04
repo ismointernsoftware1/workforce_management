@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../services/auth_service.dart';
-import '../../utils/animation_utils.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -114,14 +112,7 @@ class _LoginViewState extends State<LoginView> {
                           Icons.work_outline,
                           size: 64,
                           color: Theme.of(context).colorScheme.primary,
-                        )
-                            .animate()
-                            .scale(
-                              delay: AnimationUtils.shortDelay,
-                              duration: AnimationUtils.normalDuration,
-                              curve: Curves.elasticOut,
-                            )
-                            .fadeIn(duration: AnimationUtils.normalDuration),
+                        ),
                         const SizedBox(height: 16),
                         Text(
                           'Workforce Management',
@@ -129,19 +120,7 @@ class _LoginViewState extends State<LoginView> {
                                 fontWeight: FontWeight.bold,
                               ),
                           textAlign: TextAlign.center,
-                        )
-                            .animate()
-                            .fade(
-                              duration: AnimationUtils.normalDuration,
-                              delay: AnimationUtils.mediumDelay,
-                            )
-                            .slide(
-                              begin: const Offset(0, 10),
-                              end: Offset.zero,
-                              duration: AnimationUtils.normalDuration,
-                              delay: AnimationUtils.mediumDelay,
-                              curve: Curves.easeOutCubic,
-                            ),
+                        ),
                         const SizedBox(height: 8),
                         Text(
                           _isSignUp
@@ -151,19 +130,7 @@ class _LoginViewState extends State<LoginView> {
                                 color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                               ),
                           textAlign: TextAlign.center,
-                        )
-                            .animate()
-                            .fade(
-                              duration: AnimationUtils.normalDuration,
-                              delay: AnimationUtils.mediumDelay * 2,
-                            )
-                            .slide(
-                              begin: const Offset(0, 10),
-                              end: Offset.zero,
-                              duration: AnimationUtils.normalDuration,
-                              delay: AnimationUtils.mediumDelay * 2,
-                              curve: Curves.easeOutCubic,
-                            ),
+                        ),
                         const SizedBox(height: 32),
 
                         // Name field (only for sign up)
@@ -181,19 +148,7 @@ class _LoginViewState extends State<LoginView> {
                               }
                               return null;
                             },
-                        )
-                            .animate()
-                            .fade(
-                              duration: AnimationUtils.normalDuration,
-                              delay: AnimationUtils.mediumDelay * 3,
-                            )
-                            .slide(
-                              begin: const Offset(0, 10),
-                              end: Offset.zero,
-                              duration: AnimationUtils.normalDuration,
-                              delay: AnimationUtils.mediumDelay * 3,
-                              curve: Curves.easeOutCubic,
-                            ),
+                          ),
                           const SizedBox(height: 16),
                         ],
 
@@ -215,19 +170,7 @@ class _LoginViewState extends State<LoginView> {
                             }
                             return null;
                           },
-                        )
-                            .animate()
-                            .fade(
-                              duration: AnimationUtils.normalDuration,
-                              delay: AnimationUtils.mediumDelay * (_isSignUp ? 4 : 3),
-                            )
-                            .slide(
-                              begin: const Offset(0, 10),
-                              end: Offset.zero,
-                              duration: AnimationUtils.normalDuration,
-                              delay: AnimationUtils.mediumDelay * (_isSignUp ? 4 : 3),
-                              curve: Curves.easeOutCubic,
-                            ),
+                        ),
                         const SizedBox(height: 16),
 
                         // Password field
@@ -257,19 +200,7 @@ class _LoginViewState extends State<LoginView> {
                             }
                             return null;
                           },
-                        )
-                            .animate()
-                            .fade(
-                              duration: AnimationUtils.normalDuration,
-                              delay: AnimationUtils.mediumDelay * (_isSignUp ? 5 : 4),
-                            )
-                            .slide(
-                              begin: const Offset(0, 10),
-                              end: Offset.zero,
-                              duration: AnimationUtils.normalDuration,
-                              delay: AnimationUtils.mediumDelay * (_isSignUp ? 5 : 4),
-                              curve: Curves.easeOutCubic,
-                            ),
+                        ),
 
                         // Optional fields for sign up
                         if (_isSignUp) ...[
@@ -281,19 +212,7 @@ class _LoginViewState extends State<LoginView> {
                               prefixIcon: Icon(Icons.badge_outlined),
                             ),
                             textCapitalization: TextCapitalization.words,
-                        )
-                            .animate()
-                            .fade(
-                              duration: AnimationUtils.normalDuration,
-                              delay: AnimationUtils.mediumDelay * 6,
-                            )
-                            .slide(
-                              begin: const Offset(0, 10),
-                              end: Offset.zero,
-                              duration: AnimationUtils.normalDuration,
-                              delay: AnimationUtils.mediumDelay * 6,
-                              curve: Curves.easeOutCubic,
-                            ),
+                          ),
                           const SizedBox(height: 16),
                           TextFormField(
                             controller: _departmentController,
@@ -302,19 +221,7 @@ class _LoginViewState extends State<LoginView> {
                               prefixIcon: Icon(Icons.business_outlined),
                             ),
                             textCapitalization: TextCapitalization.words,
-                        )
-                            .animate()
-                            .fade(
-                              duration: AnimationUtils.normalDuration,
-                              delay: AnimationUtils.mediumDelay * 7,
-                            )
-                            .slide(
-                              begin: const Offset(0, 10),
-                              end: Offset.zero,
-                              duration: AnimationUtils.normalDuration,
-                              delay: AnimationUtils.mediumDelay * 7,
-                              curve: Curves.easeOutCubic,
-                            ),
+                          ),
                         ],
 
                         const SizedBox(height: 24),
@@ -336,21 +243,7 @@ class _LoginViewState extends State<LoginView> {
                                   ),
                                 )
                               : Text(_isSignUp ? 'Sign Up' : 'Sign In'),
-                        )
-                            .animate()
-                            .fade(
-                              duration: AnimationUtils.normalDuration,
-                              delay: AnimationUtils.mediumDelay * (_isSignUp ? 8 : 5),
-                            )
-                            .slide(
-                              begin: const Offset(0, 10),
-                              end: Offset.zero,
-                              duration: AnimationUtils.normalDuration,
-                              delay: AnimationUtils.mediumDelay * (_isSignUp ? 8 : 5),
-                              curve: Curves.easeOutCubic,
-                            )
-                            .then()
-                            .shimmer(duration: const Duration(seconds: 2)),
+                        ),
 
                         const SizedBox(height: 16),
 
@@ -369,11 +262,7 @@ class _LoginViewState extends State<LoginView> {
                                 ? 'Already have an account? Sign in'
                                 : 'Don\'t have an account? Sign up',
                           ),
-                        )
-                            .animate()
-                            .fadeIn(
-                              delay: AnimationUtils.mediumDelay * (_isSignUp ? 9 : 6),
-                            ),
+                        ),
                       ],
                     ),
                   ),

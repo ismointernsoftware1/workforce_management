@@ -56,6 +56,67 @@ TeamMember _findAssigneeFromTask(DashboardProvider provider, String assignedTo) 
   }
 }
 
+// Helper function to get all assignees from a task
+List<TeamMember> _findAllAssigneesFromTask(DashboardProvider provider, TaskModel task) {
+  final assignees = <TeamMember>[];
+  
+  // First, try to use assignedToUsers list if available
+  if (task.assignedToUsers.isNotEmpty) {
+    for (final assignedUser in task.assignedToUsers) {
+      // Extract name from "name - role" format
+      final nameParts = assignedUser.split(' - ');
+      final nameOnly = nameParts.isNotEmpty ? nameParts[0].trim() : assignedUser;
+      
+      try {
+        final member = provider.members.firstWhere(
+          (m) => m.name == nameOnly || assignedUser.contains(m.name),
+        );
+        assignees.add(member);
+      } catch (e) {
+        // If not found, create a fallback
+        assignees.add(TeamMember(
+          id: '',
+          name: nameOnly,
+          email: '',
+          role: nameParts.length > 1 ? nameParts[1].trim() : '',
+          department: '',
+          isOnline: false,
+        ));
+      }
+    }
+  } else if (task.assignedTo.isNotEmpty) {
+    // Fallback to assignedTo string (backward compatibility)
+    // Handle comma-separated list
+    final assignedList = task.assignedTo.contains(',')
+        ? task.assignedTo.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList()
+        : [task.assignedTo];
+    
+    for (final assignedUser in assignedList) {
+      final nameParts = assignedUser.split(' - ');
+      final nameOnly = nameParts.isNotEmpty ? nameParts[0].trim() : assignedUser;
+      
+      try {
+        final member = provider.members.firstWhere(
+          (m) => m.name == nameOnly || assignedUser.contains(m.name),
+        );
+        assignees.add(member);
+      } catch (e) {
+        // If not found, create a fallback
+        assignees.add(TeamMember(
+          id: '',
+          name: nameOnly,
+          email: '',
+          role: nameParts.length > 1 ? nameParts[1].trim() : '',
+          department: '',
+          isOnline: false,
+        ));
+      }
+    }
+  }
+  
+  return assignees;
+}
+
 class TaskScreenView extends StatefulWidget {
   const TaskScreenView({super.key});
 
@@ -206,7 +267,7 @@ class _TaskScreenViewState extends State<TaskScreenView> {
                   variant: ShadButtonVariant.default_,
                   size: ShadButtonSize.md,
                   icon: const Icon(Icons.add, size: 18),
-                  child: const Text('+ Add New'),
+                  child: const Text('Add New'),
                 ),
               ),
             ],
@@ -262,79 +323,49 @@ class _TaskScreenViewState extends State<TaskScreenView> {
               ),
             ),
           ),
-          child: isMobile
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Due Date Filter
-                    _buildFilterDropdown(
-                      label: _getDueDateLabel(controller),
-                      items: ['This Week', 'This Month', 'Custom'],
-                      onSelected: (value) {
-                        if (value == 'Custom') {
-                          _showDateRangePicker(context, controller);
-                        } else {
-                          controller.setDueDateFilter(value);
-                        }
-                      },
-                      isMobile: true,
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    // Assignee Filter
-                    _buildFilterDropdown(
-                      label: controller.selectedAssigneeFilter ?? 'All',
-                      items: ['All', ...provider.members.map((m) => m.name)],
-                      onSelected: (value) {
-                        controller.setAssigneeFilter(value == 'All' ? null : value);
-                      },
-                      isMobile: true,
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    // Priority Filter
-                    _buildFilterDropdown(
-                      label: controller.selectedPriorityFilter ?? 'All',
-                      items: ['All', 'High', 'Medium', 'Low'],
-                      onSelected: (value) {
-                        controller.setPriorityFilter(value == 'All' ? null : value);
-                      },
-                      isMobile: true,
-                    ),
-                  ],
-                )
-              : Row(
-                  children: [
-                    // Due Date Filter
-                    _buildFilterDropdown(
-                      label: _getDueDateLabel(controller),
-                      items: ['This Week', 'This Month', 'Custom'],
-                      onSelected: (value) {
-                        if (value == 'Custom') {
-                          _showDateRangePicker(context, controller);
-                        } else {
-                          controller.setDueDateFilter(value);
-                        }
-                      },
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    // Assignee Filter
-                    _buildFilterDropdown(
-                      label: controller.selectedAssigneeFilter ?? 'All',
-                      items: ['All', ...provider.members.map((m) => m.name)],
-                      onSelected: (value) {
-                        controller.setAssigneeFilter(value == 'All' ? null : value);
-                      },
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    // Priority Filter
-                    _buildFilterDropdown(
-                      label: controller.selectedPriorityFilter ?? 'All',
-                      items: ['All', 'High', 'Medium', 'Low'],
-                      onSelected: (value) {
-                        controller.setPriorityFilter(value == 'All' ? null : value);
-                      },
-                    ),
-                  ],
+          child: Row(
+            children: [
+              // Due Date Filter
+              Expanded(
+                child: _buildFilterDropdown(
+                  label: _getDueDateLabel(controller),
+                  items: ['This Week', 'This Month', 'Custom'],
+                  onSelected: (value) {
+                    if (value == 'Custom') {
+                      _showDateRangePicker(context, controller);
+                    } else {
+                      controller.setDueDateFilter(value);
+                    }
+                  },
+                  isMobile: isMobile,
                 ),
+              ),
+              SizedBox(width: isMobile ? AppSpacing.sm : AppSpacing.md),
+              // Assignee Filter
+              Expanded(
+                child: _buildFilterDropdown(
+                  label: controller.selectedAssigneeFilter ?? 'All',
+                  items: ['All', ...provider.members.map((m) => m.name)],
+                  onSelected: (value) {
+                    controller.setAssigneeFilter(value == 'All' ? null : value);
+                  },
+                  isMobile: isMobile,
+                ),
+              ),
+              SizedBox(width: isMobile ? AppSpacing.sm : AppSpacing.md),
+              // Priority Filter
+              Expanded(
+                child: _buildFilterDropdown(
+                  label: controller.selectedPriorityFilter ?? 'All',
+                  items: ['All', 'High', 'Medium', 'Low'],
+                  onSelected: (value) {
+                    controller.setPriorityFilter(value == 'All' ? null : value);
+                  },
+                  isMobile: isMobile,
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -358,26 +389,34 @@ class _TaskScreenViewState extends State<TaskScreenView> {
     return PopupMenuButton<String>(
       child: Container(
         padding: EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
+          horizontal: isMobile ? AppSpacing.sm : AppSpacing.md,
           vertical: AppSpacing.sm,
         ),
-        width: isMobile ? double.infinity : null,
         decoration: BoxDecoration(
           border: Border.all(color: AppColors.border),
           borderRadius: BorderRadius.circular(6),
         ),
         child: Row(
-          mainAxisSize: isMobile ? MainAxisSize.max : MainAxisSize.min,
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textPrimary,
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: isMobile ? 12 : 13,
+                  color: AppColors.textPrimary,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ),
             const SizedBox(width: AppSpacing.xs),
-            const Icon(Icons.keyboard_arrow_down, size: 16, color: AppColors.textMuted),
+            Icon(
+              Icons.keyboard_arrow_down,
+              size: isMobile ? 14 : 16,
+              color: AppColors.textMuted,
+            ),
           ],
         ),
       ),
@@ -486,6 +525,8 @@ class _TaskScreenViewState extends State<TaskScreenView> {
         );
         final grouped = controller.groupTasksByStatus(filteredTasks);
 
+        final isTablet = ResponsiveUtils.isTablet(context);
+        
         if (isMobile) {
           // Horizontal scrollable board on mobile
           return Container(
@@ -534,9 +575,13 @@ class _TaskScreenViewState extends State<TaskScreenView> {
           );
         }
 
-        // Desktop: 3 columns side by side
+        // Tablet and Desktop: 3 columns side by side
         return Container(
           color: AppColors.background,
+          padding: EdgeInsets.symmetric(
+            horizontal: isTablet ? AppSpacing.md : AppSpacing.lg,
+            vertical: AppSpacing.sm,
+          ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -549,6 +594,7 @@ class _TaskScreenViewState extends State<TaskScreenView> {
                   Icons.radio_button_unchecked,
                 ),
               ),
+              SizedBox(width: isTablet ? AppSpacing.sm : AppSpacing.md),
               Expanded(
                 child: _buildBoardColumn(
                   'In Progress',
@@ -558,6 +604,7 @@ class _TaskScreenViewState extends State<TaskScreenView> {
                   Icons.access_time,
                 ),
               ),
+              SizedBox(width: isTablet ? AppSpacing.sm : AppSpacing.md),
               Expanded(
                 child: _buildBoardColumn(
                   'Completed',
@@ -582,104 +629,252 @@ class _TaskScreenViewState extends State<TaskScreenView> {
     IconData icon,
   ) {
     final isMobile = ResponsiveUtils.isMobile(context);
-    return Container(
-      margin: EdgeInsets.all(isMobile ? AppSpacing.xs : AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Column Header
-          Container(
-            padding: EdgeInsets.all(isMobile ? AppSpacing.sm : AppSpacing.md),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: AppColors.border.withValues(alpha: 0.5),
-                ),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: isMobile ? 6 : 8,
-                  height: isMobile ? 6 : 8,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
+    return DragTarget<TaskModel>(
+      onWillAccept: (data) {
+        // Allow accepting if the task status is different
+        return data != null && data.status != status;
+      },
+      onAccept: (droppedTask) {
+        // Only update if the task is being moved to a different status
+        if (droppedTask.status != status) {
+          final provider = context.read<DashboardProvider>();
+          provider.updateTaskStatus(droppedTask.id, status).then((_) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: ShadAlert(
+                    title: 'Success',
+                    description: 'Task status updated',
+                    variant: ShadAlertVariant.success,
                   ),
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  padding: const EdgeInsets.all(16),
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 2),
                 ),
-                SizedBox(width: isMobile ? AppSpacing.xs : AppSpacing.sm),
-                Flexible(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: isMobile ? 12 : 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+              );
+            }
+          }).catchError((e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: ShadAlert(
+                    title: 'Error',
+                    description: 'Failed to update task status: ${e.toString()}',
+                    variant: ShadAlertVariant.destructive,
+                  ),
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  padding: const EdgeInsets.all(16),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          });
+        }
+      },
+      builder: (context, candidateData, rejectedData) {
+        // Visual feedback when dragging over
+        final isDraggingOver = candidateData.isNotEmpty;
+        
+        return Container(
+          margin: EdgeInsets.all(isMobile ? AppSpacing.xs : AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isDraggingOver 
+                  ? AppColors.primary 
+                  : AppColors.border.withValues(alpha: 0.5),
+              width: isDraggingOver ? 2 : 1,
+            ),
+            boxShadow: isDraggingOver
+                ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  '${tasks.length}',
-                  style: TextStyle(
-                    fontSize: isMobile ? 11 : 12,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-                SizedBox(width: isMobile ? AppSpacing.xs : AppSpacing.sm),
-                IconButton(
-                  icon: Icon(Icons.add, size: isMobile ? 16 : 18, color: AppColors.textMuted),
-                  onPressed: () => _openAddTask(context),
-                  tooltip: 'Add Task',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-              ],
-            ),
+                  ]
+                : null,
           ),
-          // Tasks
-          Expanded(
-            child: tasks.isEmpty
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(AppSpacing.xl),
-                      child: Text(
-                        'No tasks',
-                        style: TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 13,
-                        ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Column Header
+              Container(
+                padding: EdgeInsets.all(isMobile ? AppSpacing.sm : AppSpacing.md),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: AppColors.border.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: isMobile ? 6 : 8,
+                      height: isMobile ? 6 : 8,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
                       ),
                     ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(AppSpacing.sm),
-                    itemCount: tasks.length,
-                    itemBuilder: (context, index) {
-                      return _BoardTaskCard(
-                        task: tasks[index],
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => TaskDetailView(task: tasks[index]),
-                            ),
+                    SizedBox(width: isMobile ? AppSpacing.xs : AppSpacing.sm),
+                    Flexible(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: isMobile ? 12 : 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${tasks.length}',
+                      style: TextStyle(
+                        fontSize: isMobile ? 11 : 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                    SizedBox(width: isMobile ? AppSpacing.xs : AppSpacing.sm),
+                    IconButton(
+                      icon: Icon(Icons.add, size: isMobile ? 16 : 18, color: AppColors.textMuted),
+                      onPressed: () => _openAddTask(context),
+                      tooltip: 'Add Task',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+              ),
+              // Tasks
+              Expanded(
+                child: tasks.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppSpacing.xl),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.inbox_outlined,
+                                size: 48,
+                                color: AppColors.textMuted.withValues(alpha: 0.5),
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              Text(
+                                isDraggingOver ? 'Drop task here' : 'No tasks',
+                                style: TextStyle(
+                                  color: AppColors.textMuted,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        itemCount: tasks.length,
+                        itemBuilder: (context, index) {
+                          return LayoutBuilder(
+                            builder: (context, constraints) {
+                              // Calculate responsive width for drag feedback
+                              final screenWidth = MediaQuery.of(context).size.width;
+                              double feedbackWidth;
+                              if (isMobile) {
+                                // Mobile: use 85% of screen width, but cap at column width
+                                feedbackWidth = (screenWidth * 0.85).clamp(200.0, constraints.maxWidth);
+                              } else if (ResponsiveUtils.isTablet(context)) {
+                                // Tablet: use column width or 300px, whichever is smaller
+                                feedbackWidth = constraints.maxWidth.clamp(250.0, 320.0);
+                              } else {
+                                // Desktop: use column width or 300px
+                                feedbackWidth = constraints.maxWidth.clamp(250.0, 320.0);
+                              }
+                              
+                              return Draggable<TaskModel>(
+                                data: tasks[index],
+                                feedback: Material(
+                                  elevation: 8,
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: SizedBox(
+                                    width: feedbackWidth,
+                                    child: Container(
+                                      padding: EdgeInsets.all(isMobile ? AppSpacing.sm : AppSpacing.md),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.surface,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: AppColors.primary,
+                                          width: 2,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: AppColors.textPrimary.withValues(alpha: 0.2),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: _BoardTaskCard(
+                                        task: tasks[index],
+                                        onTap: () {},
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                childWhenDragging: Opacity(
+                                  opacity: 0.3,
+                                  child: _BoardTaskCard(
+                                    task: tasks[index],
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (context) => TaskDetailView(task: tasks[index]),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                onDragEnd: (details) {
+                                  // On mobile, if drag ends without being accepted, 
+                                  // we need to check if it was dropped on a valid target
+                                  // This is a fallback for mobile drag issues
+                                  if (isMobile && details.wasAccepted == false) {
+                                    // The drag wasn't accepted, but we'll let the DragTarget handle it
+                                    // This callback is mainly for cleanup if needed
+                                  }
+                                },
+                                child: _BoardTaskCard(
+                                  task: tasks[index],
+                                  onTap: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (context) => TaskDetailView(task: tasks[index]),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              );
+                            },
                           );
                         },
-                      );
-                    },
-                  ),
+                      ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -1297,7 +1492,7 @@ class _TaskScreenViewState extends State<TaskScreenView> {
             )
           else
             ...tasks.take(5).map((task) {
-              final assignee = _findAssigneeFromTask(provider, task.assignedTo);
+              final assignees = _findAllAssigneesFromTask(provider, task);
               return InkWell(
                 onTap: () {
                   Navigator.of(context).push(
@@ -1346,24 +1541,53 @@ class _TaskScreenViewState extends State<TaskScreenView> {
                             const SizedBox(height: 4),
                             Row(
                               children: [
-                                if (assignee.name.isNotEmpty)
+                                if (assignees.isNotEmpty)
                                   Row(
                                     children: [
-                                      CircleAvatar(
-                                        radius: 8,
-                                        backgroundColor: AppColors.primarySoft,
-                                        child: Text(
-                                          assignee.name[0].toUpperCase(),
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            color: AppColors.primary,
-                                            fontWeight: FontWeight.bold,
+                                      ...assignees.take(3).map((assignee) {
+                                        return Padding(
+                                          padding: const EdgeInsets.only(right: 4),
+                                          child: CircleAvatar(
+                                            radius: 8,
+                                            backgroundColor: AppColors.primarySoft,
+                                            child: Text(
+                                              assignee.name.isNotEmpty
+                                                  ? assignee.name[0].toUpperCase()
+                                                  : '?',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                color: AppColors.primary,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                      if (assignees.length > 3)
+                                        Container(
+                                          width: 16,
+                                          height: 16,
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primarySoft,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(color: AppColors.primary, width: 1),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              '+${assignees.length - 3}',
+                                              style: TextStyle(
+                                                fontSize: 8,
+                                                color: AppColors.primary,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
                                           ),
                                         ),
-                                      ),
                                       const SizedBox(width: 4),
                                       Text(
-                                        assignee.name,
+                                        assignees.length == 1
+                                            ? assignees.first.name
+                                            : '${assignees.length} assignees',
                                         style: TextStyle(
                                           fontSize: 11,
                                           color: AppColors.textMuted,
@@ -1371,7 +1595,7 @@ class _TaskScreenViewState extends State<TaskScreenView> {
                                       ),
                                     ],
                                   ),
-                                if (assignee.name.isNotEmpty) const SizedBox(width: AppSpacing.sm),
+                                if (assignees.isNotEmpty) const SizedBox(width: AppSpacing.sm),
                                 Icon(Icons.calendar_today, size: 12, color: AppColors.textMuted),
                                 const SizedBox(width: 4),
                                 Text(
@@ -1428,7 +1652,7 @@ class _TaskScreenViewState extends State<TaskScreenView> {
             )
           else
             ...tasks.take(7).map((task) {
-              final assignee = _findAssigneeFromTask(provider, task.assignedTo);
+              final assignees = _findAllAssigneesFromTask(provider, task);
               // Normalize dates for accurate day calculation
               final now = DateTime.now();
               final today = DateTime(now.year, now.month, now.day);
@@ -1499,10 +1723,12 @@ class _TaskScreenViewState extends State<TaskScreenView> {
                                     fontWeight: isOverdue ? FontWeight.w600 : FontWeight.normal,
                                   ),
                                 ),
-                                if (assignee.name.isNotEmpty) ...[
+                                if (assignees.isNotEmpty) ...[
                                   const SizedBox(width: AppSpacing.sm),
                                   Text(
-                                    '• ${assignee.name}',
+                                    assignees.length == 1
+                                        ? '• ${assignees.first.name}'
+                                        : '• ${assignees.length} assignees',
                                     style: TextStyle(
                                       fontSize: 11,
                                       color: AppColors.textMuted,
@@ -1933,7 +2159,7 @@ class _ListSectionState extends State<_ListSection> {
                               const Icon(Icons.add, size: 16, color: AppColors.primary),
                               const SizedBox(width: AppSpacing.sm),
                               Text(
-                                '+ Add Task',
+                                'Add Task',
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: AppColors.primary,
@@ -1968,7 +2194,7 @@ class _ListTaskRow extends StatelessWidget {
     final isMobile = ResponsiveUtils.isMobile(context);
     final dateFormatter = DateFormat(isMobile ? 'MMM d' : 'MMM d - hh:mm a', 'en_US');
     final isOverdue = task.dueDate.isBefore(DateTime.now()) && task.status != TaskStatus.completed;
-    final assignee = _findAssigneeFromTask(provider, task.assignedTo);
+    final assignees = _findAllAssigneesFromTask(provider, task);
 
     return InkWell(
       onTap: onTap,
@@ -2043,36 +2269,80 @@ class _ListTaskRow extends StatelessWidget {
                   const SizedBox(height: AppSpacing.xs),
                   Row(
                     children: [
-                      if (task.assignedTo.isNotEmpty)
-                        CircleAvatar(
-                          radius: 10,
-                          backgroundColor: AppColors.primarySoft,
-                          child: Text(
-                            assignee.name.isNotEmpty
-                                ? assignee.name[0].toUpperCase()
-                                : '?',
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                      if (assignees.isNotEmpty)
+                        Row(
+                          children: [
+                            ...assignees.take(2).map((assignee) {
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 4),
+                                child: CircleAvatar(
+                                  radius: 10,
+                                  backgroundColor: AppColors.primarySoft,
+                                  child: Text(
+                                    assignee.name.isNotEmpty
+                                        ? assignee.name[0].toUpperCase()
+                                        : '?',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                            if (assignees.length > 2)
+                              Container(
+                                width: 20,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primarySoft,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: AppColors.primary, width: 1),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '+${assignees.length - 2}',
+                                    style: TextStyle(
+                                      fontSize: 8,
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         )
                       else
                         const SizedBox.shrink(),
-                      if (task.assignedTo.isNotEmpty) const SizedBox(width: AppSpacing.xs),
+                      if (assignees.isNotEmpty) const SizedBox(width: AppSpacing.xs),
                       Icon(Icons.calendar_today, size: 11, color: AppColors.textMuted),
                       const SizedBox(width: 4),
-                      Text(
-                        dateFormatter.format(task.dueDate),
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: isOverdue ? AppColors.danger : AppColors.textMuted,
-                          fontWeight: isOverdue ? FontWeight.w600 : FontWeight.normal,
-                        ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            dateFormatter.format(task.dueDate),
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: isOverdue ? AppColors.danger : AppColors.textMuted,
+                              fontWeight: isOverdue ? FontWeight.w600 : FontWeight.normal,
+                            ),
+                          ),
+                          if (isOverdue)
+                            Text(
+                              'Overdue',
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: AppColors.danger,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                        ],
                       ),
                       const Spacer(),
-                      _buildPriorityIcon(task.priority),
+                      _buildPriorityText(task.priority),
                     ],
                   ),
                 ],
@@ -2130,71 +2400,120 @@ class _ListTaskRow extends StatelessWidget {
                     flex: 2,
                     child: Row(
                       children: [
-                        if (task.assignedTo.isNotEmpty)
-                          CircleAvatar(
-                            radius: 12,
-                            backgroundColor: AppColors.primarySoft,
-                            child: Text(
-                              assignee.name.isNotEmpty
-                                  ? assignee.name[0].toUpperCase()
-                                  : '?',
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                        if (assignees.isNotEmpty)
+                          Row(
+                            children: [
+                              ...assignees.take(3).map((assignee) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 4),
+                                  child: CircleAvatar(
+                                    radius: 12,
+                                    backgroundColor: AppColors.primarySoft,
+                                    child: Text(
+                                      assignee.name.isNotEmpty
+                                          ? assignee.name[0].toUpperCase()
+                                          : '?',
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                              if (assignees.length > 3)
+                                Container(
+                                  width: 24,
+                                  height: 24,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primarySoft,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: AppColors.primary, width: 1),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '+${assignees.length - 3}',
+                                      style: const TextStyle(
+                                        fontSize: 9,
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           )
                         else
-                    const Icon(Icons.person_add, size: 16, color: AppColors.textMuted),
-                  const SizedBox(width: AppSpacing.xs),
-                  Expanded(
-                    child: Text(
-                      task.assignedTo.isNotEmpty ? assignee.name : 'Assign',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
+                          const Icon(Icons.person_add, size: 16, color: AppColors.textMuted),
+                        if (assignees.isNotEmpty) ...[
+                          const SizedBox(width: AppSpacing.xs),
+                          Expanded(
+                            child: Text(
+                              assignees.length == 1
+                                  ? assignees.first.name
+                                  : '${assignees.length} assignees',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textMuted,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ] else ...[
+                          const SizedBox(width: AppSpacing.xs),
+                          const Expanded(
+                            child: Text(
+                              'Assign',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textMuted,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                 ],
               ),
             ),
             Expanded(
               flex: 2,
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Icon(Icons.calendar_today, size: 14, color: AppColors.textMuted),
                   const SizedBox(width: AppSpacing.xs),
                   Expanded(
-                    child: Text(
-                      dateFormatter.format(task.dueDate),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isOverdue ? AppColors.danger : AppColors.textMuted,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          dateFormatter.format(task.dueDate),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isOverdue ? AppColors.danger : AppColors.textMuted,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (isOverdue)
+                          Text(
+                            'Overdue',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.danger,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                  if (isOverdue)
-                    Padding(
-                      padding: const EdgeInsets.only(left: AppSpacing.xs),
-                      child: Text(
-                        'Overdue',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.danger,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ),
             Expanded(
               flex: 1,
-              child: _buildPriorityIcon(task.priority),
+              child: _buildPriorityText(task.priority),
             ),
             SizedBox(
               width: 40,
@@ -2336,28 +2655,36 @@ class _ListTaskRow extends StatelessWidget {
     );
   }
 
-  Widget _buildPriorityIcon(TaskPriority priority) {
+  Widget _buildPriorityText(TaskPriority priority) {
+    String label;
     Color color;
-    IconData icon;
     switch (priority) {
       case TaskPriority.high:
+        label = 'High';
         color = AppColors.danger;
-        icon = Icons.flag;
         break;
       case TaskPriority.medium:
+        label = 'Medium';
         color = AppColors.warning;
-        icon = Icons.flag;
         break;
       case TaskPriority.low:
+        label = 'Low';
         color = AppColors.success;
-        icon = Icons.flag;
         break;
     }
 
-    return Icon(icon, size: 14, color: color);
+    return Text(
+      label,
+      style: TextStyle(
+        fontSize: 12,
+        color: color,
+        fontWeight: FontWeight.w500,
+      ),
+    );
   }
 
   Future<void> _updateTaskStatus(BuildContext context, TaskModel task, TaskStatus newStatus) async {
+    final provider = context.read<DashboardProvider>();
     try {
       await provider.updateTaskStatus(task.id, newStatus);
       if (context.mounted) {
@@ -2554,13 +2881,17 @@ class _BoardTaskCard extends StatelessWidget {
     final isMobile = ResponsiveUtils.isMobile(context);
     final dateFormatter = DateFormat('MMM d - hh:mm a', 'en_US');
     final isOverdue = task.dueDate.isBefore(DateTime.now()) && task.status != TaskStatus.completed;
-    final assignee = _findAssigneeFromTask(provider, task.assignedTo);
+    final assignees = _findAllAssigneesFromTask(provider, task);
 
     return InkWell(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: AppSpacing.sm),
         padding: EdgeInsets.all(isMobile ? AppSpacing.sm : AppSpacing.md),
+        constraints: const BoxConstraints(
+          minWidth: 0,
+          maxWidth: double.infinity,
+        ),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(8),
@@ -2652,21 +2983,55 @@ class _BoardTaskCard extends StatelessWidget {
             // Footer with assignee, date, priority
             Row(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Assignee
-                if (task.assignedTo.isNotEmpty)
-                  CircleAvatar(
-                    radius: isMobile ? 10 : 12,
-                    backgroundColor: AppColors.primarySoft,
-                    child: Text(
-                      assignee.name.isNotEmpty
-                          ? assignee.name[0].toUpperCase()
-                          : '?',
-                      style: TextStyle(
-                        fontSize: isMobile ? 9 : 10,
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
+                // Assignees
+                if (assignees.isNotEmpty)
+                  Flexible(
+                    flex: 0,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ...assignees.take(2).map((assignee) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 4),
+                            child: CircleAvatar(
+                              radius: isMobile ? 10 : 12,
+                              backgroundColor: AppColors.primarySoft,
+                              child: Text(
+                                assignee.name.isNotEmpty
+                                    ? assignee.name[0].toUpperCase()
+                                    : '?',
+                                style: TextStyle(
+                                  fontSize: isMobile ? 9 : 10,
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                        if (assignees.length > 2)
+                          Container(
+                            width: isMobile ? 20 : 24,
+                            height: isMobile ? 20 : 24,
+                            decoration: BoxDecoration(
+                              color: AppColors.primarySoft,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppColors.primary, width: 1),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '+${assignees.length - 2}',
+                                style: TextStyle(
+                                  fontSize: isMobile ? 8 : 9,
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   )
                 else
@@ -2674,6 +3039,7 @@ class _BoardTaskCard extends StatelessWidget {
                 const SizedBox(width: AppSpacing.xs),
                 // Date
                 Flexible(
+                  flex: 1,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -2707,8 +3073,10 @@ class _BoardTaskCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                const SizedBox(width: AppSpacing.xs),
                 // Priority
-                _buildPriorityIcon(task.priority),
+                _buildPriorityText(task.priority),
+                const SizedBox(width: AppSpacing.xs),
                 // More options
                 PopupMenuButton<String>(
                   icon: Icon(Icons.more_vert, size: isMobile ? 14 : 16, color: AppColors.textMuted),
@@ -2848,38 +3216,31 @@ class _BoardTaskCard extends StatelessWidget {
     );
   }
 
-  Widget _buildPriorityIcon(TaskPriority priority) {
-    Color color;
+  Widget _buildPriorityText(TaskPriority priority) {
     String label;
+    Color color;
     switch (priority) {
       case TaskPriority.high:
+        label = 'High';
         color = AppColors.danger;
-        label = 'High Priority';
         break;
       case TaskPriority.medium:
-        color = AppColors.primary;
-        label = 'Normal Priority';
+        label = 'Medium';
+        color = AppColors.warning;
         break;
       case TaskPriority.low:
+        label = 'Low';
         color = AppColors.success;
-        label = 'Low Priority';
         break;
     }
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.flag, size: 12, color: color),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            color: color,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
+    return Text(
+      label,
+      style: TextStyle(
+        fontSize: 10,
+        color: color,
+        fontWeight: FontWeight.w500,
+      ),
     );
   }
 

@@ -212,13 +212,22 @@ class _CalendarViewState extends State<CalendarView> {
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final crossAxisCount = 7;
-                  final itemWidth = (constraints.maxWidth - (crossAxisCount - 1) * 4) / crossAxisCount;
+                  final availableWidth = constraints.maxWidth;
+                  final itemWidth = (availableWidth - (crossAxisCount - 1) * (isMobile ? 2 : 4) - (isMobile ? AppSpacing.xs * 2 : AppSpacing.sm * 2)) / crossAxisCount;
+                  final rowCount = (days.length / crossAxisCount).ceil();
+                  final availableHeight = constraints.maxHeight;
+                  final spacingHeight = (rowCount - 1) * (isMobile ? 2 : 4);
+                  final paddingHeight = (isMobile ? AppSpacing.xs * 2 : AppSpacing.sm * 2);
+                  final maxItemHeight = (availableHeight - spacingHeight - paddingHeight) / rowCount;
+                  final itemHeight = maxItemHeight.clamp(60.0, double.infinity);
                   
                   return GridView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: false,
                     padding: EdgeInsets.all(isMobile ? AppSpacing.xs : AppSpacing.sm),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: crossAxisCount,
-                      childAspectRatio: itemWidth / (itemWidth * (isMobile ? 1.5 : 1.2)),
+                      childAspectRatio: itemWidth / itemHeight,
                       crossAxisSpacing: isMobile ? 2 : 4,
                       mainAxisSpacing: isMobile ? 2 : 4,
                     ),
@@ -263,6 +272,8 @@ class _CalendarViewState extends State<CalendarView> {
                               child: dayTasks.isEmpty
                                   ? const SizedBox.shrink()
                                   : ListView.builder(
+                                      physics: const NeverScrollableScrollPhysics(),
+                                      shrinkWrap: true,
                                       padding: EdgeInsets.zero,
                                       itemCount: dayTasks.length > maxVisibleTasks
                                           ? maxVisibleTasks

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 import '../controllers/chat_controller.dart';
 import '../controllers/task_controller.dart';
@@ -9,6 +10,8 @@ import '../models/task_model.dart';
 import '../models/team_member.dart';
 import '../models/team_model.dart';
 import '../models/user_model.dart';
+import '../models/search_result.dart';
+import '../models/expense_model.dart';
 import '../utils/rbac_utils.dart';
 
 enum DashboardTab { tasks, team, chat, expenses, formBuilder }
@@ -41,6 +44,8 @@ class DashboardProvider extends ChangeNotifier {
 
   String taskFilter = 'All';
   String taskSearchQuery = '';
+  String globalSearchQuery = '';
+  List<SearchResult> globalSearchResults = [];
   static const List<String> taskFilters = [
     'All',
     'Pending',
@@ -447,6 +452,137 @@ class DashboardProvider extends ChangeNotifier {
     } catch (_) {
       // keep optimistic UI even if sending fails
     }
+  }
+
+  void performGlobalSearch(String query, {List<ExpenseModel>? expenses}) {
+    globalSearchQuery = query;
+    final results = <SearchResult>[];
+    final lowerQuery = query.toLowerCase().trim();
+
+    if (lowerQuery.isEmpty) {
+      globalSearchResults = [];
+      notifyListeners();
+      return;
+    }
+
+    // Search tasks
+    for (final task in tasks) {
+      if (task.title.toLowerCase().contains(lowerQuery) ||
+          task.description.toLowerCase().contains(lowerQuery)) {
+        results.add(SearchResult(
+          type: SearchResultType.task,
+          id: task.id,
+          title: task.title,
+          subtitle: task.description,
+          icon: Icons.task_alt,
+        ));
+      }
+    }
+
+    // Search team members (from members list)
+    for (final member in members) {
+      if (member.name.toLowerCase().contains(lowerQuery) ||
+          member.email.toLowerCase().contains(lowerQuery) ||
+          member.role.toLowerCase().contains(lowerQuery) ||
+          member.department.toLowerCase().contains(lowerQuery)) {
+        final initials = member.name
+            .split(' ')
+            .map((e) => e.isNotEmpty ? e[0] : '')
+            .take(2)
+            .join()
+            .toUpperCase();
+        results.add(SearchResult(
+          type: SearchResultType.teamMember,
+          id: member.id,
+          title: member.name,
+          subtitle: '${member.email} • ${member.role}',
+          icon: Icons.person,
+          avatarText: initials,
+          email: member.email,
+          role: member.role,
+        ));
+      }
+    }
+
+    // Search users (from allUsers list)
+    for (final user in allUsers) {
+      if (user.name.toLowerCase().contains(lowerQuery) ||
+          user.email.toLowerCase().contains(lowerQuery) ||
+          user.role.toLowerCase().contains(lowerQuery) ||
+          user.department.toLowerCase().contains(lowerQuery)) {
+        // Check if not already added from members list
+        if (!results.any((r) => r.type == SearchResultType.teamMember && r.id == user.id)) {
+          final initials = user.name
+              .split(' ')
+              .map((e) => e.isNotEmpty ? e[0] : '')
+              .take(2)
+              .join()
+              .toUpperCase();
+          results.add(SearchResult(
+            type: SearchResultType.teamMember,
+            id: user.id,
+            title: user.name,
+            subtitle: '${user.email} • ${user.role}',
+            icon: Icons.person,
+            avatarText: initials,
+            email: user.email,
+            role: user.role,
+          ));
+        }
+      }
+    }
+
+    // Search teams
+    for (final team in teams) {
+      if (team.name.toLowerCase().contains(lowerQuery) ||
+          team.description.toLowerCase().contains(lowerQuery)) {
+        results.add(SearchResult(
+          type: SearchResultType.teamMember,
+          id: team.id,
+          title: team.name,
+          subtitle: team.description,
+          icon: Icons.groups,
+        ));
+      }
+    }
+
+    // Search expenses (if provided)
+    if (expenses != null) {
+      for (final expense in expenses) {
+        final description = expense.description.toLowerCase();
+        final employeeName = expense.employeeName.toLowerCase();
+        final merchant = (expense.merchant ?? '').toLowerCase();
+        
+        if (description.contains(lowerQuery) ||
+            employeeName.contains(lowerQuery) ||
+            merchant.contains(lowerQuery)) {
+          results.add(SearchResult(
+            type: SearchResultType.expense,
+            id: expense.id,
+            title: expense.description,
+            subtitle: '${expense.employeeName} - ${expense.amount.toStringAsFixed(2)} ${expense.currency}',
+            icon: Icons.receipt,
+          ));
+        }
+      }
+    }
+
+    // Search conversations
+    for (final conversation in conversations) {
+      if (conversation.topic.toLowerCase().contains(lowerQuery) ||
+          conversation.preview.toLowerCase().contains(lowerQuery)) {
+        results.add(SearchResult(
+          type: SearchResultType.conversation,
+          id: conversation.id,
+          title: conversation.topic,
+          subtitle: conversation.preview,
+          icon: Icons.chat_bubble_outline,
+        ));
+      }
+    }
+
+    globalSearchResults = results;
+    notifyListeners();
   }
 }
 

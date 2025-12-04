@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../components/shadcn/shadcn.dart';
-import '../../utils/animation_utils.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../providers/dashboard_provider.dart';
@@ -55,32 +53,8 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
       return SingleChildScrollView(
         child: Column(
           children: [
-            _buildHeader(context, provider)
-                .animate()
-                .fade(
-                  duration: AnimationUtils.normalDuration,
-                  delay: AnimationUtils.shortDelay,
-                )
-                .slide(
-                  begin: const Offset(0, -10),
-                  end: Offset.zero,
-                  duration: AnimationUtils.normalDuration,
-                  delay: AnimationUtils.shortDelay,
-                  curve: Curves.easeOutCubic,
-                ),
-            _buildTabs()
-                .animate()
-                .fade(
-                  duration: AnimationUtils.normalDuration,
-                  delay: AnimationUtils.mediumDelay,
-                )
-                .slide(
-                  begin: const Offset(0, -10),
-                  end: Offset.zero,
-                  duration: AnimationUtils.normalDuration,
-                  delay: AnimationUtils.mediumDelay,
-                  curve: Curves.easeOutCubic,
-                ),
+            _buildHeader(context, provider),
+            _buildTabs(),
             _buildTabContent(context, provider),
           ],
         ),
@@ -89,32 +63,8 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
       // For desktop/tablet: use TabBarView with Expanded
       return Column(
         children: [
-          _buildHeader(context, provider)
-              .animate()
-              .fade(
-                duration: AnimationUtils.normalDuration,
-                delay: AnimationUtils.shortDelay,
-              )
-              .slide(
-                begin: const Offset(0, -10),
-                end: Offset.zero,
-                duration: AnimationUtils.normalDuration,
-                delay: AnimationUtils.shortDelay,
-                curve: Curves.easeOutCubic,
-              ),
-          _buildTabs()
-              .animate()
-              .fade(
-                duration: AnimationUtils.normalDuration,
-                delay: AnimationUtils.mediumDelay,
-              )
-              .slide(
-                begin: const Offset(0, -10),
-                end: Offset.zero,
-                duration: AnimationUtils.normalDuration,
-                delay: AnimationUtils.mediumDelay,
-                curve: Curves.easeOutCubic,
-              ),
+          _buildHeader(context, provider),
+          _buildTabs(),
           Expanded(
             child: TabBarView(
               controller: _tabController,
