@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../components/shadcn/shadcn.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/task_model.dart';
 import '../../providers/dashboard_provider.dart';
+import '../../widgets/shadcn/shadcn_widgets.dart';
 import '../tasks/edit_task_view.dart';
 import '../tasks/task_detail_view.dart';
 import '../tasks/task_audit_logs_view.dart';
@@ -195,7 +196,7 @@ class TaskCard extends StatelessWidget {
               spacing: AppSpacing.xs,
               runSpacing: AppSpacing.xs,
               children: [
-                ShadButton(
+                AppButton(
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -203,12 +204,16 @@ class TaskCard extends StatelessWidget {
                       ),
                     );
                   },
-                  variant: ShadButtonVariant.outline,
-                  size: ShadButtonSize.sm,
-                  icon: const Icon(Icons.visibility, size: 16),
-                  child: const Text('View Details'),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.visibility, size: 16),
+                      SizedBox(width: 4),
+                      Text('View Details'),
+                    ],
+                  ),
                 ),
-                ShadButton(
+                ShadIconButton(
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -216,12 +221,10 @@ class TaskCard extends StatelessWidget {
                       ),
                     );
                   },
-                  variant: ShadButtonVariant.ghost,
-                  size: ShadButtonSize.sm,
                   icon: const Icon(Icons.history, size: 16),
-                  child: const Text('Audit Logs'),
                 ),
-                ShadButton(
+                AppButton(
+                  variant: AppButtonVariant.outline,
                   onPressed: () async {
                     await Navigator.of(context).push(
                       MaterialPageRoute(
@@ -233,17 +236,18 @@ class TaskCard extends StatelessWidget {
                           .refreshTasks();
                     }
                   },
-                  variant: ShadButtonVariant.outline,
-                  size: ShadButtonSize.sm,
-                  icon: const Icon(Icons.edit_outlined, size: 16),
-                  child: const Text('Edit'),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.edit_outlined, size: 16),
+                      SizedBox(width: 4),
+                      Text('Edit'),
+                    ],
+                  ),
                 ),
-                ShadButton(
+                ShadIconButton(
                   onPressed: () => _showDeleteConfirmation(context),
-                  variant: ShadButtonVariant.ghost,
-                  size: ShadButtonSize.sm,
                   icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
-                  child: const Text('Delete'),
                 ),
               ],
             ),
@@ -321,11 +325,11 @@ class TaskCard extends StatelessWidget {
       await provider.updateTask(updatedTask);
     } catch (e) {
       if (context.mounted) {
-        ShadToast.show(
-          context,
-          title: 'Error',
-          description: 'Failed to update subtask: ${e.toString()}',
-          variant: ShadToastVariant.error,
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update subtask: ${e.toString()}'),
+            backgroundColor: AppColors.danger,
+          ),
         );
       }
     }
@@ -335,8 +339,8 @@ class TaskCard extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => ShadDialog(
-        title: 'Delete Task',
-        content: Text(
+        title: const Text('Delete Task'),
+        child: Text(
           'Are you sure you want to delete "${task.title}"? This action cannot be undone.',
           style: const TextStyle(
             color: AppColors.textSecondary,
@@ -344,15 +348,15 @@ class TaskCard extends StatelessWidget {
           ),
         ),
         actions: [
-          ShadButton(
+          AppButton(
+            variant: AppButtonVariant.outline,
             onPressed: () => Navigator.of(context).pop(false),
-            variant: ShadButtonVariant.outline,
             child: const Text('Cancel'),
           ),
           const SizedBox(width: AppSpacing.sm),
-          ShadButton(
+          AppButton(
+            variant: AppButtonVariant.destructive,
             onPressed: () => Navigator.of(context).pop(true),
-            variant: ShadButtonVariant.destructive,
             child: const Text('Delete'),
           ),
         ],
@@ -364,20 +368,20 @@ class TaskCard extends StatelessWidget {
       try {
         await provider.deleteTask(task.id);
         if (context.mounted) {
-          ShadToast.show(
-            context,
-            title: 'Success',
-            description: 'Task deleted successfully',
-            variant: ShadToastVariant.success,
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Task deleted successfully'),
+              backgroundColor: AppColors.success,
+            ),
           );
         }
       } catch (e) {
         if (context.mounted) {
-          ShadToast.show(
-            context,
-            title: 'Error',
-            description: 'Failed to delete task: ${e.toString()}',
-            variant: ShadToastVariant.error,
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete task: ${e.toString()}'),
+              backgroundColor: AppColors.danger,
+            ),
           );
         }
       }
@@ -419,104 +423,61 @@ class _StatusDropdown extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _statusColor.withValues(alpha: 0.3), width: 1),
       ),
-      child: PopupMenuButton<TaskStatus>(
-        padding: EdgeInsets.zero,
-        icon: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: _statusColor,
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              statusLabel,
-              style: TextStyle(
-                color: _statusColor,
-                fontWeight: FontWeight.w600,
-                fontSize: 11,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.keyboard_arrow_down,
-              size: 14,
-              color: _statusColor,
-            ),
-          ],
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        itemBuilder: (context) => [
-          PopupMenuItem(
+      child: AppSelect<TaskStatus>(
+        placeholder: statusLabel,
+        value: task.status,
+        options: [
+          SelectOption<TaskStatus>(
             value: TaskStatus.pending,
-            child: Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: AppColors.warning,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                const Text('Pending'),
-              ],
-            ),
+            label: 'Pending',
           ),
-          PopupMenuItem(
+          SelectOption<TaskStatus>(
             value: TaskStatus.inProgress,
-            child: Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                const Text('In Progress'),
-              ],
-            ),
+            label: 'In Progress',
           ),
-          PopupMenuItem(
+          SelectOption<TaskStatus>(
             value: TaskStatus.completed,
-            child: Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: AppColors.success,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                const Text('Completed'),
-              ],
-            ),
+            label: 'Completed',
           ),
         ],
-        onSelected: (TaskStatus newStatus) async {
-          final provider = Provider.of<DashboardProvider>(context, listen: false);
-          try {
-            await provider.updateTaskStatus(task.id, newStatus);
-          } catch (e) {
-            if (context.mounted) {
-              ShadToast.show(
-                context,
-                title: 'Error',
-                description: 'Failed to update status: ${e.toString()}',
-                variant: ShadToastVariant.error,
-              );
+        selectedOptionBuilder: (context, value) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: _statusColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                statusLabel,
+                style: TextStyle(
+                  color: _statusColor,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          );
+        },
+        onChanged: (TaskStatus? newStatus) async {
+          if (newStatus != null) {
+            final provider = Provider.of<DashboardProvider>(context, listen: false);
+            try {
+              await provider.updateTaskStatus(task.id, newStatus);
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to update status: ${e.toString()}'),
+                    backgroundColor: AppColors.danger,
+                  ),
+                );
+              }
             }
           }
         },

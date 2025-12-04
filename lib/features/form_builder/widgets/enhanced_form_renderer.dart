@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../../../components/shadcn/shadcn.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../../constants/app_colors.dart';
 import '../../../constants/app_spacing.dart';
+import '../../../widgets/shadcn/shadcn_widgets.dart';
 import '../models/form_models.dart';
 
 /// Enhanced form renderer that supports dynamic dropdown options
@@ -123,66 +124,39 @@ class _EnhancedFormRendererState extends State<EnhancedFormRenderer> {
       case FormFieldType.email:
         return ShadInput(
           controller: _controllers[field.id],
-          label: field.label + (field.required ? ' *' : ''),
-          hintText: field.placeholder,
-          prefixIcon: Icon(
+          placeholder: Text(field.placeholder),
+          leading: Icon(
             field.type == FormFieldType.email
                 ? Icons.email
                 : Icons.text_fields,
             color: AppColors.primary,
           ),
-          validator: field.required
-              ? (v) => v?.isEmpty ?? true ? 'This field is required' : null
-              : null,
           onChanged: (v) => onChanged(v),
         );
       case FormFieldType.number:
         return ShadInput(
           controller: _controllers[field.id],
-          label: field.label + (field.required ? ' *' : ''),
-          hintText: field.placeholder,
-          prefixIcon: const Icon(Icons.numbers, color: AppColors.primary),
+          placeholder: Text(field.placeholder),
+          leading: const Icon(Icons.numbers, color: AppColors.primary),
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          validator: field.required
-              ? (v) {
-                  if (v?.isEmpty ?? true) return 'This field is required';
-                  if (double.tryParse(v!) == null) {
-                    return 'Please enter a valid number';
-                  }
-                  return null;
-                }
-              : null,
           onChanged: (v) => onChanged(v),
         );
       case FormFieldType.textarea:
         return ShadInput(
           controller: _controllers[field.id],
-          label: field.label + (field.required ? ' *' : ''),
-          hintText: field.placeholder,
-          prefixIcon: const Icon(Icons.description, color: AppColors.primary),
-          maxLines: 4,
-          validator: field.required
-              ? (v) => v?.isEmpty ?? true ? 'This field is required' : null
-              : null,
+          placeholder: Text(field.placeholder),
+          leading: const Icon(Icons.description, color: AppColors.primary),
           onChanged: (v) => onChanged(v),
         );
       case FormFieldType.dropdown:
-        return ShadSelect<String>(
+        return AppSelect<String>(
+          placeholder: field.placeholder,
           value: value as String?,
-          label: field.label + (field.required ? ' *' : ''),
-          hint: field.placeholder,
-          prefixIcon: const Icon(Icons.arrow_drop_down, color: AppColors.primary),
-          items: options.map((o) {
-            return ShadSelectItem<String>(
-              value: o,
-              label: o,
-              child: Text(o),
-            );
-          }).toList(),
+          options: SelectOption.fromStringList(options),
+          selectedOptionBuilder: (context, val) {
+            return Text(val ?? field.placeholder);
+          },
           onChanged: (v) => onChanged(v),
-          validator: field.required
-              ? (v) => v == null ? 'This field is required' : null
-              : null,
         );
       case FormFieldType.checkbox:
         return Column(
@@ -246,14 +220,7 @@ class _EnhancedFormRendererState extends State<EnhancedFormRenderer> {
           ],
         );
       case FormFieldType.date:
-        return ShadInput(
-          label: field.label + (field.required ? ' *' : ''),
-          hintText: value == null
-              ? field.placeholder
-              : DateFormat('MM/dd/yyyy').format(value as DateTime),
-          prefixIcon: const Icon(Icons.calendar_today, color: AppColors.primary),
-          suffixIcon: const Icon(Icons.arrow_drop_down, color: AppColors.textMuted),
-          readOnly: true,
+        return GestureDetector(
           onTap: () async {
             final picked = await showDatePicker(
               context: context,
@@ -273,15 +240,19 @@ class _EnhancedFormRendererState extends State<EnhancedFormRenderer> {
             );
             if (picked != null) onChanged(picked);
           },
-          validator: field.required
-              ? (v) => value == null ? 'This field is required' : null
-              : null,
+          child: ShadInput(
+            placeholder: Text(value == null
+                ? field.placeholder
+                : DateFormat('MM/dd/yyyy').format(value as DateTime)),
+            leading: const Icon(Icons.calendar_today, color: AppColors.primary),
+            trailing: const Icon(Icons.arrow_drop_down, color: AppColors.textMuted),
+            readOnly: true,
+          ),
         );
       case FormFieldType.fileUpload:
         return ShadInput(
-          label: field.label + (field.required ? ' *' : ''),
-          hintText: 'File upload not implemented',
-          prefixIcon: const Icon(Icons.upload_file, color: AppColors.primary),
+          placeholder: const Text('File upload not implemented'),
+          leading: const Icon(Icons.upload_file, color: AppColors.primary),
           enabled: false,
         );
       case FormFieldType.sectionTitle:

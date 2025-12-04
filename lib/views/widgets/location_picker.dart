@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../components/shadcn/shadcn.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
+import '../../widgets/shadcn/shadcn_widgets.dart';
 import '../../models/task_location.dart';
 import '../../services/location_service.dart';
 
@@ -96,14 +97,8 @@ class _LocationPickerState extends State<LocationPicker> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: ShadAlert(
-              title: 'Success',
-              description: 'Location saved successfully',
-              variant: ShadAlertVariant.success,
-            ),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            padding: const EdgeInsets.all(16),
+            content: const Text('Location saved successfully'),
+            backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 2),
           ),
@@ -113,14 +108,8 @@ class _LocationPickerState extends State<LocationPicker> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: ShadAlert(
-              title: 'Error',
-              description: e.toString().replaceFirst('Exception: ', ''),
-              variant: ShadAlertVariant.destructive,
-            ),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            padding: const EdgeInsets.all(16),
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -180,14 +169,8 @@ class _LocationPickerState extends State<LocationPicker> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: ShadAlert(
-                title: 'Success',
-                description: 'Location saved successfully',
-                variant: ShadAlertVariant.success,
-              ),
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              padding: const EdgeInsets.all(16),
+              content: const Text('Location saved successfully'),
+              backgroundColor: AppColors.success,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 2),
             ),
@@ -206,14 +189,8 @@ class _LocationPickerState extends State<LocationPicker> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: ShadAlert(
-                title: 'Location Saved',
-                description: 'Address saved (coordinates not available)',
-                variant: ShadAlertVariant.success,
-              ),
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              padding: const EdgeInsets.all(16),
+              content: const Text('Address saved (coordinates not available)'),
+              backgroundColor: AppColors.success,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 2),
             ),
@@ -244,14 +221,8 @@ class _LocationPickerState extends State<LocationPicker> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: ShadAlert(
-              title: 'Location Saved',
-              description: 'Address saved successfully',
-              variant: ShadAlertVariant.success,
-            ),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            padding: const EdgeInsets.all(16),
+            content: const Text('Address saved successfully'),
+            backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 2),
           ),
@@ -294,14 +265,8 @@ class _LocationPickerState extends State<LocationPicker> {
     if (_addressController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: ShadAlert(
-            title: 'Validation Error',
-            description: 'Please enter an address',
-            variant: ShadAlertVariant.destructive,
-          ),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          padding: const EdgeInsets.all(16),
+          content: const Text('Please enter an address'),
+          backgroundColor: AppColors.danger,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -351,38 +316,46 @@ class _LocationPickerState extends State<LocationPicker> {
                     runSpacing: AppSpacing.sm,
                     children: [
                       if (widget.location != null && widget.enabled && !_isManualInput)
-                        ShadButton(
+                        AppButton(
+                          variant: AppButtonVariant.outline,
                           onPressed: _clearLocation,
-                          variant: ShadButtonVariant.outline,
-                          size: ShadButtonSize.sm,
-                          icon: const Icon(Icons.clear, size: 18),
-                          child: const Text('Clear'),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.clear, size: 18),
+                              SizedBox(width: 4),
+                              Text('Clear'),
+                            ],
+                          ),
                         ),
-                      ShadButton(
+                      AppButton(
+                        variant: AppButtonVariant.outline,
                         onPressed: widget.enabled && !_isLoading && !_isManualInput
                             ? _toggleManualInput
                             : null,
-                        variant: ShadButtonVariant.outline,
-                        size: ShadButtonSize.sm,
-                        disabled: !widget.enabled || _isLoading || _isManualInput,
-                        icon: const Icon(Icons.edit_location, size: 18),
-                        child: const Text('Enter Address'),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.edit_location, size: 18),
+                            SizedBox(width: 4),
+                            Text('Enter Address'),
+                          ],
+                        ),
                       ),
-                      ShadButton(
+                      AppButton(
+                        variant: AppButtonVariant.outline,
                         onPressed: widget.enabled && !_isLoading && !_isManualInput
                             ? _pickCurrentLocation
                             : null,
-                        variant: ShadButtonVariant.outline,
-                        size: ShadButtonSize.sm,
-                        disabled: !widget.enabled || _isLoading || _isManualInput,
-                        icon: _isLoading
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.location_on, size: 18),
-                        child: const Text('Use Current'),
+                        isLoading: _isLoading,
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.location_on, size: 18),
+                            SizedBox(width: 4),
+                            Text('Use Current'),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -421,38 +394,46 @@ class _LocationPickerState extends State<LocationPicker> {
                     alignment: WrapAlignment.end,
                     children: [
                       if (widget.location != null && widget.enabled && !_isManualInput)
-                        ShadButton(
+                        AppButton(
+                          variant: AppButtonVariant.outline,
                           onPressed: _clearLocation,
-                          variant: ShadButtonVariant.outline,
-                          size: ShadButtonSize.sm,
-                          icon: const Icon(Icons.clear, size: 18),
-                          child: const Text('Clear'),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.clear, size: 18),
+                              SizedBox(width: 4),
+                              Text('Clear'),
+                            ],
+                          ),
                         ),
-                      ShadButton(
+                      AppButton(
+                        variant: AppButtonVariant.outline,
                         onPressed: widget.enabled && !_isLoading && !_isManualInput
                             ? _toggleManualInput
                             : null,
-                        variant: ShadButtonVariant.outline,
-                        size: ShadButtonSize.sm,
-                        disabled: !widget.enabled || _isLoading || _isManualInput,
-                        icon: const Icon(Icons.edit_location, size: 18),
-                        child: const Text('Enter Address'),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.edit_location, size: 18),
+                            SizedBox(width: 4),
+                            Text('Enter Address'),
+                          ],
+                        ),
                       ),
-                      ShadButton(
+                      AppButton(
+                        variant: AppButtonVariant.outline,
                         onPressed: widget.enabled && !_isLoading && !_isManualInput
                             ? _pickCurrentLocation
                             : null,
-                        variant: ShadButtonVariant.outline,
-                        size: ShadButtonSize.sm,
-                        disabled: !widget.enabled || _isLoading || _isManualInput,
-                        icon: _isLoading
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.location_on, size: 18),
-                        child: const Text('Use Current'),
+                        isLoading: _isLoading,
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.location_on, size: 18),
+                            SizedBox(width: 4),
+                            Text('Use Current'),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -465,40 +446,34 @@ class _LocationPickerState extends State<LocationPicker> {
           const SizedBox(height: AppSpacing.md),
           ShadInput(
             controller: _placeNameController,
-            label: 'Place Name (Optional)',
-            hintText: 'e.g., Office Building, Meeting Room',
-            prefixIcon: const Icon(Icons.place, color: AppColors.primary),
+            placeholder: const Text('e.g., Office Building, Meeting Room'),
+            leading: const Icon(Icons.place, color: AppColors.primary),
           ),
           const SizedBox(height: AppSpacing.md),
           ShadInput(
             controller: _addressController,
-            label: 'Address *',
-            hintText: 'Enter full address',
-            prefixIcon: const Icon(Icons.location_on, color: AppColors.primary),
+            placeholder: const Text('Enter full address'),
+            leading: const Icon(Icons.location_on, color: AppColors.primary),
           ),
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
-              ShadButton(
+              AppButton(
                 onPressed: widget.enabled && !_isLoading ? _saveManualLocation : null,
-                variant: ShadButtonVariant.default_,
-                size: ShadButtonSize.sm,
-                disabled: !widget.enabled || _isLoading,
-                icon: _isLoading
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.check, size: 18),
-                child: const Text('Save Location'),
+                isLoading: _isLoading,
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check, size: 18),
+                    SizedBox(width: 4),
+                    Text('Save Location'),
+                  ],
+                ),
               ),
               const SizedBox(width: AppSpacing.sm),
-              ShadButton(
+              AppButton(
+                variant: AppButtonVariant.outline,
                 onPressed: widget.enabled ? _toggleManualInput : null,
-                variant: ShadButtonVariant.outline,
-                size: ShadButtonSize.sm,
-                disabled: !widget.enabled,
                 child: const Text('Cancel'),
               ),
             ],

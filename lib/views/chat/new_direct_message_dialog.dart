@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../components/shadcn/shadcn.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
+import '../../widgets/shadcn/shadcn_widgets.dart';
 import '../../models/user_model.dart';
 import '../../providers/realtime_chat_provider.dart';
 
@@ -99,10 +100,10 @@ class _NewDirectMessageDialogState extends State<NewDirectMessageDialog> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            ShadInput(
+            AppSearchInput(
               controller: _searchController,
-              hintText: 'Search users...',
-              prefixIcon: const Icon(Icons.search, size: 16, color: AppColors.textMuted),
+              placeholder: 'Search users...',
+              onChanged: (_) => _filterUsers(),
             ),
             const SizedBox(height: AppSpacing.sm),
             Container(
@@ -185,10 +186,9 @@ class _NewDirectMessageDialogState extends State<NewDirectMessageDialog> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                ShadButton(
+                AppButton(
+                  variant: AppButtonVariant.outline,
                   onPressed: () => Navigator.of(context).pop(),
-                  variant: ShadButtonVariant.outline,
-                  size: ShadButtonSize.sm,
                   child: const Text(
                     'Cancel',
                     style: TextStyle(fontSize: 13),

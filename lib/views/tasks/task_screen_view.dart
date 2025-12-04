@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
-import '../../components/shadcn/shadcn.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/task_model.dart';
@@ -10,6 +10,7 @@ import '../../models/team_member.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../controllers/task_screen_controller.dart';
 import '../../utils/responsive_utils.dart';
+import '../../widgets/shadcn/shadcn_widgets.dart';
 import 'add_task_view.dart';
 import 'edit_task_view.dart';
 import 'task_detail_view.dart';
@@ -201,12 +202,16 @@ class _TaskScreenViewState extends State<TaskScreenView> {
               ),
               if (!isMobile) Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                child: ShadButton(
+                child: AppButton(
                   onPressed: () => _openAddTask(context),
-                  variant: ShadButtonVariant.default_,
-                  size: ShadButtonSize.md,
-                  icon: const Icon(Icons.add, size: 18),
-                  child: const Text('+ Add New'),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add, size: 18),
+                      SizedBox(width: 4),
+                      Text('+ Add New'),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -281,13 +286,23 @@ class _TaskScreenViewState extends State<TaskScreenView> {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     // Assignee Filter
-                    _buildFilterDropdown(
-                      label: controller.selectedAssigneeFilter ?? 'All',
-                      items: ['All', ...provider.members.map((m) => m.name)],
-                      onSelected: (value) {
+                    AppSelect<String>(
+                      placeholder: 'All',
+                      value: controller.selectedAssigneeFilter ?? 'All',
+                      options: [
+                        const SelectOption(value: 'All', label: 'All'),
+                        ...provider.members.map((m) => SelectOption<String>(
+                          value: m.name,
+                          label: m.name,
+                        )),
+                      ],
+                      selectedOptionBuilder: (context, value) {
+                        return Text(value ?? 'All');
+                      },
+                      onChanged: (value) {
                         controller.setAssigneeFilter(value == 'All' ? null : value);
                       },
-                      isMobile: true,
+                      width: isMobile ? double.infinity : null,
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     // Priority Filter
@@ -317,10 +332,20 @@ class _TaskScreenViewState extends State<TaskScreenView> {
                     ),
                     const SizedBox(width: AppSpacing.md),
                     // Assignee Filter
-                    _buildFilterDropdown(
-                      label: controller.selectedAssigneeFilter ?? 'All',
-                      items: ['All', ...provider.members.map((m) => m.name)],
-                      onSelected: (value) {
+                    AppSelect<String>(
+                      placeholder: 'All',
+                      value: controller.selectedAssigneeFilter ?? 'All',
+                      options: [
+                        const SelectOption(value: 'All', label: 'All'),
+                        ...provider.members.map((m) => SelectOption<String>(
+                          value: m.name,
+                          label: m.name,
+                        )),
+                      ],
+                      selectedOptionBuilder: (context, value) {
+                        return Text(value ?? 'All');
+                      },
+                      onChanged: (value) {
                         controller.setAssigneeFilter(value == 'All' ? null : value);
                       },
                     ),
@@ -355,39 +380,30 @@ class _TaskScreenViewState extends State<TaskScreenView> {
     required Function(String?) onSelected,
     bool isMobile = false,
   }) {
-    return PopupMenuButton<String>(
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm,
-        ),
-        width: isMobile ? double.infinity : null,
-        decoration: BoxDecoration(
-          border: Border.all(color: AppColors.border),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Row(
-          mainAxisSize: isMobile ? MainAxisSize.max : MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            const Icon(Icons.keyboard_arrow_down, size: 16, color: AppColors.textMuted),
-          ],
-        ),
-      ),
-      itemBuilder: (context) => items.map((item) {
-        return PopupMenuItem(
-          value: item,
-          child: Text(item),
-        );
-      }).toList(),
-      onSelected: onSelected,
+    // Find the current value - it should be in the items list or use label as fallback
+    String? currentValue;
+    if (items.contains(label)) {
+      currentValue = label;
+    } else {
+      // If label is not in items (like "Due Date" or date ranges), use first item or null
+      currentValue = items.isNotEmpty ? items.first : null;
+    }
+    
+    return AppSelect<String>(
+      placeholder: label,
+      value: currentValue,
+      options: SelectOption.fromStringList(items),
+      selectedOptionBuilder: (context, value) {
+        // If value is null or not in items, show the label
+        if (value == null || !items.contains(value)) {
+          return Text(label);
+        }
+        return Text(value);
+      },
+      onChanged: (value) {
+        onSelected(value);
+      },
+      width: isMobile ? double.infinity : null,
     );
   }
 
@@ -1211,42 +1227,53 @@ class _TaskScreenViewState extends State<TaskScreenView> {
           const SizedBox(height: AppSpacing.md),
           ConstrainedBox(
             constraints: const BoxConstraints(minWidth: 0),
-            child: ShadButton(
+            child: AppButton(
               onPressed: () => _openAddTask(context),
-              variant: ShadButtonVariant.default_,
-              size: isMobile ? ShadButtonSize.sm : ShadButtonSize.md,
-              width: double.infinity,
-              icon: Icon(Icons.add, size: isMobile ? 16 : 18),
-              child: const Text('Add New Task'),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add, size: isMobile ? 16 : 18),
+                  const SizedBox(width: 4),
+                  const Text('Add New Task'),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
           ConstrainedBox(
             constraints: const BoxConstraints(minWidth: 0),
-            child: ShadButton(
+            child: AppButton(
+              variant: AppButtonVariant.outline,
               onPressed: () {
                 final controller = context.read<TaskScreenController>();
                 controller.setView(TaskViewMode.list);
               },
-              variant: ShadButtonVariant.outline,
-              size: isMobile ? ShadButtonSize.sm : ShadButtonSize.md,
-              width: double.infinity,
-              icon: Icon(Icons.list, size: isMobile ? 16 : 18),
-              child: const Text('View All Tasks'),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.list, size: isMobile ? 16 : 18),
+                  const SizedBox(width: 4),
+                  const Text('View All Tasks'),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          ShadButton(
+          AppButton(
+            variant: AppButtonVariant.outline,
             onPressed: () {
               // Navigate to list view with filter for overdue
               final controller = context.read<TaskScreenController>();
               controller.setView(TaskViewMode.list);
             },
-            variant: ShadButtonVariant.outline,
-            size: ShadButtonSize.md,
-            width: double.infinity,
-            icon: const Icon(Icons.warning, size: 18),
-            child: const Text('View Overdue'),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.warning, size: 18),
+                SizedBox(width: 4),
+                Text('View Overdue'),
+              ],
+            ),
           ),
         ],
       ),
@@ -2363,14 +2390,8 @@ class _ListTaskRow extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: ShadAlert(
-              title: 'Success',
-              description: 'Task status updated to ${newStatus.name}',
-              variant: ShadAlertVariant.success,
-            ),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            padding: const EdgeInsets.all(16),
+            content: Text('Task status updated to ${newStatus.name}'),
+            backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 2),
           ),
@@ -2380,14 +2401,8 @@ class _ListTaskRow extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: ShadAlert(
-              title: 'Error',
-              description: 'Failed to update task status: ${e.toString()}',
-              variant: ShadAlertVariant.destructive,
-            ),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            padding: const EdgeInsets.all(16),
+            content: Text('Failed to update task status: ${e.toString()}'),
+            backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -2399,8 +2414,8 @@ class _ListTaskRow extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => ShadDialog(
-        title: 'Delete Task',
-        content: Text(
+        title: const Text('Delete Task'),
+        child: Text(
           'Are you sure you want to delete "${task.title}"? This action cannot be undone.',
           style: const TextStyle(
             color: AppColors.textSecondary,
@@ -2408,15 +2423,15 @@ class _ListTaskRow extends StatelessWidget {
           ),
         ),
         actions: [
-          ShadButton(
+          AppButton(
+            variant: AppButtonVariant.outline,
             onPressed: () => Navigator.of(context).pop(false),
-            variant: ShadButtonVariant.outline,
             child: const Text('Cancel'),
           ),
           const SizedBox(width: AppSpacing.sm),
-          ShadButton(
+          AppButton(
+            variant: AppButtonVariant.destructive,
             onPressed: () => Navigator.of(context).pop(true),
-            variant: ShadButtonVariant.destructive,
             child: const Text('Delete'),
           ),
         ],
@@ -2429,14 +2444,8 @@ class _ListTaskRow extends StatelessWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: ShadAlert(
-                title: 'Success',
-                description: 'Task deleted successfully',
-                variant: ShadAlertVariant.success,
-              ),
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              padding: const EdgeInsets.all(16),
+              content: const Text('Task deleted successfully'),
+              backgroundColor: AppColors.success,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 2),
             ),
@@ -2446,14 +2455,8 @@ class _ListTaskRow extends StatelessWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: ShadAlert(
-                title: 'Error',
-                description: 'Failed to delete task: ${e.toString()}',
-                variant: ShadAlertVariant.destructive,
-              ),
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              padding: const EdgeInsets.all(16),
+              content: Text('Failed to delete task: ${e.toString()}'),
+              backgroundColor: AppColors.danger,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -2479,14 +2482,8 @@ class _BoardTaskCard extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: ShadAlert(
-              title: 'Success',
-              description: 'Task status updated to ${newStatus.name}',
-              variant: ShadAlertVariant.success,
-            ),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            padding: const EdgeInsets.all(16),
+            content: Text('Task status updated to ${newStatus.name}'),
+            backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 2),
           ),
@@ -2496,14 +2493,8 @@ class _BoardTaskCard extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: ShadAlert(
-              title: 'Error',
-              description: 'Failed to update task status: ${e.toString()}',
-              variant: ShadAlertVariant.destructive,
-            ),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            padding: const EdgeInsets.all(16),
+            content: Text('Failed to update task status: ${e.toString()}'),
+            backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -2533,14 +2524,8 @@ class _BoardTaskCard extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: ShadAlert(
-              title: 'Error',
-              description: 'Failed to update subtask: ${e.toString()}',
-              variant: ShadAlertVariant.destructive,
-            ),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            padding: const EdgeInsets.all(16),
+            content: Text('Failed to update subtask: ${e.toString()}'),
+            backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -2887,8 +2872,8 @@ class _BoardTaskCard extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => ShadDialog(
-        title: 'Delete Task',
-        content: Text(
+        title: const Text('Delete Task'),
+        child: Text(
           'Are you sure you want to delete "${task.title}"? This action cannot be undone.',
           style: const TextStyle(
             color: AppColors.textSecondary,
@@ -2896,15 +2881,15 @@ class _BoardTaskCard extends StatelessWidget {
           ),
         ),
         actions: [
-          ShadButton(
+          AppButton(
+            variant: AppButtonVariant.outline,
             onPressed: () => Navigator.of(context).pop(false),
-            variant: ShadButtonVariant.outline,
             child: const Text('Cancel'),
           ),
           const SizedBox(width: AppSpacing.sm),
-          ShadButton(
+          AppButton(
+            variant: AppButtonVariant.destructive,
             onPressed: () => Navigator.of(context).pop(true),
-            variant: ShadButtonVariant.destructive,
             child: const Text('Delete'),
           ),
         ],
@@ -2917,14 +2902,8 @@ class _BoardTaskCard extends StatelessWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: ShadAlert(
-                title: 'Success',
-                description: 'Task deleted successfully',
-                variant: ShadAlertVariant.success,
-              ),
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              padding: const EdgeInsets.all(16),
+              content: const Text('Task deleted successfully'),
+              backgroundColor: AppColors.success,
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 2),
             ),
@@ -2934,14 +2913,8 @@ class _BoardTaskCard extends StatelessWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: ShadAlert(
-                title: 'Error',
-                description: 'Failed to delete task: ${e.toString()}',
-                variant: ShadAlertVariant.destructive,
-              ),
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              padding: const EdgeInsets.all(16),
+              content: Text('Failed to delete task: ${e.toString()}'),
+              backgroundColor: AppColors.danger,
               behavior: SnackBarBehavior.floating,
             ),
           );

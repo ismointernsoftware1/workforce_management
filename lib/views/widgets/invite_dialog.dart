@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
+import '../../widgets/shadcn/shadcn_widgets.dart';
 
 class InviteDialog extends StatefulWidget {
   final Function(List<String>, String) onInvite;
@@ -150,29 +151,16 @@ class _InviteDialogState extends State<InviteDialog> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.border),
               ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: _selectedRole,
-                  isExpanded: true,
-                  dropdownColor: AppColors.surfaceAlt,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                  icon: const Icon(Icons.keyboard_arrow_down, size: 20, color: AppColors.textMuted),
-                  items: _roles.map((role) {
-                    return DropdownMenuItem(
-                      value: role,
-                      child: Text(role),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => _selectedRole = value);
-                    }
-                  },
-                ),
+              child: AppSelect<String>(
+                placeholder: 'Select Role',
+                value: _selectedRole,
+                options: SelectOption.fromStringList(_roles),
+                selectedOptionBuilder: (context, value) => Text(value ?? 'Select Role'),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _selectedRole = value);
+                  }
+                },
               ),
             ),
             const SizedBox(height: AppSpacing.sm),

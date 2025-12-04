@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
-import '../components/shadcn/shadcn.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../utils/animation_utils.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_spacing.dart';
 import '../providers/dashboard_provider.dart';
 import '../utils/responsive_utils.dart';
+import '../widgets/shadcn/shadcn_widgets.dart';
 import 'chat/realtime_chat_view.dart';
 import 'expenses/expenses_view.dart';
 import 'tasks/tasks_view.dart';
@@ -327,23 +328,20 @@ class _TopBarState extends State<_TopBar> {
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: isMobile ? AppSpacing.md : AppSpacing.xl,
-        vertical: AppSpacing.md,
+        vertical: AppSpacing.md / 2,
       ),
       child: Row(
         children: [
           // Always show hamburger menu
           ShadTooltip(
-            message: 'Menu',
-            child: ShadButton(
+            builder: (context) => const Text('Menu'),
+            child: ShadIconButton(
               onPressed: widget.onMenuTap,
-              variant: ShadButtonVariant.ghost,
-              size: ShadButtonSize.icon,
               icon: const Icon(
                 Icons.menu,
                 size: 24,
                 color: AppColors.textPrimary,
               ),
-              child: const SizedBox.shrink(),
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
@@ -352,13 +350,9 @@ class _TopBarState extends State<_TopBar> {
                 // For chat, header and search are handled inside RealtimeChatView's sidebar,
                 // so we render an empty placeholder here to keep layout consistent.
                 ? const SizedBox.shrink()
-                : ShadInput(
+                : AppSearchInput(
                     controller: _searchController,
-                    hintText: 'Search...',
-                    prefixIcon: const Icon(
-                      Icons.search,
-                      color: AppColors.textMuted,
-                    ),
+                    placeholder: 'Search...',
                   ),
           ),
         ],

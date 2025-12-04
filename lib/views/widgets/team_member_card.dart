@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/team_member.dart';
-import 'shad_card.dart';
+import '../../widgets/shadcn/shadcn_widgets.dart';
 
 class TeamMemberCard extends StatelessWidget {
   const TeamMemberCard({super.key, required this.member});
@@ -12,7 +12,7 @@ class TeamMemberCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ShadCard(
+    return AppCard(
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -3,13 +3,14 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
-import '../../components/shadcn/shadcn.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../utils/animation_utils.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/expense_model.dart';
 import '../../providers/expense_provider.dart';
 import '../../utils/responsive_utils.dart';
+import '../../widgets/shadcn/shadcn_widgets.dart';
 import '../widgets/stat_card.dart';
 import 'add_expense_view.dart';
 import 'edit_expense_view.dart';
@@ -90,12 +91,16 @@ class _ExpensesViewState extends State<ExpensesView> {
                       const SizedBox(height: AppSpacing.sm),
                       SizedBox(
                         width: double.infinity,
-                        child: ShadButton(
+                        child: AppButton(
                           onPressed: () => _openAddExpense(context),
-                          variant: ShadButtonVariant.default_,
-                          size: ShadButtonSize.md,
-                          icon: const Icon(Icons.add, size: 18),
-                          child: const Text('New Expense'),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.add, size: 18),
+                              SizedBox(width: 8),
+                              Text('New Expense'),
+                            ],
+                          ),
                         )
                             .animate()
                             .fade(
@@ -132,12 +137,16 @@ class _ExpensesViewState extends State<ExpensesView> {
                             ),
                       ),
                       const SizedBox(width: AppSpacing.md),
-                      ShadButton(
+                      AppButton(
                         onPressed: () => _openAddExpense(context),
-                        variant: ShadButtonVariant.default_,
-                        size: ShadButtonSize.md,
-                        icon: const Icon(Icons.add, size: 20),
-                        child: const Text('New Expense'),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.add, size: 20),
+                            SizedBox(width: 8),
+                            Text('New Expense'),
+                          ],
+                        ),
                       )
                           .animate()
                           .fade(
@@ -158,8 +167,8 @@ class _ExpensesViewState extends State<ExpensesView> {
                 // Search Bar
                 ShadInput(
                   controller: _searchController,
-                  hintText: 'Search expenses...',
-                  prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
+                  placeholder: const Text('Search expenses...'),
+                  leading: const Icon(Icons.search, color: AppColors.textMuted),
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 
@@ -292,26 +301,27 @@ class _ExpensesViewState extends State<ExpensesView> {
                   children: ExpenseProvider.statusFilters.map(
                     (filter) {
                       final isSelected = provider.statusFilter == filter;
-                      return ShadButton(
-                        onPressed: () => provider.changeStatusFilter(filter),
-                        variant: isSelected
-                            ? ShadButtonVariant.default_
-                            : ShadButtonVariant.outline,
-                        size: ShadButtonSize.sm,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (isSelected)
-                              const Icon(
-                                Icons.check_rounded,
-                                size: 16,
-                                color: Colors.white,
+                      return isSelected
+                          ? AppButton(
+                              onPressed: () => provider.changeStatusFilter(filter),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.check_rounded,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: AppSpacing.xs),
+                                  Text(filter),
+                                ],
                               ),
-                            if (isSelected) const SizedBox(width: AppSpacing.xs),
-                            Text(filter),
-                          ],
-                        ),
-                      );
+                            )
+                          : AppButton(
+                              variant: AppButtonVariant.outline,
+                              onPressed: () => provider.changeStatusFilter(filter),
+                              child: Text(filter),
+                            );
                     },
                   ).toList(),
                 ),
@@ -374,18 +384,8 @@ class _ExpensesViewState extends State<ExpensesView> {
   }
 
   Widget _coloredBadge(String label, Color color) {
-    ShadBadgeVariant variant;
-    if (color == AppColors.success) {
-      variant = ShadBadgeVariant.default_;
-    } else if (color == AppColors.warning) {
-      variant = ShadBadgeVariant.secondary;
-    } else {
-      variant = ShadBadgeVariant.secondary;
-    }
-
     return ShadBadge(
-      label: label,
-      variant: variant,
+      child: Text(label),
     );
   }
 
@@ -466,10 +466,11 @@ class _ExpensesViewState extends State<ExpensesView> {
     ExpenseModel expense,
   ) async {
     final provider = Provider.of<ExpenseProvider>(context, listen: false);
-    ShadDialog.show(
+    showDialog(
       context: context,
-      title: 'Approve Expense',
-      content: Column(
+      builder: (context) => ShadDialog(
+        title: const Text('Approve Expense'),
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -488,39 +489,39 @@ class _ExpensesViewState extends State<ExpensesView> {
         ],
       ),
       actions: [
-        ShadButton(
-          onPressed: () => Navigator.pop(context),
-          variant: ShadButtonVariant.outline,
-          child: const Text('Cancel'),
-        ),
-        ShadButton(
-          onPressed: () async {
-            Navigator.pop(context);
-            try {
-              await provider.updateExpenseStatus(expense.id, ExpenseStatus.approved);
-              if (context.mounted) {
-                ShadToast.show(
-                  context,
-                  title: 'Success',
-                  description: 'Expense approved successfully',
-                  variant: ShadToastVariant.success,
-                );
+          AppButton(
+            variant: AppButtonVariant.outline,
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          AppButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await provider.updateExpenseStatus(expense.id, ExpenseStatus.approved);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Expense approved successfully'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to approve expense: ${e.toString()}'),
+                      backgroundColor: AppColors.danger,
+                    ),
+                  );
+                }
               }
-            } catch (e) {
-              if (context.mounted) {
-                ShadToast.show(
-                  context,
-                  title: 'Error',
-                  description: 'Failed to approve expense: ${e.toString()}',
-                  variant: ShadToastVariant.error,
-                );
-              }
-            }
-          },
-          variant: ShadButtonVariant.default_,
-          child: const Text('Approve'),
-        ),
-      ],
+            },
+            child: const Text('Approve'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -531,60 +532,60 @@ class _ExpensesViewState extends State<ExpensesView> {
     final provider = Provider.of<ExpenseProvider>(context, listen: false);
     final reasonController = TextEditingController();
     
-    ShadDialog.show(
+    showDialog(
       context: context,
-      title: 'Reject Expense',
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Are you sure you want to reject "${expense.description}"?',
-            style: TextStyle(color: AppColors.textPrimary),
+      builder: (context) => ShadDialog(
+        title: const Text('Reject Expense'),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to reject "${expense.description}"?',
+              style: TextStyle(color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            ShadInput(
+              controller: reasonController,
+              placeholder: const Text('Enter reason for rejection (optional)'),
+            ),
+          ],
+        ),
+        actions: [
+          AppButton(
+            variant: AppButtonVariant.outline,
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
           ),
-          const SizedBox(height: AppSpacing.md),
-          ShadInput(
-            controller: reasonController,
-            label: 'Rejection Reason',
-            hintText: 'Enter reason for rejection (optional)',
-            maxLines: 3,
+          AppButton(
+            variant: AppButtonVariant.destructive,
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await provider.updateExpenseStatus(expense.id, ExpenseStatus.rejected);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Expense rejected successfully'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to reject expense: ${e.toString()}'),
+                      backgroundColor: AppColors.danger,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Reject'),
           ),
         ],
       ),
-      actions: [
-        ShadButton(
-          onPressed: () => Navigator.pop(context),
-          variant: ShadButtonVariant.outline,
-          child: const Text('Cancel'),
-        ),
-        ShadButton(
-          onPressed: () async {
-            Navigator.pop(context);
-            try {
-              await provider.updateExpenseStatus(expense.id, ExpenseStatus.rejected);
-              if (context.mounted) {
-                ShadToast.show(
-                  context,
-                  title: 'Success',
-                  description: 'Expense rejected successfully',
-                  variant: ShadToastVariant.success,
-                );
-              }
-            } catch (e) {
-              if (context.mounted) {
-                ShadToast.show(
-                  context,
-                  title: 'Error',
-                  description: 'Failed to reject expense: ${e.toString()}',
-                  variant: ShadToastVariant.error,
-                );
-              }
-            }
-          },
-          variant: ShadButtonVariant.destructive,
-          child: const Text('Reject'),
-        ),
-      ],
     );
   }
 
@@ -608,47 +609,49 @@ class _ExpensesViewState extends State<ExpensesView> {
     ExpenseModel expense,
   ) {
     final provider = Provider.of<ExpenseProvider>(context, listen: false);
-    ShadDialog.show(
+    showDialog(
       context: context,
-      title: 'Delete Expense',
-      content: Text(
-        'Are you sure you want to delete "${expense.description}"? This action cannot be undone.',
-        style: TextStyle(color: AppColors.textPrimary),
+      builder: (context) => ShadDialog(
+        title: const Text('Delete Expense'),
+        child: Text(
+          'Are you sure you want to delete "${expense.description}"? This action cannot be undone.',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
+        actions: [
+          AppButton(
+            variant: AppButtonVariant.outline,
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          AppButton(
+            variant: AppButtonVariant.destructive,
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await provider.deleteExpense(expense.id);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Expense deleted successfully'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to delete expense: ${e.toString()}'),
+                      backgroundColor: AppColors.danger,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Delete'),
+          ),
+        ],
       ),
-      actions: [
-        ShadButton(
-          onPressed: () => Navigator.pop(context),
-          variant: ShadButtonVariant.outline,
-          child: const Text('Cancel'),
-        ),
-        ShadButton(
-          onPressed: () async {
-            Navigator.pop(context);
-            try {
-              await provider.deleteExpense(expense.id);
-              if (context.mounted) {
-                ShadToast.show(
-                  context,
-                  title: 'Success',
-                  description: 'Expense deleted successfully',
-                  variant: ShadToastVariant.success,
-                );
-              }
-            } catch (e) {
-              if (context.mounted) {
-                ShadToast.show(
-                  context,
-                  title: 'Error',
-                  description: 'Failed to delete expense: ${e.toString()}',
-                  variant: ShadToastVariant.error,
-                );
-              }
-            }
-          },
-          variant: ShadButtonVariant.destructive,
-          child: const Text('Delete'),
-        ),
-      ],
     );
   }
 }
@@ -1012,70 +1015,66 @@ class _ExpenseTableRow extends StatelessWidget {
                     expense.status == ExpenseStatus.draft)
                   ...[
                 ShadTooltip(
-                  message: 'Approve Expense',
-                  child: ShadButton(
+                  builder: (context) => const Text('Approve Expense'),
+                  child: AppButton(
                     onPressed: () => viewState?._handleApprove(context, expense),
-                    variant: ShadButtonVariant.default_,
-                    size: ShadButtonSize.sm,
-                    icon: const Icon(Icons.check, size: 16, color: Colors.white),
-                    child: const Text(
-                      'Approve',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                      maxLines: 1,
-                      overflow: TextOverflow.visible,
-                      softWrap: false,
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check, size: 16, color: Colors.white),
+                        SizedBox(width: 4),
+                        Text(
+                          'Approve',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
                     ),
                   ),
                 ),
                 ShadTooltip(
-                  message: 'Reject Expense',
-                  child: ShadButton(
+                  builder: (context) => const Text('Reject Expense'),
+                  child: AppButton(
+                    variant: AppButtonVariant.destructive,
                     onPressed: () => viewState?._handleReject(context, expense),
-                    variant: ShadButtonVariant.destructive,
-                    size: ShadButtonSize.sm,
-                    icon: const Icon(Icons.close, size: 16, color: Colors.white),
-                    child: const Text(
-                      'Reject',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                      maxLines: 1,
-                      overflow: TextOverflow.visible,
-                      softWrap: false,
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.close, size: 16, color: Colors.white),
+                        SizedBox(width: 4),
+                        Text(
+                          'Reject',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
                     ),
                   ),
                 ),
                   ],
                 // Edit button
                 ShadTooltip(
-                  message: 'Edit Expense',
-                  child: ShadButton(
+                  builder: (context) => const Text('Edit Expense'),
+                  child: AppButton(
+                    variant: AppButtonVariant.outline,
                     onPressed: () => viewState?._handleEdit(context, expense),
-                    variant: ShadButtonVariant.outline,
-                    size: ShadButtonSize.sm,
-                    icon: const Icon(Icons.edit_outlined, size: 16),
-                    child: const Text(
-                      'Edit',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                      maxLines: 1,
-                      overflow: TextOverflow.visible,
-                      softWrap: false,
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.edit_outlined, size: 16),
+                        SizedBox(width: 4),
+                        Text(
+                          'Edit',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
                     ),
                   ),
                 ),
                 // Delete button
                 ShadTooltip(
-                  message: 'Delete Expense',
-                  child: ShadButton(
+                  builder: (context) => const Text('Delete Expense'),
+                  child: ShadIconButton(
                     onPressed: () => viewState?._showDeleteConfirmation(context, expense),
-                    variant: ShadButtonVariant.ghost,
-                    size: ShadButtonSize.sm,
                     icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
-                    child: const Text(
-                      'Delete',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                      maxLines: 1,
-                      overflow: TextOverflow.visible,
-                      softWrap: false,
-                    ),
                   ),
                 ),
               ],
@@ -1226,34 +1225,45 @@ class _ExpenseMobileCard extends StatelessWidget {
                   expense.status == ExpenseStatus.underReview ||
                   expense.status == ExpenseStatus.draft)
                 ...[
-                  ShadButton(
+                  AppButton(
                     onPressed: () => viewState?._handleApprove(context, expense),
-                    variant: ShadButtonVariant.default_,
-                    size: ShadButtonSize.sm,
-                    icon: const Icon(Icons.check, size: 16, color: Colors.white),
-                    child: const Text('Approve'),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check, size: 16, color: Colors.white),
+                        SizedBox(width: 4),
+                        Text('Approve'),
+                      ],
+                    ),
                   ),
-                  ShadButton(
+                  AppButton(
+                    variant: AppButtonVariant.destructive,
                     onPressed: () => viewState?._handleReject(context, expense),
-                    variant: ShadButtonVariant.destructive,
-                    size: ShadButtonSize.sm,
-                    icon: const Icon(Icons.close, size: 16, color: Colors.white),
-                    child: const Text('Reject'),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.close, size: 16, color: Colors.white),
+                        SizedBox(width: 4),
+                        Text('Reject'),
+                      ],
+                    ),
                   ),
                 ],
-              ShadButton(
+              AppButton(
+                variant: AppButtonVariant.outline,
                 onPressed: () => viewState?._handleEdit(context, expense),
-                variant: ShadButtonVariant.outline,
-                size: ShadButtonSize.sm,
-                icon: const Icon(Icons.edit_outlined, size: 16),
-                child: const Text('Edit'),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.edit_outlined, size: 16),
+                    SizedBox(width: 4),
+                    Text('Edit'),
+                  ],
+                ),
               ),
-              ShadButton(
+              ShadIconButton(
                 onPressed: () => viewState?._showDeleteConfirmation(context, expense),
-                variant: ShadButtonVariant.ghost,
-                size: ShadButtonSize.sm,
                 icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
-                child: const Text('Delete'),
               ),
             ],
           ),
@@ -1271,35 +1281,28 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     String label;
-    ShadBadgeVariant variant;
 
     switch (status) {
       case ExpenseStatus.approved:
         label = 'Approved';
-        variant = ShadBadgeVariant.default_;
         break;
       case ExpenseStatus.rejected:
         label = 'Rejected';
-        variant = ShadBadgeVariant.destructive;
         break;
       case ExpenseStatus.submitted:
       case ExpenseStatus.underReview:
         label = 'Pending';
-        variant = ShadBadgeVariant.secondary;
         break;
       case ExpenseStatus.paid:
         label = 'Paid';
-        variant = ShadBadgeVariant.default_;
         break;
       case ExpenseStatus.draft:
         label = 'Draft';
-        variant = ShadBadgeVariant.outline;
         break;
     }
 
     return ShadBadge(
-      label: label,
-      variant: variant,
+      child: Text(label),
     );
   }
 }

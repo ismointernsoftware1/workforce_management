@@ -4,6 +4,7 @@ import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/user_model.dart';
 import '../../utils/responsive_utils.dart';
+import '../../widgets/shadcn/shadcn_widgets.dart';
 
 class AddUserDialog extends StatefulWidget {
   const AddUserDialog({
@@ -230,23 +231,11 @@ class _AddUserDialogState extends State<AddUserDialog> {
                       ),
                     SizedBox(
                       width: isDesktop ? 400 : double.infinity,
-                      child: DropdownButtonFormField<String>(
-                        decoration: _inputDecoration('Status'),
+                      child: AppSelect<String>(
+                        placeholder: 'Status',
                         value: _status,
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'Active',
-                            child: Text('Active'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'On leave',
-                            child: Text('On leave'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'Inactive',
-                            child: Text('Inactive'),
-                          ),
-                        ],
+                        options: SelectOption.fromStringList(['Active', 'On leave', 'Inactive']),
+                        selectedOptionBuilder: (context, value) => Text(value ?? 'Status'),
                         onChanged: (value) {
                           if (value != null) {
                             setState(() => _status = value);

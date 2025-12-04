@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../components/shadcn/shadcn.dart' hide ShadCard;
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../providers/dashboard_provider.dart';
 import '../widgets/chat_widgets.dart';
-import '../widgets/shad_card.dart';
+import '../../widgets/shadcn/shadcn_widgets.dart';
 
 class ChatView extends StatefulWidget {
   const ChatView({super.key});
@@ -57,7 +57,7 @@ class _ChatViewState extends State<ChatView> {
     selectedConversation,
   ) {
     if (provider.selectedConversationId == null || provider.selectedConversationId!.isEmpty) {
-      return ShadCard(
+      return AppCard(
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,10 +73,9 @@ class _ChatViewState extends State<ChatView> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            ShadInput(
+            AppSearchInput(
               controller: _searchController,
-              hintText: 'Search conversations...',
-              prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
+              placeholder: 'Search conversations...',
             ),
             const SizedBox(height: AppSpacing.md),
             Expanded(
@@ -93,12 +92,16 @@ class _ChatViewState extends State<ChatView> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            ShadButton(
+            AppButton(
               onPressed: () {},
-              variant: ShadButtonVariant.default_,
-              size: ShadButtonSize.lg,
-              icon: const Icon(Icons.add, size: 20),
-              child: const Text('New conversation'),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add, size: 20),
+                  SizedBox(width: 4),
+                  Text('New conversation'),
+                ],
+              ),
             ),
           ],
         ),
@@ -110,15 +113,12 @@ class _ChatViewState extends State<ChatView> {
         // Back button
         Row(
           children: [
-            ShadButton(
+            ShadIconButton(
               onPressed: () {
                 // Clear selection by selecting empty string
                 provider.selectConversation('');
               },
-              variant: ShadButtonVariant.ghost,
-              size: ShadButtonSize.icon,
               icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-              child: const SizedBox.shrink(),
             ),
             const SizedBox(width: AppSpacing.sm),
             const Text(
@@ -147,7 +147,7 @@ class _ChatViewState extends State<ChatView> {
       children: [
         SizedBox(
           width: 280,
-          child: ShadCard(
+          child: AppCard(
               padding: const EdgeInsets.all(AppSpacing.lg),
               child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,10 +163,9 @@ class _ChatViewState extends State<ChatView> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                ShadInput(
+                AppSearchInput(
                   controller: _searchController,
-                  hintText: 'Search conversations...',
-                  prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
+                  placeholder: 'Search conversations...',
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Expanded(
@@ -185,12 +184,16 @@ class _ChatViewState extends State<ChatView> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                ShadButton(
+                AppButton(
                   onPressed: () {},
-                  variant: ShadButtonVariant.default_,
-                  size: ShadButtonSize.lg,
-                  icon: const Icon(Icons.add, size: 20),
-                  child: const Text('New conversation'),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add, size: 20),
+                      SizedBox(width: 4),
+                      Text('New conversation'),
+                    ],
+                  ),
                 ),
                 ],
               ),
@@ -209,7 +212,7 @@ class _ChatViewState extends State<ChatView> {
     DashboardProvider provider,
     selectedConversation,
   ) {
-    return ShadCard(
+    return AppCard(
               padding: EdgeInsets.zero,
               borderRadius: BorderRadius.circular(32),
               child: Column(
@@ -255,26 +258,17 @@ class _ChatViewState extends State<ChatView> {
                           ],
                         ),
                         const Spacer(),
-                        ShadButton(
+                        ShadIconButton(
                           onPressed: () {},
                           icon: const Icon(Icons.call, color: AppColors.textMuted),
-                          variant: ShadButtonVariant.ghost,
-                          size: ShadButtonSize.icon,
-                          child: const SizedBox.shrink(),
                         ),
-                        ShadButton(
+                        ShadIconButton(
                           onPressed: () {},
                           icon: const Icon(Icons.videocam_rounded, color: AppColors.textMuted),
-                          variant: ShadButtonVariant.ghost,
-                          size: ShadButtonSize.icon,
-                          child: const SizedBox.shrink(),
                         ),
-                        ShadButton(
+                        ShadIconButton(
                           onPressed: () {},
                           icon: const Icon(Icons.more_horiz, color: AppColors.textMuted),
-                          variant: ShadButtonVariant.ghost,
-                          size: ShadButtonSize.icon,
-                          child: const SizedBox.shrink(),
                         ),
                       ],
                     ),
@@ -294,12 +288,9 @@ class _ChatViewState extends State<ChatView> {
                     padding: const EdgeInsets.all(AppSpacing.lg),
                     child: Row(
                       children: [
-                        ShadButton(
+                        ShadIconButton(
                           onPressed: () {},
                           icon: const Icon(Icons.attach_file, color: AppColors.textMuted),
-                          variant: ShadButtonVariant.ghost,
-                          size: ShadButtonSize.icon,
-                          child: const SizedBox.shrink(),
                         ),
                         Expanded(
                           child: TextField(
@@ -329,12 +320,9 @@ class _ChatViewState extends State<ChatView> {
                           ),
                         ),
                         const SizedBox(width: AppSpacing.sm),
-                        ShadButton(
+                        ShadIconButton(
                           onPressed: () => _send(provider),
                           icon: const Icon(Icons.send, color: Colors.white),
-                          variant: ShadButtonVariant.default_,
-                          size: ShadButtonSize.icon,
-                          child: const SizedBox.shrink(),
                         ),
                       ],
                     ),

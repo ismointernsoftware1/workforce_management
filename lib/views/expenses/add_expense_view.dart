@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../components/shadcn/shadcn.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/expense_model.dart';
@@ -10,6 +10,7 @@ import '../../models/expense_receipt.dart';
 import '../../providers/expense_provider.dart';
 import '../../services/mileage_service.dart';
 import '../../utils/responsive_utils.dart';
+import '../../widgets/shadcn/shadcn_widgets.dart';
 import '../../features/form_builder/models/form_models.dart';
 import '../../features/form_builder/services/form_builder_firestore_service.dart';
 import '../../features/form_builder/services/default_forms_initializer.dart';
@@ -272,14 +273,8 @@ class _AddExpenseViewState extends State<AddExpenseView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: ShadAlert(
-              title: 'Success',
-              description: 'Expense added successfully!',
-              variant: ShadAlertVariant.success,
-            ),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            padding: const EdgeInsets.all(16),
+            content: const Text('Expense added successfully!'),
+            backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 2),
           ),
@@ -302,14 +297,8 @@ class _AddExpenseViewState extends State<AddExpenseView> {
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: ShadAlert(
-          title: 'Error',
-          description: message,
-          variant: ShadAlertVariant.destructive,
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        padding: const EdgeInsets.all(16),
+        content: Text(message),
+        backgroundColor: AppColors.danger,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -423,28 +412,17 @@ class _AddExpenseViewState extends State<AddExpenseView> {
                         const SizedBox(height: AppSpacing.md),
 
               // Submit Button
-              ShadButton(
+              AppButton(
                 onPressed: _isLoading ? null : _saveExpense,
-                variant: ShadButtonVariant.default_,
-                size: ShadButtonSize.lg,
-                width: double.infinity,
-                disabled: _isLoading,
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Text(
-                        'Submit Expense',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                fullWidth: true,
+                isLoading: _isLoading,
+                child: const Text(
+                  'Submit Expense',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           ),

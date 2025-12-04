@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../components/shadcn/shadcn.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/task_attachment.dart';
 import '../../models/task_location.dart';
 import '../../models/task_model.dart';
+import '../../widgets/shadcn/shadcn_widgets.dart';
 import '../../features/form_builder/models/form_models.dart';
 import '../../features/form_builder/services/form_builder_firestore_service.dart';
 import '../../features/form_builder/services/default_forms_initializer.dart';
@@ -173,14 +174,8 @@ class _AddTaskViewState extends State<AddTaskView> {
     if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: ShadAlert(
-            title: 'Validation Error',
-            description: 'Please enter a task title',
-            variant: ShadAlertVariant.destructive,
-          ),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          padding: const EdgeInsets.all(16),
+          content: const Text('Please enter a task title'),
+          backgroundColor: AppColors.danger,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -190,14 +185,8 @@ class _AddTaskViewState extends State<AddTaskView> {
     if (dueDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: ShadAlert(
-            title: 'Validation Error',
-            description: 'Please select a due date',
-            variant: ShadAlertVariant.destructive,
-          ),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          padding: const EdgeInsets.all(16),
+          content: const Text('Please select a due date'),
+          backgroundColor: AppColors.danger,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -207,14 +196,8 @@ class _AddTaskViewState extends State<AddTaskView> {
     if (assignedTo.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: ShadAlert(
-            title: 'Validation Error',
-            description: 'Please select an assignee',
-            variant: ShadAlertVariant.destructive,
-          ),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          padding: const EdgeInsets.all(16),
+          content: const Text('Please select an assignee'),
+          backgroundColor: AppColors.danger,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -284,14 +267,8 @@ class _AddTaskViewState extends State<AddTaskView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: ShadAlert(
-              title: 'Success',
-              description: 'Task added successfully!',
-              variant: ShadAlertVariant.success,
-            ),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            padding: const EdgeInsets.all(16),
+            content: const Text('Task added successfully!'),
+            backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 2),
           ),
@@ -302,14 +279,8 @@ class _AddTaskViewState extends State<AddTaskView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: ShadAlert(
-              title: 'Error',
-              description: 'Error adding task: ${e.toString()}',
-              variant: ShadAlertVariant.destructive,
-            ),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            padding: const EdgeInsets.all(16),
+            content: Text('Error adding task: ${e.toString()}'),
+            backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -484,12 +455,17 @@ class _AddTaskViewState extends State<AddTaskView> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      ShadButton(
+                      AppButton(
+                        variant: AppButtonVariant.outline,
                         onPressed: _addSubTaskField,
-                        variant: ShadButtonVariant.outline,
-                        size: ShadButtonSize.sm,
-                        icon: const Icon(Icons.add, size: 18),
-                        child: const Text('Add Subtask'),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.add, size: 18),
+                            SizedBox(width: 4),
+                            Text('Add Subtask'),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -525,17 +501,14 @@ class _AddTaskViewState extends State<AddTaskView> {
                           Expanded(
                             child: ShadInput(
                               controller: _subTaskControllers[index],
-                              hintText: 'Enter subtask ${index + 1}',
+                              placeholder: Text('Enter subtask ${index + 1}'),
                               enabled: !isDone,
                             ),
                           ),
                           const SizedBox(width: AppSpacing.sm),
-                          ShadButton(
+                          ShadIconButton(
                             onPressed: () => _removeSubTaskField(index),
-                            variant: ShadButtonVariant.ghost,
-                            size: ShadButtonSize.icon,
                             icon: const Icon(Icons.delete_outline, color: AppColors.danger, size: 20),
-                            child: const SizedBox.shrink(),
                           ),
                         ],
                       ),
@@ -559,28 +532,17 @@ class _AddTaskViewState extends State<AddTaskView> {
               const SizedBox(height: AppSpacing.xl),
 
               // Save Button
-              ShadButton(
+              AppButton(
                 onPressed: _isLoading ? null : _saveTask,
-                variant: ShadButtonVariant.default_,
-                size: ShadButtonSize.lg,
-                width: double.infinity,
-                disabled: _isLoading,
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Text(
-                        'Add Task',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                fullWidth: true,
+                isLoading: _isLoading,
+                child: const Text(
+                  'Add Task',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           ),

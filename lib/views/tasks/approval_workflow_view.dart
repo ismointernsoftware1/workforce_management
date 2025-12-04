@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../../components/shadcn/shadcn.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
+import '../../widgets/shadcn/shadcn_widgets.dart';
 import '../../models/task_approval.dart';
 import '../../models/task_model.dart';
 
@@ -33,14 +34,8 @@ class _ApprovalWorkflowViewState extends State<ApprovalWorkflowView> {
     if (_selectedStatus == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: ShadAlert(
-            title: 'Validation Error',
-            description: 'Please select approval status',
-            variant: ShadAlertVariant.destructive,
-          ),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          padding: const EdgeInsets.all(16),
+          content: const Text('Please select approval status'),
+          backgroundColor: AppColors.danger,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -82,7 +77,7 @@ class _ApprovalWorkflowViewState extends State<ApprovalWorkflowView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Task Info
-            ShadCard(
+            AppCard(
               padding: const EdgeInsets.all(AppSpacing.lg),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -138,11 +133,10 @@ class _ApprovalWorkflowViewState extends State<ApprovalWorkflowView> {
             ),
             const SizedBox(height: AppSpacing.md),
 
-            ShadSelect<ApprovalStatus>(
-              label: 'Approval Status *',
-              hint: 'Select status',
+            AppSelect<ApprovalStatus>(
+              placeholder: 'Select status',
               value: _selectedStatus,
-              items: ApprovalStatus.values.map((status) {
+              options: ApprovalStatus.values.map((status) {
                 String label;
                 switch (status) {
                   case ApprovalStatus.approved:
@@ -155,11 +149,29 @@ class _ApprovalWorkflowViewState extends State<ApprovalWorkflowView> {
                     label = 'Pending';
                     break;
                 }
-                return ShadSelectItem<ApprovalStatus>(
+                return SelectOption<ApprovalStatus>(
                   value: status,
                   label: label,
                 );
               }).toList(),
+              selectedOptionBuilder: (context, value) {
+                if (value == null) {
+                  return const Text('Select status');
+                }
+                String label;
+                switch (value) {
+                  case ApprovalStatus.approved:
+                    label = 'Approve';
+                    break;
+                  case ApprovalStatus.rejected:
+                    label = 'Reject';
+                    break;
+                  case ApprovalStatus.pending:
+                    label = 'Pending';
+                    break;
+                }
+                return Text(label);
+              },
               onChanged: (value) {
                 setState(() {
                   _selectedStatus = value;
@@ -170,17 +182,12 @@ class _ApprovalWorkflowViewState extends State<ApprovalWorkflowView> {
 
             ShadInput(
               controller: _commentsController,
-              label: 'Comments (Optional)',
-              hintText: 'Add any comments...',
-              maxLines: 4,
+              placeholder: const Text('Add any comments...'),
             ),
             const SizedBox(height: AppSpacing.xl),
 
-            ShadButton(
+            AppButton(
               onPressed: _submitApproval,
-              variant: ShadButtonVariant.default_,
-              size: ShadButtonSize.lg,
-              width: double.infinity,
               child: const Text('Submit Approval'),
             ),
           ],
@@ -197,33 +204,29 @@ class _ApprovalStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    ShadBadgeVariant variant;
     String statusText;
     IconData statusIcon;
     Color iconColor;
 
     switch (approval.status) {
       case ApprovalStatus.approved:
-        variant = ShadBadgeVariant.default_;
         statusText = 'Approved';
         statusIcon = Icons.check_circle;
         iconColor = AppColors.success;
         break;
       case ApprovalStatus.rejected:
-        variant = ShadBadgeVariant.destructive;
         statusText = 'Rejected';
         statusIcon = Icons.cancel;
         iconColor = AppColors.danger;
         break;
       case ApprovalStatus.pending:
-        variant = ShadBadgeVariant.secondary;
         statusText = 'Pending';
         statusIcon = Icons.pending;
         iconColor = AppColors.warning;
         break;
     }
 
-    return ShadCard(
+    return AppCard(
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Row(
         children: [
@@ -262,8 +265,7 @@ class _ApprovalStatusCard extends StatelessWidget {
             ),
           ),
           ShadBadge(
-            label: statusText,
-            variant: variant,
+            child: Text(statusText),
           ),
         ],
       ),

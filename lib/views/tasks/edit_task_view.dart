@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
-import '../../components/shadcn/shadcn.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/task_model.dart';
-import '../../models/team_member.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../utils/responsive_utils.dart';
+import '../../widgets/shadcn/shadcn_widgets.dart';
 
 class EditTaskView extends StatefulWidget {
   const EditTaskView({super.key, required this.task});
@@ -109,30 +109,6 @@ class _EditTaskViewState extends State<EditTaskView> {
     });
   }
 
-  String? _getMatchingAssigneeValue(List<TeamMember> teamMembers) {
-    if (_selectedAssignedTo.isEmpty) return null;
-    
-    // Try exact match first
-    for (final member in teamMembers) {
-      final displayValue = '${member.name} - ${member.role}';
-      if (displayValue == _selectedAssignedTo) {
-        return displayValue;
-      }
-    }
-    
-    // Try to match by name only (extract name from "name - role" format)
-    final nameParts = _selectedAssignedTo.split(' - ');
-    final nameOnly = nameParts.isNotEmpty ? nameParts[0].trim() : _selectedAssignedTo;
-    
-    for (final member in teamMembers) {
-      if (member.name == nameOnly) {
-        return '${member.name} - ${member.role}';
-      }
-    }
-    
-    // If no match found, return null to avoid dropdown error
-    return null;
-  }
 
   Future<void> _updateTask() async {
     if (!_formKey.currentState!.validate()) {
@@ -142,14 +118,8 @@ class _EditTaskViewState extends State<EditTaskView> {
     if (_selectedAssignedTo.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: ShadAlert(
-            title: 'Validation Error',
-            description: 'Please select an assignee',
-            variant: ShadAlertVariant.destructive,
-          ),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          padding: const EdgeInsets.all(16),
+          content: const Text('Please select an assignee'),
+          backgroundColor: AppColors.danger,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -201,14 +171,8 @@ class _EditTaskViewState extends State<EditTaskView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: ShadAlert(
-              title: 'Success',
-              description: 'Task updated successfully!',
-              variant: ShadAlertVariant.success,
-            ),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            padding: const EdgeInsets.all(16),
+            content: const Text('Task updated successfully!'),
+            backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 2),
           ),
@@ -219,14 +183,8 @@ class _EditTaskViewState extends State<EditTaskView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: ShadAlert(
-              title: 'Error',
-              description: 'Error updating task: ${e.toString()}',
-              variant: ShadAlertVariant.destructive,
-            ),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            padding: const EdgeInsets.all(16),
+            content: Text('Error updating task: ${e.toString()}'),
+            backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -307,43 +265,28 @@ class _EditTaskViewState extends State<EditTaskView> {
               // Task Title
               ShadInput(
                 controller: _titleController,
-                label: 'Task Title *',
-                hintText: 'Enter task title',
-                prefixIcon: const Icon(Icons.task_alt, color: AppColors.primary),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a task title';
-                  }
-                  return null;
-                },
+                placeholder: const Text('Enter task title'),
+                leading: const Icon(Icons.task_alt, color: AppColors.primary),
               ),
               const SizedBox(height: AppSpacing.lg),
 
               // Task Description
               ShadInput(
                 controller: _descriptionController,
-                label: 'Task Description *',
-                hintText: 'Enter task description',
-                prefixIcon: const Icon(Icons.description, color: AppColors.primary),
-                maxLines: 4,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a task description';
-                  }
-                  return null;
-                },
+                placeholder: const Text('Enter task description'),
+                leading: const Icon(Icons.description, color: AppColors.primary),
               ),
               const SizedBox(height: AppSpacing.lg),
 
               // Due Date
-              ShadInput(
-                label: 'Due Date *',
-                hintText: 'Select due date',
-                prefixIcon: const Icon(Icons.calendar_today, color: AppColors.primary),
-                suffixIcon: const Icon(Icons.arrow_drop_down, color: AppColors.textMuted),
-                readOnly: true,
-                controller: _dueDateController,
+              GestureDetector(
                 onTap: _selectDueDate,
+                child: ShadInput(
+                  placeholder: const Text('Select due date'),
+                  leading: const Icon(Icons.calendar_today, color: AppColors.primary),
+                  readOnly: true,
+                  controller: _dueDateController,
+                ),
               ),
               const SizedBox(height: AppSpacing.lg),
               
@@ -355,48 +298,44 @@ class _EditTaskViewState extends State<EditTaskView> {
               const SizedBox(height: AppSpacing.sm),
 
               // Priority Dropdown
-              ShadSelect<TaskPriority>(
+              AppSelect<TaskPriority>(
+                placeholder: 'Select priority',
                 value: _selectedPriority,
-                label: 'Priority *',
-                hint: 'Select priority',
-                prefixIcon: const Icon(Icons.flag, color: AppColors.primary),
-                items: TaskPriority.values.map((priority) {
+                options: TaskPriority.values.map((priority) {
                   String label;
-                  Color color;
                   switch (priority) {
                     case TaskPriority.high:
                       label = 'High';
-                      color = AppColors.danger;
                       break;
                     case TaskPriority.medium:
                       label = 'Medium';
-                      color = AppColors.warning;
                       break;
                     case TaskPriority.low:
                       label = 'Low';
-                      color = AppColors.success;
                       break;
                   }
-                  return ShadSelectItem<TaskPriority>(
+                  return SelectOption<TaskPriority>(
                     value: priority,
                     label: label,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Text(label),
-                      ],
-                    ),
                   );
                 }).toList(),
+                selectedOptionBuilder: (context, value) {
+                  String label;
+                  switch (value) {
+                    case TaskPriority.high:
+                      label = 'High';
+                      break;
+                    case TaskPriority.medium:
+                      label = 'Medium';
+                      break;
+                    case TaskPriority.low:
+                      label = 'Low';
+                      break;
+                    case null:
+                      return const Text('Select priority');
+                  }
+                  return Text(label);
+                },
                 onChanged: (value) {
                   if (value != null) {
                     setState(() {
@@ -408,55 +347,23 @@ class _EditTaskViewState extends State<EditTaskView> {
               const SizedBox(height: AppSpacing.lg),
 
               // Assigned To Dropdown
-              ShadSelect<String>(
-                value: _getMatchingAssigneeValue(teamMembers),
-                label: 'Assigned To *',
-                hint: 'Select team member',
-                prefixIcon: const Icon(Icons.person, color: AppColors.primary),
-                items: teamMembers.map((member) {
+              AppSelect<String>(
+                placeholder: 'Select team member',
+                value: _selectedAssignedTo.isEmpty ? null : _selectedAssignedTo,
+                options: teamMembers.map((member) {
                   final displayValue = '${member.name} - ${member.role}';
-                  return ShadSelectItem<String>(
+                  return SelectOption<String>(
                     value: displayValue,
                     label: displayValue,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircleAvatar(
-                          radius: 12,
-                          backgroundColor: AppColors.primarySoft,
-                          child: Text(
-                            member.name.isNotEmpty
-                                ? member.name[0].toUpperCase()
-                                : '?',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Flexible(
-                          child: Text(
-                            displayValue,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
                   );
                 }).toList(),
+                selectedOptionBuilder: (context, value) {
+                  return Text(value ?? 'Select team member');
+                },
                 onChanged: (value) {
                   setState(() {
                     _selectedAssignedTo = value ?? '';
                   });
-                },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please select an assignee';
-                  }
-                  return null;
                 },
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -494,12 +401,17 @@ class _EditTaskViewState extends State<EditTaskView> {
                       ),
                     ],
                   ),
-                  ShadButton(
+                  AppButton(
+                    variant: AppButtonVariant.outline,
                     onPressed: _addSubTaskField,
-                    variant: ShadButtonVariant.outline,
-                    size: ShadButtonSize.sm,
-                    icon: const Icon(Icons.add, size: 18),
-                    child: const Text('Add Subtask'),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add, size: 18),
+                        SizedBox(width: 4),
+                        Text('Add Subtask'),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -530,17 +442,14 @@ class _EditTaskViewState extends State<EditTaskView> {
                       Expanded(
                         child: ShadInput(
                           controller: _subTaskControllers[index],
-                          hintText: 'Enter subtask ${index + 1}',
+                          placeholder: Text('Enter subtask ${index + 1}'),
                           enabled: !isDone,
                         ),
                       ),
                       const SizedBox(width: AppSpacing.sm),
-                      ShadButton(
+                      ShadIconButton(
                         onPressed: () => _removeSubTaskField(index),
-                        variant: ShadButtonVariant.ghost,
-                        size: ShadButtonSize.icon,
                         icon: const Icon(Icons.delete_outline, color: AppColors.danger, size: 20),
-                        child: const SizedBox.shrink(),
                       ),
                     ],
                   ),
@@ -557,28 +466,17 @@ class _EditTaskViewState extends State<EditTaskView> {
               const SizedBox(height: AppSpacing.md),
 
               // Update Button
-              ShadButton(
+              AppButton(
                 onPressed: _isLoading ? null : _updateTask,
-                variant: ShadButtonVariant.default_,
-                size: ShadButtonSize.lg,
-                width: double.infinity,
-                disabled: _isLoading,
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Text(
-                        'Update Task',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                fullWidth: true,
+                isLoading: _isLoading,
+                child: const Text(
+                  'Update Task',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           ),

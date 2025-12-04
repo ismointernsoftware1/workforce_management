@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
-import '../../components/shadcn/shadcn.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
+import '../../widgets/shadcn/shadcn_widgets.dart';
 import '../../models/task_audit_log.dart';
 import '../../models/task_model.dart';
 import '../../providers/dashboard_provider.dart';
@@ -55,11 +56,7 @@ class TaskAuditLogsView extends StatelessWidget {
 
           if (snapshot.hasError) {
             return Center(
-              child: ShadAlert(
-                title: 'Error',
-                description: 'Failed to load audit logs: ${snapshot.error}',
-                variant: ShadAlertVariant.destructive,
-              ),
+              child: Text('Failed to load audit logs: ${snapshot.error}'),
             );
           }
 
@@ -203,7 +200,7 @@ class _AuditLogItem extends StatelessWidget {
     final dateFormatter = DateFormat('MMM dd, yyyy');
     final timeFormatter = DateFormat('hh:mm a');
 
-    return ShadCard(
+    return AppCard(
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -5,6 +5,7 @@ import '../../../constants/app_colors.dart';
 import '../../../constants/app_spacing.dart';
 import '../../../utils/responsive_utils.dart';
 import '../../../utils/rbac_utils.dart';
+import '../../../widgets/shadcn/shadcn_widgets.dart';
 import '../../form_builder/controllers/form_builder_controller.dart';
 import '../../form_builder/services/form_builder_firestore_service.dart';
 import '../../form_builder/services/default_forms_initializer.dart';

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../components/shadcn/shadcn.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
+import '../../widgets/shadcn/shadcn_widgets.dart';
 import '../../models/task_model.dart';
 import '../../models/task_template.dart';
 import 'add_task_view.dart';
@@ -111,7 +112,7 @@ class _TemplateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ShadCard(
+    return AppCard(
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,10 +142,7 @@ class _TemplateCard extends StatelessWidget {
                 ),
               ),
               ShadBadge(
-                label: template.priority.name.toUpperCase(),
-                variant: template.priority == TaskPriority.high
-                    ? ShadBadgeVariant.destructive
-                    : ShadBadgeVariant.secondary,
+                child: Text(template.priority.name.toUpperCase()),
               ),
             ],
           ),
@@ -187,29 +185,29 @@ class _TemplateCard extends StatelessWidget {
             children: [
               if (template.requiresApproval)
                 ShadBadge(
-                  label: 'Requires Approval',
-                  variant: ShadBadgeVariant.outline,
+                  child: const Text('Requires Approval'),
                 ),
               if (template.requiresLocation)
                 ShadBadge(
-                  label: 'Requires Location',
-                  variant: ShadBadgeVariant.outline,
+                  child: const Text('Requires Location'),
                 ),
               if (template.dueDateDays != null)
                 ShadBadge(
-                  label: 'Due in ${template.dueDateDays} days',
-                  variant: ShadBadgeVariant.secondary,
+                  child: Text('Due in ${template.dueDateDays} days'),
                 ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          ShadButton(
+          AppButton(
             onPressed: () => _useTemplate(context),
-            variant: ShadButtonVariant.default_,
-            size: ShadButtonSize.md,
-            width: double.infinity,
-            icon: const Icon(Icons.add, size: 18),
-            child: const Text('Use Template'),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.add, size: 18),
+                SizedBox(width: 4),
+                Text('Use Template'),
+              ],
+            ),
           ),
         ],
       ),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../components/shadcn/shadcn.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/realtime_chat_models.dart';
@@ -23,12 +23,9 @@ class GroupMembersView extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
-        leading: ShadButton(
+        leading: ShadIconButton(
           onPressed: () => Navigator.of(context).pop(),
-          variant: ShadButtonVariant.ghost,
-          size: ShadButtonSize.icon,
           icon: const Icon(Icons.arrow_back, size: 20),
-          child: const SizedBox.shrink(),
         ),
         title: Text(
           '${conversation.name} members',

@@ -3,9 +3,10 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../components/shadcn/shadcn.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
+import '../../widgets/shadcn/shadcn_widgets.dart';
 import '../../models/task_approval.dart';
 import '../../models/task_attachment.dart';
 import '../../models/task_model.dart';
@@ -77,8 +78,7 @@ class TaskDetailView extends StatelessWidget {
           children: [
             // Status Badge
             ShadBadge(
-              label: task.status.name.toUpperCase(),
-              variant: _getStatusVariant(task.status),
+              child: Text(task.status.name.toUpperCase()),
             ),
             const SizedBox(height: AppSpacing.lg),
 
@@ -272,16 +272,6 @@ class TaskDetailView extends StatelessWidget {
     );
   }
 
-  ShadBadgeVariant _getStatusVariant(TaskStatus status) {
-    switch (status) {
-      case TaskStatus.completed:
-        return ShadBadgeVariant.default_;
-      case TaskStatus.inProgress:
-        return ShadBadgeVariant.secondary;
-      case TaskStatus.pending:
-        return ShadBadgeVariant.outline;
-    }
-  }
 
   Future<void> _toggleSubtask(BuildContext context, String subtaskId) async {
     final provider = Provider.of<DashboardProvider>(context, listen: false);
@@ -315,14 +305,8 @@ class TaskDetailView extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: ShadAlert(
-              title: 'Error',
-              description: 'Failed to update subtask: ${e.toString()}',
-              variant: ShadAlertVariant.destructive,
-            ),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            padding: const EdgeInsets.all(16),
+            content: Text('Failed to update subtask: ${e.toString()}'),
+            backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -508,17 +492,14 @@ class _AttachmentItem extends StatelessWidget {
             ),
           ),
           if (attachment.fileUrl.isNotEmpty)
-            ShadButton(
+            AppButton(
               onPressed: () async {
                 final uri = Uri.parse(attachment.fileUrl);
                 if (await canLaunchUrl(uri)) {
                   await launchUrl(uri, mode: LaunchMode.externalApplication);
                 }
               },
-              variant: ShadButtonVariant.ghost,
-              size: ShadButtonSize.icon,
-              icon: const Icon(Icons.open_in_new, size: 18),
-              child: const SizedBox.shrink(),
+              child: const Icon(Icons.open_in_new, size: 18),
             ),
         ],
       ),
@@ -533,21 +514,17 @@ class _ApprovalItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ShadBadgeVariant variant;
     final String statusText;
     final IconData statusIcon;
 
     switch (approval.status) {
       case ApprovalStatus.approved:
-        variant = ShadBadgeVariant.default_;
         statusText = 'Approved';
         statusIcon = Icons.check_circle;
       case ApprovalStatus.rejected:
-        variant = ShadBadgeVariant.destructive;
         statusText = 'Rejected';
         statusIcon = Icons.cancel;
       case ApprovalStatus.pending:
-        variant = ShadBadgeVariant.secondary;
         statusText = 'Pending';
         statusIcon = Icons.pending;
     }
@@ -586,8 +563,7 @@ class _ApprovalItem extends StatelessWidget {
             ),
           ),
           ShadBadge(
-            label: statusText,
-            variant: variant,
+            child: Text(statusText),
           ),
         ],
       ),

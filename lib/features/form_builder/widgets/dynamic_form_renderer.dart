@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../constants/app_colors.dart';
 import '../../../constants/app_spacing.dart';
+import '../../../widgets/shadcn/shadcn_widgets.dart';
 import '../../form_builder/models/form_models.dart';
 
 /// Renders a form from a [FormModel] into input widgets and
@@ -95,16 +96,12 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
             labelText: field.label,
             border: const OutlineInputBorder(),
           ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: (value as String?),
-              isExpanded: true,
-              hint: Text(field.placeholder),
-              items: field.options
-                  .map((o) => DropdownMenuItem(value: o, child: Text(o)))
-                  .toList(),
-              onChanged: (v) => onChanged(v),
-            ),
+          child: AppSelect<String>(
+            placeholder: field.placeholder,
+            value: value as String?,
+            options: SelectOption.fromStringList(field.options),
+            selectedOptionBuilder: (context, val) => Text(val ?? field.placeholder),
+            onChanged: (v) => onChanged(v),
           ),
         );
       case FormFieldType.checkbox:

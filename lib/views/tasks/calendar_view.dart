@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../../components/shadcn/shadcn.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
+import '../../widgets/shadcn/shadcn_widgets.dart';
 import '../../models/task_model.dart';
 import '../../utils/responsive_utils.dart';
 
@@ -354,8 +355,8 @@ class _CalendarViewState extends State<CalendarView> {
     showDialog(
       context: context,
       builder: (context) => ShadDialog(
-        title: 'Tasks on ${DateFormat('MMM d, yyyy').format(date)}',
-        content: SizedBox(
+        title: Text('Tasks on ${DateFormat('MMM d, yyyy').format(date)}'),
+        child: SizedBox(
           width: 400,
           child: ListView.builder(
             shrinkWrap: true,
@@ -407,9 +408,9 @@ class _CalendarViewState extends State<CalendarView> {
           ),
         ),
         actions: [
-          ShadButton(
+          AppButton(
+            variant: AppButtonVariant.outline,
             onPressed: () => Navigator.of(context).pop(),
-            variant: ShadButtonVariant.outline,
             child: const Text('Close'),
           ),
         ],

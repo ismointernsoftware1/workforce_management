@@ -3,9 +3,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../components/shadcn/shadcn.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
+import '../../widgets/shadcn/shadcn_widgets.dart';
 import '../../models/expense_receipt.dart';
 import '../../services/storage_service.dart';
 
@@ -79,14 +80,8 @@ class _ReceiptPickerState extends State<ReceiptPicker> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: ShadAlert(
-                title: 'Error',
-                description: 'Failed to process receipts: ${e.toString()}',
-                variant: ShadAlertVariant.destructive,
-              ),
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              padding: const EdgeInsets.all(16),
+              content: Text('Failed to process receipts: ${e.toString()}'),
+              backgroundColor: AppColors.danger,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -142,21 +137,20 @@ class _ReceiptPickerState extends State<ReceiptPicker> {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  ShadButton(
+                  AppButton(
+                    variant: AppButtonVariant.outline,
                     onPressed: widget.enabled && !_isUploading
                         ? _pickReceipts
                         : null,
-                    variant: ShadButtonVariant.outline,
-                    size: ShadButtonSize.sm,
-                    disabled: !widget.enabled || _isUploading,
-                    icon: _isUploading
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.add_photo_alternate, size: 18),
-                    child: const Text('Add Receipts'),
+                    isLoading: _isUploading,
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add_photo_alternate, size: 18),
+                        SizedBox(width: 4),
+                        Text('Add Receipts'),
+                      ],
+                    ),
                   ),
                 ],
               );
@@ -190,21 +184,19 @@ class _ReceiptPickerState extends State<ReceiptPicker> {
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Flexible(
-                  child: ShadButton(
+                  child: AppButton(
                     onPressed: widget.enabled && !_isUploading
                         ? _pickReceipts
                         : null,
-                    variant: ShadButtonVariant.outline,
-                    size: ShadButtonSize.sm,
-                    disabled: !widget.enabled || _isUploading,
-                    icon: _isUploading
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.add_photo_alternate, size: 18),
-                    child: const Text('Add Receipts'),
+                    isLoading: _isUploading,
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.upload, size: 20),
+                        SizedBox(width: 8),
+                        Text('Add Receipts'),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -264,16 +256,13 @@ class _ReceiptPickerState extends State<ReceiptPicker> {
                       ),
                     ),
                     if (widget.enabled)
-                      ShadButton(
+                      ShadIconButton(
                         onPressed: () => _removeReceipt(index),
-                        variant: ShadButtonVariant.ghost,
-                        size: ShadButtonSize.icon,
                         icon: const Icon(
                           Icons.delete_outline,
                           size: 18,
                           color: AppColors.danger,
                         ),
-                        child: const SizedBox.shrink(),
                       ),
                   ],
                 ),

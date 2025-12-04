@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../../components/shadcn/shadcn.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/user_model.dart';
 import '../../providers/realtime_chat_provider.dart';
 import '../../utils/responsive_utils.dart';
+import '../../widgets/shadcn/shadcn_widgets.dart';
 
 class CreateGroupDialog extends StatefulWidget {
   const CreateGroupDialog({
@@ -121,8 +122,7 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
             const SizedBox(height: AppSpacing.md),
             ShadInput(
               controller: _nameController,
-              label: 'Group Name',
-              hintText: 'Enter group name...',
+              placeholder: const Text('Enter group name...'),
             ),
             const SizedBox(height: AppSpacing.sm),
             const Text(
@@ -234,42 +234,34 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
                 ? Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      ShadButton(
+                      AppButton(
+                        label: 'Create Group',
+                        variant: AppButtonVariant.primary,
+                        fullWidth: true,
                         onPressed: _createGroup,
-                        variant: ShadButtonVariant.default_,
-                        size: ShadButtonSize.sm,
-                        child: const Text('Create Group'),
                       ),
                       const SizedBox(height: AppSpacing.sm),
-                      ShadButton(
+                      AppButton(
+                        label: 'Cancel',
+                        variant: AppButtonVariant.outline,
+                        fullWidth: true,
                         onPressed: () => Navigator.of(context).pop(),
-                        variant: ShadButtonVariant.outline,
-                        size: ShadButtonSize.sm,
-                        child: const Text('Cancel'),
                       ),
                     ],
                   )
                 : Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      ShadButton(
+                      AppButton(
+                        label: 'Cancel',
+                        variant: AppButtonVariant.outline,
                         onPressed: () => Navigator.of(context).pop(),
-                        variant: ShadButtonVariant.outline,
-                        size: ShadButtonSize.sm,
-                        child: const Text(
-                          'Cancel',
-                          style: TextStyle(fontSize: 13),
-                        ),
                       ),
                       const SizedBox(width: AppSpacing.sm),
-                      ShadButton(
+                      AppButton(
+                        label: 'Create Group',
+                        variant: AppButtonVariant.primary,
                         onPressed: _createGroup,
-                        variant: ShadButtonVariant.default_,
-                        size: ShadButtonSize.sm,
-                        child: const Text(
-                          'Create Group',
-                          style: TextStyle(fontSize: 13),
-                        ),
                       ),
                     ],
                   ),

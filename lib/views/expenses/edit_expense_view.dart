@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
-import '../../components/shadcn/shadcn.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/expense_model.dart';
 import '../../models/expense_category.dart';
 import '../../providers/expense_provider.dart';
 import '../../utils/responsive_utils.dart';
+import '../../widgets/shadcn/shadcn_widgets.dart';
 
 class EditExpenseView extends StatefulWidget {
   const EditExpenseView({super.key, required this.expense});
@@ -119,14 +120,8 @@ class _EditExpenseViewState extends State<EditExpenseView> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: ShadAlert(
-              title: 'Success',
-              description: 'Expense updated successfully!',
-              variant: ShadAlertVariant.success,
-            ),
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            padding: const EdgeInsets.all(16),
+            content: const Text('Expense updated successfully!'),
+            backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 2),
           ),
@@ -149,14 +144,8 @@ class _EditExpenseViewState extends State<EditExpenseView> {
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: ShadAlert(
-          title: 'Error',
-          description: message,
-          variant: ShadAlertVariant.destructive,
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        padding: const EdgeInsets.all(16),
+        content: Text(message),
+        backgroundColor: AppColors.danger,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -227,28 +216,20 @@ class _EditExpenseViewState extends State<EditExpenseView> {
               const SizedBox(height: AppSpacing.xl),
 
               // Category Selection
-              ShadSelect<ExpenseCategory>(
-                label: 'Category *',
-                hint: 'Select category',
+              AppSelect<ExpenseCategory>(
+                placeholder: 'Select category',
                 value: _selectedCategory,
-                prefixIcon: const Icon(Icons.label, color: AppColors.primary),
-                items: categories.map((category) {
-                  return ShadSelectItem<ExpenseCategory>(
-                    value: category,
-                    label: category.name,
-                    child: Text(category.name),
-                  );
-                }).toList(),
+                options: categories.map((category) => SelectOption<ExpenseCategory>(
+                  value: category,
+                  label: category.name,
+                )).toList(),
+                selectedOptionBuilder: (context, value) {
+                  return Text(value != null ? value.name : 'Select category');
+                },
                 onChanged: (value) {
                   setState(() {
                     _selectedCategory = value;
                   });
-                },
-                validator: (value) {
-                  if (value == null) {
-                    return 'Please select a category';
-                  }
-                  return null;
                 },
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -256,67 +237,47 @@ class _EditExpenseViewState extends State<EditExpenseView> {
               // Description
               ShadInput(
                 controller: _descriptionController,
-                label: 'Description *',
-                hintText: 'Enter expense description',
-                prefixIcon: const Icon(Icons.description, color: AppColors.primary),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a description';
-                  }
-                  return null;
-                },
+                placeholder: const Text('Enter expense description'),
+                leading: const Icon(Icons.description, color: AppColors.primary),
               ),
               const SizedBox(height: AppSpacing.lg),
 
               // Expense Date
-              ShadInput(
-                label: 'Expense Date *',
-                hintText: _selectedExpenseDate == null
-                    ? 'Select date'
-                    : DateFormat('MM/dd/yyyy').format(_selectedExpenseDate!),
-                prefixIcon: const Icon(Icons.calendar_today, color: AppColors.primary),
-                suffixIcon: const Icon(Icons.arrow_drop_down, color: AppColors.textMuted),
-                readOnly: true,
+              GestureDetector(
                 onTap: _selectExpenseDate,
+                child: ShadInput(
+                  placeholder: Text(_selectedExpenseDate == null
+                      ? 'Select date'
+                      : DateFormat('MM/dd/yyyy').format(_selectedExpenseDate!)),
+                  leading: const Icon(Icons.calendar_today, color: AppColors.primary),
+                  trailing: const Icon(Icons.arrow_drop_down, color: AppColors.textMuted),
+                  readOnly: true,
+                ),
               ),
               const SizedBox(height: AppSpacing.lg),
 
               // Amount Field
               ShadInput(
                 controller: _amountController,
-                label: 'Amount *',
-                hintText: '0.00',
-                prefixIcon: const Icon(Icons.attach_money, color: AppColors.primary),
+                placeholder: const Text('0.00'),
+                leading: const Icon(Icons.attach_money, color: AppColors.primary),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter an amount';
-                  }
-                  final amount = double.tryParse(value);
-                  if (amount == null || amount <= 0) {
-                    return 'Please enter a valid amount';
-                  }
-                  return null;
-                },
               ),
               const SizedBox(height: AppSpacing.lg),
 
               // Merchant (optional)
               ShadInput(
                 controller: _merchantController,
-                label: 'Merchant',
-                hintText: 'Enter merchant name',
-                prefixIcon: const Icon(Icons.store, color: AppColors.primary),
+                placeholder: const Text('Enter merchant name'),
+                leading: const Icon(Icons.store, color: AppColors.primary),
               ),
               const SizedBox(height: AppSpacing.lg),
 
               // Status Selection
-              ShadSelect<ExpenseStatus>(
-                label: 'Status *',
-                hint: 'Select status',
+              AppSelect<ExpenseStatus>(
+                placeholder: 'Select status',
                 value: _selectedStatus,
-                prefixIcon: const Icon(Icons.flag, color: AppColors.primary),
-                items: ExpenseStatus.values.map((status) {
+                options: ExpenseStatus.values.map((status) {
                   String label;
                   switch (status) {
                     case ExpenseStatus.approved:
@@ -338,22 +299,40 @@ class _EditExpenseViewState extends State<EditExpenseView> {
                       label = 'Draft';
                       break;
                   }
-                  return ShadSelectItem<ExpenseStatus>(
+                  return SelectOption<ExpenseStatus>(
                     value: status,
                     label: label,
-                    child: Text(label),
                   );
                 }).toList(),
+                selectedOptionBuilder: (context, value) {
+                  if (value == null) return const Text('Select status');
+                  String label;
+                  switch (value) {
+                    case ExpenseStatus.approved:
+                      label = 'Approved';
+                      break;
+                    case ExpenseStatus.rejected:
+                      label = 'Rejected';
+                      break;
+                    case ExpenseStatus.submitted:
+                      label = 'Submitted';
+                      break;
+                    case ExpenseStatus.underReview:
+                      label = 'Under Review';
+                      break;
+                    case ExpenseStatus.paid:
+                      label = 'Paid';
+                      break;
+                    case ExpenseStatus.draft:
+                      label = 'Draft';
+                      break;
+                  }
+                  return Text(label);
+                },
                 onChanged: (value) {
                   setState(() {
                     _selectedStatus = value;
                   });
-                },
-                validator: (value) {
-                  if (value == null) {
-                    return 'Please select a status';
-                  }
-                  return null;
                 },
               ),
               const SizedBox(height: AppSpacing.xl),
@@ -366,28 +345,17 @@ class _EditExpenseViewState extends State<EditExpenseView> {
               const SizedBox(height: AppSpacing.md),
 
               // Submit Button
-              ShadButton(
+              AppButton(
                 onPressed: _isLoading ? null : _updateExpense,
-                variant: ShadButtonVariant.default_,
-                size: ShadButtonSize.lg,
-                width: double.infinity,
-                disabled: _isLoading,
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Text(
-                        'Update Expense',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                fullWidth: true,
+                isLoading: _isLoading,
+                child: const Text(
+                  'Update Expense',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           ),

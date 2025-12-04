@@ -1,9 +1,10 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
-import '../../components/shadcn/shadcn.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
+import '../../widgets/shadcn/shadcn_widgets.dart';
 import '../../models/task_attachment.dart';
 
 class AttachmentPicker extends StatelessWidget {
@@ -88,12 +89,9 @@ class AttachmentPicker extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                ShadButton(
+                AppButton(
                   onPressed: enabled ? () => _pickFiles(context) : null,
-                  variant: ShadButtonVariant.default_,
-                  size: ShadButtonSize.md,
                   child: const Text('Browse files'),
-                  disabled: !enabled,
                 ),
               ],
             ),
@@ -145,12 +143,9 @@ class AttachmentPicker extends StatelessWidget {
                       ),
                     ),
                     if (enabled)
-                      ShadButton(
+                      ShadIconButton(
                         onPressed: () => _removeAttachment(index),
-                        variant: ShadButtonVariant.ghost,
-                        size: ShadButtonSize.icon,
                         icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.danger),
-                        child: const SizedBox.shrink(),
                       ),
                   ],
                 ),

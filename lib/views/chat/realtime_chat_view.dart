@@ -6,10 +6,11 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
-import '../../components/shadcn/shadcn.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../utils/animation_utils.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
+import '../../widgets/shadcn/shadcn_widgets.dart';
 import '../../models/realtime_chat_models.dart';
 import '../../models/user_model.dart';
 import '../../providers/realtime_chat_provider.dart';
@@ -453,10 +454,14 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
             // Search bar
             SizedBox(
               width: double.infinity,
-              child: ShadInput(
+              child: AppSearchInput(
                 controller: _searchController,
-                hintText: 'Search users...',
-                prefixIcon: const Icon(Icons.search, size: 16, color: AppColors.textMuted),
+                placeholder: 'Search users...',
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
               ),
             ),
             // Show search results if there's a query
@@ -505,12 +510,16 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                   if (provider.activeTab == ChatTab.explore) {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: ShadButton(
+                      child: AppButton(
                         onPressed: () => _showCreateGroupDialog(context, provider),
-                        variant: ShadButtonVariant.default_,
-                        size: ShadButtonSize.sm,
-                        icon: const Icon(Icons.group_add, size: 18),
-                        child: const Text('Create Group'),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.group_add, size: 18),
+                            SizedBox(width: 4),
+                            Text('Create Group'),
+                          ],
+                        ),
                       ),
                     );
                   }
@@ -799,16 +808,20 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                           ),
                           if (isMobile) ...[
                             const SizedBox(height: AppSpacing.xl),
-                            ShadButton(
+                            AppButton(
                               onPressed: () {
                                 setState(() {
                                   _showConversationList = true;
                                 });
                               },
-                              variant: ShadButtonVariant.default_,
-                              size: ShadButtonSize.md,
-                              icon: const Icon(Icons.message, size: 18),
-                              child: const Text('View Conversations'),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.message, size: 18),
+                                  SizedBox(width: 4),
+                                  Text('View Conversations'),
+                                ],
+                              ),
                             ),
                           ],
                         ],
