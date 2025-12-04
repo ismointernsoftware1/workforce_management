@@ -582,18 +582,8 @@ class RealtimeChatService {
       StreamSubscription<DatabaseEvent>? subscription;
       bool hasEmittedInitial = false;
       
-      // When someone subscribes, emit empty list immediately to prevent waiting state
-      controller.onListen = () {
-        print('Stream listener subscribed for conversation: $conversationId');
-        // Emit empty list immediately so StreamBuilder doesn't get stuck in waiting
-        if (!hasEmittedInitial && !controller.isClosed) {
-          hasEmittedInitial = true;
-          controller.add(<RealtimeChatMessage>[]);
-          print('Emitted empty list immediately on subscription');
-        }
-      };
-      
-      // Fetch initial data immediately
+      // Fetch initial data immediately when stream is created (not waiting for subscription)
+      // This ensures data is ready as soon as StreamBuilder subscribes
       messagesRef
           .orderByChild('timestamp')
           .get()
@@ -601,7 +591,8 @@ class RealtimeChatService {
             print('Initial snapshot received for conversation: $conversationId');
             final messages = _parseSnapshot(snapshot);
             print('Parsed ${messages.length} messages from initial snapshot');
-            if (!controller.isClosed) {
+            if (!controller.isClosed && !hasEmittedInitial) {
+              hasEmittedInitial = true;
               controller.add(messages);
               print('Emitted ${messages.length} messages from initial fetch');
             }
@@ -609,12 +600,13 @@ class RealtimeChatService {
           .catchError((e, stackTrace) {
             print('Initial snapshot fetch failed for $conversationId: $e');
             print('Stack trace: $stackTrace');
-            if (!controller.isClosed) {
+            if (!controller.isClosed && !hasEmittedInitial) {
+              hasEmittedInitial = true;
               controller.add(<RealtimeChatMessage>[]);
             }
           });
-
-      // Set up live listener for real-time updates
+      
+      // Set up live listener for real-time updates immediately
       // onValue fires immediately with current data when listener is set up
       subscription = messagesRef
           .orderByChild('timestamp')
@@ -626,7 +618,13 @@ class RealtimeChatService {
               final messages = _parseSnapshot(event.snapshot);
               
               if (!controller.isClosed) {
-                print('Emitting ${messages.length} messages from stream listener');
+                // Only emit if we haven't emitted initial data yet, or if this is an update
+                if (!hasEmittedInitial) {
+                  hasEmittedInitial = true;
+                  print('Emitting ${messages.length} messages from stream listener (initial)');
+                } else {
+                  print('Emitting ${messages.length} messages from stream listener (update)');
+                }
                 controller.add(messages);
               } else {
                 print('Controller is closed, not emitting messages');
@@ -635,8 +633,9 @@ class RealtimeChatService {
             onError: (error, stackTrace) {
               print('Error in messages stream for conversation $conversationId: $error');
               print('Error stack trace: $stackTrace');
-              // Emit empty list on error
-              if (!controller.isClosed) {
+              // Emit empty list on error if we haven't emitted anything yet
+              if (!controller.isClosed && !hasEmittedInitial) {
+                hasEmittedInitial = true;
                 controller.add(<RealtimeChatMessage>[]);
               }
             },

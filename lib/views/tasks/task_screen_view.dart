@@ -581,8 +581,9 @@ class _TaskScreenViewState extends State<TaskScreenView> {
     Color color,
     IconData icon,
   ) {
+    final isMobile = ResponsiveUtils.isMobile(context);
     return Container(
-      margin: const EdgeInsets.all(AppSpacing.sm),
+      margin: EdgeInsets.all(isMobile ? AppSpacing.xs : AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(8),
@@ -590,10 +591,11 @@ class _TaskScreenViewState extends State<TaskScreenView> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           // Column Header
           Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
+            padding: EdgeInsets.all(isMobile ? AppSpacing.sm : AppSpacing.md),
             decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(
@@ -602,37 +604,44 @@ class _TaskScreenViewState extends State<TaskScreenView> {
               ),
             ),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 8,
-                  height: 8,
+                  width: isMobile ? 6 : 8,
+                  height: isMobile ? 6 : 8,
                   decoration: BoxDecoration(
                     color: color,
                     shape: BoxShape.circle,
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                SizedBox(width: isMobile ? AppSpacing.xs : AppSpacing.sm),
+                Flexible(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: isMobile ? 12 : 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 const Spacer(),
                 Text(
                   '${tasks.length}',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: isMobile ? 11 : 12,
                     color: AppColors.textMuted,
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
+                SizedBox(width: isMobile ? AppSpacing.xs : AppSpacing.sm),
                 IconButton(
-                  icon: const Icon(Icons.add, size: 18, color: AppColors.textMuted),
+                  icon: Icon(Icons.add, size: isMobile ? 16 : 18, color: AppColors.textMuted),
                   onPressed: () => _openAddTask(context),
                   tooltip: 'Add Task',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                 ),
               ],
             ),
@@ -729,13 +738,21 @@ class _TaskScreenViewState extends State<TaskScreenView> {
         final now = DateTime.now();
         final today = DateTime(now.year, now.month, now.day);
         
-        // Calculate start of current week (Monday)
+        // Calculate start of current week (Monday) - normalized to start of day
         final weekday = today.weekday; // 1 = Monday, 7 = Sunday
         final daysFromMonday = weekday - 1;
-        final startOfWeek = today.subtract(Duration(days: daysFromMonday));
+        final startOfWeek = DateTime(
+          today.subtract(Duration(days: daysFromMonday)).year,
+          today.subtract(Duration(days: daysFromMonday)).month,
+          today.subtract(Duration(days: daysFromMonday)).day,
+        );
         
-        // Calculate end of current week (Sunday)
-        final endOfWeek = startOfWeek.add(const Duration(days: 6));
+        // Calculate end of current week (Sunday) - normalized to start of day
+        final endOfWeek = DateTime(
+          startOfWeek.add(const Duration(days: 6)).year,
+          startOfWeek.add(const Duration(days: 6)).month,
+          startOfWeek.add(const Duration(days: 6)).day,
+        );
         
         final upcomingTasks = allTasks.where((task) {
           // Exclude completed tasks
@@ -746,16 +763,31 @@ class _TaskScreenViewState extends State<TaskScreenView> {
           
           // Include:
           // 1. Overdue tasks (past due) - show last 30 days of overdue
-          // 2. Tasks due this week (from Monday to Sunday of current week)
-          final thirtyDaysAgo = today.subtract(const Duration(days: 30));
+          // 2. Tasks due this week (from Monday to Sunday of current week, inclusive)
+          // 3. Tasks due in the next 7 days from today (as a fallback to catch all upcoming tasks)
+          final thirtyDaysAgo = DateTime(
+            today.subtract(const Duration(days: 30)).year,
+            today.subtract(const Duration(days: 30)).month,
+            today.subtract(const Duration(days: 30)).day,
+          );
           final isOverdue = taskDate.compareTo(today) < 0 && taskDate.compareTo(thirtyDaysAgo) >= 0;
-          // Include tasks from start of week to end of week (inclusive)
-          final isDueThisWeek = taskDate.compareTo(startOfWeek) >= 0 && taskDate.compareTo(endOfWeek) <= 0;
+          
+          // Check if task is due this week (Monday to Sunday, inclusive)
+          // taskDate >= startOfWeek AND taskDate <= endOfWeek
+          final isDueThisWeek = (taskDate.compareTo(startOfWeek) >= 0) && (taskDate.compareTo(endOfWeek) <= 0);
+          
+          // Also check if task is due in the next 7 days from today (more inclusive)
+          final sevenDaysFromToday = DateTime(
+            today.add(const Duration(days: 7)).year,
+            today.add(const Duration(days: 7)).month,
+            today.add(const Duration(days: 7)).day,
+          );
+          final isDueInNext7Days = taskDate.compareTo(today) >= 0 && taskDate.compareTo(sevenDaysFromToday) <= 0;
           
           // Show overdue tasks
           if (isOverdue) return true;
-          // Show tasks due this week
-          if (isDueThisWeek) return true;
+          // Show tasks due this week OR in the next 7 days (whichever is more inclusive)
+          if (isDueThisWeek || isDueInNext7Days) return true;
           
           return false;
         }).toList()
@@ -933,8 +965,9 @@ class _TaskScreenViewState extends State<TaskScreenView> {
   }
 
   Widget _buildStatCard(String title, String value, IconData icon, Color color, {String? subtitle}) {
+    final isMobile = ResponsiveUtils.isMobile(context);
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.lg),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
@@ -949,25 +982,30 @@ class _TaskScreenViewState extends State<TaskScreenView> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textMuted,
-                  fontWeight: FontWeight.w500,
+              Flexible(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: isMobile ? 12 : 13,
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               Container(
-                padding: const EdgeInsets.all(6),
+                padding: EdgeInsets.all(isMobile ? 4 : 6),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: Icon(icon, size: 18, color: color),
+                child: Icon(icon, size: isMobile ? 16 : 18, color: color),
               ),
             ],
           ),
@@ -975,19 +1013,23 @@ class _TaskScreenViewState extends State<TaskScreenView> {
           Text(
             value,
             style: TextStyle(
-              fontSize: 28,
+              fontSize: isMobile ? 24 : 28,
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           if (subtitle != null) ...[
             const SizedBox(height: 4),
             Text(
               subtitle,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: isMobile ? 11 : 12,
                 color: AppColors.textMuted,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ],
@@ -996,8 +1038,9 @@ class _TaskScreenViewState extends State<TaskScreenView> {
   }
 
   Widget _buildPriorityDistribution(int high, int medium, int low, int total) {
+    final isMobile = ResponsiveUtils.isMobile(context);
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.lg),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
@@ -1005,11 +1048,12 @@ class _TaskScreenViewState extends State<TaskScreenView> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             'Priority Distribution',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: isMobile ? 14 : 16,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
@@ -1077,8 +1121,9 @@ class _TaskScreenViewState extends State<TaskScreenView> {
   }
 
   Widget _buildCompletionRate(int rate, int total, int completed) {
+    final isMobile = ResponsiveUtils.isMobile(context);
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.lg),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
@@ -1086,16 +1131,17 @@ class _TaskScreenViewState extends State<TaskScreenView> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             'Completion Rate',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: isMobile ? 14 : 16,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(height: AppSpacing.xl),
+          SizedBox(height: isMobile ? AppSpacing.lg : AppSpacing.xl),
           Center(
             child: Column(
               children: [
@@ -1103,11 +1149,11 @@ class _TaskScreenViewState extends State<TaskScreenView> {
                   alignment: Alignment.center,
                   children: [
                     SizedBox(
-                      width: 120,
-                      height: 120,
+                      width: isMobile ? 100 : 120,
+                      height: isMobile ? 100 : 120,
                       child: CircularProgressIndicator(
                         value: rate / 100,
-                        strokeWidth: 12,
+                        strokeWidth: isMobile ? 10 : 12,
                         backgroundColor: AppColors.border,
                         valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
                       ),
@@ -1117,7 +1163,7 @@ class _TaskScreenViewState extends State<TaskScreenView> {
                         Text(
                           '$rate%',
                           style: TextStyle(
-                            fontSize: 24,
+                            fontSize: isMobile ? 20 : 24,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
                           ),
@@ -1125,7 +1171,7 @@ class _TaskScreenViewState extends State<TaskScreenView> {
                         Text(
                           '$completed / $total',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: isMobile ? 11 : 12,
                             color: AppColors.textMuted,
                           ),
                         ),
@@ -1142,8 +1188,9 @@ class _TaskScreenViewState extends State<TaskScreenView> {
   }
 
   Widget _buildQuickActions(BuildContext context) {
+    final isMobile = ResponsiveUtils.isMobile(context);
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: EdgeInsets.all(isMobile ? AppSpacing.md : AppSpacing.lg),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
@@ -1151,35 +1198,42 @@ class _TaskScreenViewState extends State<TaskScreenView> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             'Quick Actions',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: isMobile ? 14 : 16,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: AppSpacing.md),
-          ShadButton(
-            onPressed: () => _openAddTask(context),
-            variant: ShadButtonVariant.default_,
-            size: ShadButtonSize.md,
-            width: double.infinity,
-            icon: const Icon(Icons.add, size: 18),
-            child: const Text('Add New Task'),
+          ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 0),
+            child: ShadButton(
+              onPressed: () => _openAddTask(context),
+              variant: ShadButtonVariant.default_,
+              size: isMobile ? ShadButtonSize.sm : ShadButtonSize.md,
+              width: double.infinity,
+              icon: Icon(Icons.add, size: isMobile ? 16 : 18),
+              child: const Text('Add New Task'),
+            ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          ShadButton(
-            onPressed: () {
-              final controller = context.read<TaskScreenController>();
-              controller.setView(TaskViewMode.list);
-            },
-            variant: ShadButtonVariant.outline,
-            size: ShadButtonSize.md,
-            width: double.infinity,
-            icon: const Icon(Icons.list, size: 18),
-            child: const Text('View All Tasks'),
+          ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 0),
+            child: ShadButton(
+              onPressed: () {
+                final controller = context.read<TaskScreenController>();
+                controller.setView(TaskViewMode.list);
+              },
+              variant: ShadButtonVariant.outline,
+              size: isMobile ? ShadButtonSize.sm : ShadButtonSize.md,
+              width: double.infinity,
+              icon: Icon(Icons.list, size: isMobile ? 16 : 18),
+              child: const Text('View All Tasks'),
+            ),
           ),
           const SizedBox(height: AppSpacing.sm),
           ShadButton(
@@ -2497,6 +2551,7 @@ class _BoardTaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DashboardProvider>();
+    final isMobile = ResponsiveUtils.isMobile(context);
     final dateFormatter = DateFormat('MMM d - hh:mm a', 'en_US');
     final isOverdue = task.dueDate.isBefore(DateTime.now()) && task.status != TaskStatus.completed;
     final assignee = _findAssigneeFromTask(provider, task.assignedTo);
@@ -2505,7 +2560,7 @@ class _BoardTaskCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: EdgeInsets.all(isMobile ? AppSpacing.sm : AppSpacing.md),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(8),
@@ -2522,12 +2577,13 @@ class _BoardTaskCard extends StatelessWidget {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Title
             Text(
               task.title,
-              style: const TextStyle(
-                fontSize: 14,
+              style: TextStyle(
+                fontSize: isMobile ? 13 : 14,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary,
               ),
@@ -2595,39 +2651,42 @@ class _BoardTaskCard extends StatelessWidget {
             ],
             // Footer with assignee, date, priority
             Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 // Assignee
                 if (task.assignedTo.isNotEmpty)
                   CircleAvatar(
-                    radius: 12,
+                    radius: isMobile ? 10 : 12,
                     backgroundColor: AppColors.primarySoft,
                     child: Text(
                       assignee.name.isNotEmpty
                           ? assignee.name[0].toUpperCase()
                           : '?',
-                      style: const TextStyle(
-                        fontSize: 10,
+                      style: TextStyle(
+                        fontSize: isMobile ? 9 : 10,
                         color: AppColors.primary,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   )
                 else
-                  const Icon(Icons.person_add, size: 16, color: AppColors.textMuted),
+                  Icon(Icons.person_add, size: isMobile ? 14 : 16, color: AppColors.textMuted),
                 const SizedBox(width: AppSpacing.xs),
                 // Date
-                Expanded(
+                Flexible(
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.calendar_today, size: 12, color: AppColors.textMuted),
+                      Icon(Icons.calendar_today, size: isMobile ? 10 : 12, color: AppColors.textMuted),
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
                           dateFormatter.format(task.dueDate),
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: isMobile ? 10 : 11,
                             color: isOverdue ? AppColors.danger : AppColors.textMuted,
                           ),
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -2637,10 +2696,12 @@ class _BoardTaskCard extends StatelessWidget {
                           child: Text(
                             'Overdue',
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: isMobile ? 9 : 10,
                               color: AppColors.danger,
                               fontWeight: FontWeight.w500,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                     ],
@@ -2650,7 +2711,7 @@ class _BoardTaskCard extends StatelessWidget {
                 _buildPriorityIcon(task.priority),
                 // More options
                 PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, size: 16, color: AppColors.textMuted),
+                  icon: Icon(Icons.more_vert, size: isMobile ? 14 : 16, color: AppColors.textMuted),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   itemBuilder: (context) => [

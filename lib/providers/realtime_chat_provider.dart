@@ -304,10 +304,11 @@ class RealtimeChatProvider extends ChangeNotifier {
 
     // Cancel previous messages stream subscription if exists
     _messagesStreamSubscription?.cancel();
-    _messagesStream = null;
     
-    // Setup messages stream - create new stream for this conversation
-    _messagesStream = _controller.getMessagesStream(conversationId);
+    // Setup messages stream - create new stream for this conversation BEFORE setting to null
+    // This ensures smooth transition without waiting state
+    final newMessagesStream = _controller.getMessagesStream(conversationId);
+    _messagesStream = newMessagesStream;
     
     // Notify listeners immediately so StreamBuilder can subscribe to new stream
     notifyListeners();
