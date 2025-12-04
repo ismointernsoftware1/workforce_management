@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import 'task_attachment.dart';
-import 'task_location.dart';
 import 'task_approval.dart';
 
 enum TaskPriority { low, medium, high }
@@ -45,17 +44,16 @@ class TaskModel {
     required this.priority,
     required this.dueDate,
     required this.assignedTo,
+    this.assignedToUsers = const [],
     required this.status,
     required this.subTasks,
     this.createdBy,
     this.createdAt,
     this.updatedAt,
     this.attachments = const [],
-    this.location,
     this.approvalType = TaskApprovalType.none,
     this.approvals = const [],
     this.templateId,
-    this.hasLocation = false,
     this.formId,
     this.formDefinition,
     this.formValues,
@@ -66,7 +64,8 @@ class TaskModel {
   final String description;
   final TaskPriority priority;
   final DateTime dueDate;
-  final String assignedTo;
+  final String assignedTo; // For backward compatibility - can be single user or comma-separated list
+  final List<String> assignedToUsers; // New field for multiple users
   final TaskStatus status;
   final List<SubTask> subTasks;
 
@@ -74,11 +73,9 @@ class TaskModel {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final List<TaskAttachment> attachments;
-  final TaskLocation? location;
   final TaskApprovalType approvalType;
   final List<TaskApproval> approvals;
   final String? templateId;
-  final bool hasLocation;
   final String? formId;
   final Map<String, dynamic>? formDefinition;
   final Map<String, dynamic>? formValues;
@@ -94,6 +91,23 @@ class TaskModel {
       debugPrint('Warning: Task $id has no title field');
     }
 
+    // Handle assignedTo - support both old format (string) and new format (list)
+    final assignedToStr = data['assignedTo'] as String? ?? '';
+    final assignedToUsersList = data['assignedToUsers'] != null
+        ? ((data['assignedToUsers'] as List<dynamic>?) ?? [])
+            .map((e) => e.toString())
+            .toList()
+        : <String>[];
+    
+    // If assignedToUsers is empty but assignedTo has value, parse it
+    final finalAssignedToUsers = assignedToUsersList.isNotEmpty
+        ? assignedToUsersList
+        : (assignedToStr.isNotEmpty && assignedToStr.contains(','))
+            ? assignedToStr.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList()
+            : assignedToStr.isNotEmpty
+                ? [assignedToStr]
+                : <String>[];
+    
     return TaskModel(
       id: id ?? data['id'] as String? ?? '',
       title: title,
@@ -103,7 +117,8 @@ class TaskModel {
           ? (data['dueDate'] as Timestamp).toDate()
           : DateTime.tryParse(data['dueDate']?.toString() ?? '') ??
               DateTime.now(),
-      assignedTo: data['assignedTo'] as String? ?? '',
+      assignedTo: assignedToStr,
+      assignedToUsers: finalAssignedToUsers,
       status: _statusFrom(data['status']),
       subTasks: ((data['subTasks'] as List<dynamic>?) ?? [])
           .map((sub) => SubTask.fromMap(Map<String, dynamic>.from(sub)))
@@ -122,15 +137,11 @@ class TaskModel {
       attachments: ((data['attachments'] as List<dynamic>?) ?? [])
           .map((att) => TaskAttachment.fromMap(Map<String, dynamic>.from(att)))
           .toList(),
-      location: data['location'] != null
-          ? TaskLocation.fromMap(Map<String, dynamic>.from(data['location']))
-          : null,
       approvalType: _approvalTypeFrom(data['approvalType']),
       approvals: ((data['approvals'] as List<dynamic>?) ?? [])
           .map((app) => TaskApproval.fromMap(Map<String, dynamic>.from(app)))
           .toList(),
       templateId: data['templateId'] as String?,
-      hasLocation: data['hasLocation'] as bool? ?? false,
       formId: data['formId'] as String?,
       formDefinition: data['formDefinition'] != null
           ? Map<String, dynamic>.from(
@@ -148,18 +159,19 @@ class TaskModel {
         'description': description,
         'priority': priority.name,
         'dueDate': Timestamp.fromDate(dueDate),
-        'assignedTo': assignedTo,
+        'assignedTo': assignedToUsers.isNotEmpty 
+            ? assignedToUsers.join(', ') 
+            : assignedTo, // For backward compatibility
+        'assignedToUsers': assignedToUsers, // New field for multiple users
         'status': status.name,
         'subTasks': subTasks.map((sub) => sub.toMap()).toList(),
         if (createdBy != null) 'createdBy': createdBy,
         if (createdAt != null) 'createdAt': Timestamp.fromDate(createdAt!),
         if (updatedAt != null) 'updatedAt': Timestamp.fromDate(updatedAt!),
         'attachments': attachments.map((att) => att.toMap()).toList(),
-        if (location != null && !location!.isEmpty) 'location': location!.toMap(),
         'approvalType': approvalType.name,
         'approvals': approvals.map((app) => app.toMap()).toList(),
         if (templateId != null) 'templateId': templateId,
-        'hasLocation': hasLocation,
         if (formId != null) 'formId': formId,
         if (formDefinition != null) 'formDefinition': formDefinition,
         if (formValues != null) 'formValues': formValues,
@@ -172,17 +184,16 @@ class TaskModel {
     TaskPriority? priority,
     DateTime? dueDate,
     String? assignedTo,
+    List<String>? assignedToUsers,
     TaskStatus? status,
     List<SubTask>? subTasks,
     String? createdBy,
     DateTime? createdAt,
     DateTime? updatedAt,
     List<TaskAttachment>? attachments,
-    TaskLocation? location,
     TaskApprovalType? approvalType,
     List<TaskApproval>? approvals,
     String? templateId,
-    bool? hasLocation,
     String? formId,
     Map<String, dynamic>? formDefinition,
     Map<String, dynamic>? formValues,
@@ -194,17 +205,16 @@ class TaskModel {
       priority: priority ?? this.priority,
       dueDate: dueDate ?? this.dueDate,
       assignedTo: assignedTo ?? this.assignedTo,
+      assignedToUsers: assignedToUsers ?? this.assignedToUsers,
       status: status ?? this.status,
       subTasks: subTasks ?? this.subTasks,
       createdBy: createdBy ?? this.createdBy,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       attachments: attachments ?? this.attachments,
-      location: location ?? this.location,
       approvalType: approvalType ?? this.approvalType,
       approvals: approvals ?? this.approvals,
       templateId: templateId ?? this.templateId,
-      hasLocation: hasLocation ?? this.hasLocation,
       formId: formId ?? this.formId,
       formDefinition: formDefinition ?? this.formDefinition,
       formValues: formValues ?? this.formValues,

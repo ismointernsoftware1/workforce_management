@@ -105,9 +105,9 @@ class DefaultFormsInitializer {
             ),
             FormFieldModel(
               id: _uuid.v4(),
-              type: FormFieldType.dropdown,
+              type: FormFieldType.checkbox,
               label: 'Assigned To',
-              placeholder: 'Select team member',
+              placeholder: 'Select team members',
               required: true,
               options: [], // Will be populated dynamically
             ),

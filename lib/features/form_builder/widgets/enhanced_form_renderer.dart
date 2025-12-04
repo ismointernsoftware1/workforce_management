@@ -119,6 +119,142 @@ class _EnhancedFormRendererState extends State<EnhancedFormRenderer> {
     // Get dynamic options if available
     final options = widget.dynamicOptions[field.id] ?? field.options;
 
+    // Special handling: Always render "Assigned To" as checkbox for multiple selection
+    if (field.label == 'Assigned To' && options.isNotEmpty) {
+      // Handle both Set<String> (from checkbox) and String (from dropdown)
+      final currentValue = value;
+      final set = currentValue is Set<String>
+          ? currentValue
+          : currentValue is String && currentValue.isNotEmpty
+              ? {currentValue}
+              : <String>{};
+      
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            field.label + (field.required ? ' *' : ''),
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Calculate number of columns based on available width
+                // Aim for ~200px per card, minimum 2 columns
+                final cardWidth = 200.0;
+                final spacing = AppSpacing.md;
+                final padding = AppSpacing.md;
+                final availableWidth = constraints.maxWidth - (padding * 2);
+                final columns = (availableWidth / (cardWidth + spacing)).floor().clamp(2, 4);
+                final crossAxisCount = columns;
+                
+                return Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      crossAxisSpacing: spacing,
+                      mainAxisSpacing: spacing,
+                      childAspectRatio: 3.5,
+                    ),
+                    itemCount: options.length,
+                    itemBuilder: (context, index) {
+                      final option = options[index];
+                      final checked = set.contains(option);
+                      
+                      return InkWell(
+                        onTap: () {
+                          final next = Set<String>.from(set);
+                          if (checked) {
+                            next.remove(option);
+                          } else {
+                            next.add(option);
+                          }
+                          onChanged(next);
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: checked 
+                                ? AppColors.primarySoft 
+                                : AppColors.surfaceAlt,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: checked 
+                                  ? AppColors.primary 
+                                  : AppColors.border,
+                              width: checked ? 2 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const SizedBox(width: AppSpacing.sm),
+                              Container(
+                                width: 20,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: checked 
+                                      ? AppColors.primary 
+                                      : Colors.transparent,
+                                  border: Border.all(
+                                    color: checked 
+                                        ? AppColors.primary 
+                                        : AppColors.textMuted,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: checked
+                                    ? const Icon(
+                                        Icons.check,
+                                        size: 14,
+                                        color: Colors.white,
+                                      )
+                                    : null,
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(
+                                child: Text(
+                                  option,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: checked 
+                                        ? FontWeight.w600 
+                                        : FontWeight.normal,
+                                    color: checked 
+                                        ? AppColors.primary 
+                                        : AppColors.textPrimary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      );
+    }
+
     switch (field.type) {
       case FormFieldType.text:
       case FormFieldType.email:

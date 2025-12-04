@@ -1,8 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:animations/animations.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
 
 import 'config/app_theme.dart';
 import 'controllers/chat_controller.dart';

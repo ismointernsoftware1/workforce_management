@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
-import 'package:shadcn_ui/shadcn_ui.dart';
-import '../../utils/animation_utils.dart';
+import '../../components/shadcn/shadcn.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/expense_model.dart';
@@ -75,45 +73,17 @@ class _ExpensesViewState extends State<ExpensesView> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildHeaderTitle(context)
-                          .animate()
-                          .fade(
-                            duration: AnimationUtils.normalDuration,
-                            delay: AnimationUtils.shortDelay,
-                          )
-                          .slide(
-                            begin: const Offset(0, -10),
-                            end: Offset.zero,
-                            duration: AnimationUtils.normalDuration,
-                            delay: AnimationUtils.shortDelay,
-                            curve: Curves.easeOutCubic,
-                          ),
+                      _buildHeaderTitle(context),
                       const SizedBox(height: AppSpacing.sm),
                       SizedBox(
                         width: double.infinity,
                         child: AppButton(
                           onPressed: () => _openAddExpense(context),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.add, size: 18),
-                              SizedBox(width: 8),
-                              Text('New Expense'),
-                            ],
-                          ),
-                        )
-                            .animate()
-                            .fade(
-                              duration: AnimationUtils.normalDuration,
-                              delay: AnimationUtils.mediumDelay,
-                            )
-                            .slide(
-                              begin: const Offset(0, -10),
-                              end: Offset.zero,
-                              duration: AnimationUtils.normalDuration,
-                              delay: AnimationUtils.mediumDelay,
-                              curve: Curves.easeOutCubic,
-                            ),
+                          variant: ShadButtonVariant.default_,
+                          size: ShadButtonSize.md,
+                          icon: const Icon(Icons.add, size: 18),
+                          child: const Text('New Expense'),
+                        ),
                       ),
                     ],
                   )
@@ -122,44 +92,16 @@ class _ExpensesViewState extends State<ExpensesView> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: _buildHeaderTitle(context)
-                            .animate()
-                            .fade(
-                              duration: AnimationUtils.normalDuration,
-                              delay: AnimationUtils.shortDelay,
-                            )
-                            .slide(
-                              begin: const Offset(0, -10),
-                              end: Offset.zero,
-                              duration: AnimationUtils.normalDuration,
-                              delay: AnimationUtils.shortDelay,
-                              curve: Curves.easeOutCubic,
-                            ),
+                        child: _buildHeaderTitle(context),
                       ),
                       const SizedBox(width: AppSpacing.md),
                       AppButton(
                         onPressed: () => _openAddExpense(context),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.add, size: 20),
-                            SizedBox(width: 8),
-                            Text('New Expense'),
-                          ],
-                        ),
-                      )
-                          .animate()
-                          .fade(
-                            duration: AnimationUtils.normalDuration,
-                            delay: AnimationUtils.mediumDelay,
-                          )
-                          .slide(
-                            begin: const Offset(0, -10),
-                            end: Offset.zero,
-                            duration: AnimationUtils.normalDuration,
-                            delay: AnimationUtils.mediumDelay,
-                            curve: Curves.easeOutCubic,
-                          ),
+                        variant: ShadButtonVariant.default_,
+                        size: ShadButtonSize.md,
+                        icon: const Icon(Icons.add, size: 20),
+                        child: const Text('New Expense'),
+                      ),
                     ],
                   ),
                 const SizedBox(height: AppSpacing.xl),
@@ -179,55 +121,19 @@ class _ExpensesViewState extends State<ExpensesView> {
                           StatCard(
                             title: 'Total Expenses',
                             value: _formatCurrency(provider.totalAmount),
-                          )
-                              .animate()
-                              .scale(
-                                begin: const Offset(0.95, 0.95),
-                                end: const Offset(1, 1),
-                                duration: AnimationUtils.normalDuration,
-                                delay: AnimationUtils.shortDelay,
-                                curve: Curves.easeOutCubic,
-                              )
-                              .fade(
-                                duration: AnimationUtils.normalDuration,
-                                delay: AnimationUtils.shortDelay,
-                              ),
+                          ),
                           const SizedBox(height: AppSpacing.md),
                           StatCard(
                             title: 'Approved',
                             value: _formatCurrency(provider.approvedAmount),
                             badge: _coloredBadge('Approved', AppColors.success),
-                          )
-                              .animate()
-                              .scale(
-                                begin: const Offset(0.95, 0.95),
-                                end: const Offset(1, 1),
-                                duration: AnimationUtils.normalDuration,
-                                delay: AnimationUtils.mediumDelay,
-                                curve: Curves.easeOutCubic,
-                              )
-                              .fade(
-                                duration: AnimationUtils.normalDuration,
-                                delay: AnimationUtils.mediumDelay,
-                              ),
+                          ),
                           const SizedBox(height: AppSpacing.md),
                           StatCard(
                             title: 'Pending',
                             value: _formatCurrency(provider.pendingAmount),
                             badge: _coloredBadge('Pending', AppColors.warning),
-                          )
-                              .animate()
-                              .scale(
-                                begin: const Offset(0.95, 0.95),
-                                end: const Offset(1, 1),
-                                duration: AnimationUtils.normalDuration,
-                                delay: AnimationUtils.longDelay,
-                                curve: Curves.easeOutCubic,
-                              )
-                              .fade(
-                                duration: AnimationUtils.normalDuration,
-                                delay: AnimationUtils.longDelay,
-                              ),
+                          ),
                         ],
                       )
                     : Row(
@@ -236,19 +142,7 @@ class _ExpensesViewState extends State<ExpensesView> {
                             child: StatCard(
                               title: 'Total Expenses',
                               value: _formatCurrency(provider.totalAmount),
-                            )
-                                .animate()
-                                .scale(
-                                  begin: const Offset(0.95, 0.95),
-                                  end: const Offset(1, 1),
-                                  duration: AnimationUtils.normalDuration,
-                                  delay: AnimationUtils.shortDelay,
-                                  curve: Curves.easeOutCubic,
-                                )
-                                .fade(
-                                  duration: AnimationUtils.normalDuration,
-                                  delay: AnimationUtils.shortDelay,
-                                ),
+                            ),
                           ),
                           const SizedBox(width: AppSpacing.md),
                           Expanded(
@@ -256,19 +150,7 @@ class _ExpensesViewState extends State<ExpensesView> {
                               title: 'Approved',
                               value: _formatCurrency(provider.approvedAmount),
                               badge: _coloredBadge('Approved', AppColors.success),
-                            )
-                                .animate()
-                                .scale(
-                                  begin: const Offset(0.95, 0.95),
-                                  end: const Offset(1, 1),
-                                  duration: AnimationUtils.normalDuration,
-                                  delay: AnimationUtils.mediumDelay,
-                                  curve: Curves.easeOutCubic,
-                                )
-                                .fade(
-                                  duration: AnimationUtils.normalDuration,
-                                  delay: AnimationUtils.mediumDelay,
-                                ),
+                            ),
                           ),
                           const SizedBox(width: AppSpacing.md),
                           Expanded(
@@ -276,19 +158,7 @@ class _ExpensesViewState extends State<ExpensesView> {
                               title: 'Pending',
                               value: _formatCurrency(provider.pendingAmount),
                               badge: _coloredBadge('Pending', AppColors.warning),
-                            )
-                                .animate()
-                                .scale(
-                                  begin: const Offset(0.95, 0.95),
-                                  end: const Offset(1, 1),
-                                  duration: AnimationUtils.normalDuration,
-                                  delay: AnimationUtils.longDelay,
-                                  curve: Curves.easeOutCubic,
-                                )
-                                .fade(
-                                  duration: AnimationUtils.normalDuration,
-                                  delay: AnimationUtils.longDelay,
-                                ),
+                            ),
                           ),
                         ],
                       ),
@@ -697,19 +567,7 @@ class _ExpensesTable extends StatelessWidget {
                     dateFormatter: dateFormatter,
                     currencyFormatter: currencyFormatter,
                     viewState: viewState,
-                  )
-                      .animate()
-                      .fade(
-                        duration: AnimationUtils.normalDuration,
-                        delay: AnimationUtils.shortDelay * (entry.key + 1),
-                      )
-                      .slide(
-                        begin: const Offset(0, 20),
-                        end: Offset.zero,
-                        duration: AnimationUtils.normalDuration,
-                        delay: AnimationUtils.shortDelay * (entry.key + 1),
-                        curve: Curves.easeOutCubic,
-                      );
+                  );
                 }).toList(),
               ),
             )
@@ -867,19 +725,7 @@ class _ExpensesTable extends StatelessWidget {
                               dateFormatter: dateFormatter,
                               currencyFormatter: currencyFormatter,
                               viewState: viewState,
-                            )
-                                .animate()
-                                .fade(
-                                  duration: AnimationUtils.normalDuration,
-                                  delay: AnimationUtils.shortDelay * (index + 1),
-                                )
-                                .slide(
-                                  begin: const Offset(0, 20),
-                                  end: Offset.zero,
-                                  duration: AnimationUtils.normalDuration,
-                                  delay: AnimationUtils.shortDelay * (index + 1),
-                                  curve: Curves.easeOutCubic,
-                                );
+                            );
                           },
                         );
                       },

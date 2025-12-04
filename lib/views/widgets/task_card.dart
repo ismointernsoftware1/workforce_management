@@ -11,6 +11,68 @@ import '../../widgets/shadcn/shadcn_widgets.dart';
 import '../tasks/edit_task_view.dart';
 import '../tasks/task_detail_view.dart';
 import '../tasks/task_audit_logs_view.dart';
+import '../../models/team_member.dart';
+
+// Helper function to get all assignees from a task
+List<TeamMember> _findAllAssigneesFromTask(DashboardProvider provider, TaskModel task) {
+  final assignees = <TeamMember>[];
+  
+  // First, try to use assignedToUsers list if available
+  if (task.assignedToUsers.isNotEmpty) {
+    for (final assignedUser in task.assignedToUsers) {
+      // Extract name from "name - role" format
+      final nameParts = assignedUser.split(' - ');
+      final nameOnly = nameParts.isNotEmpty ? nameParts[0].trim() : assignedUser;
+      
+      try {
+        final member = provider.members.firstWhere(
+          (m) => m.name == nameOnly || assignedUser.contains(m.name),
+        );
+        assignees.add(member);
+      } catch (e) {
+        // If not found, create a fallback
+        assignees.add(TeamMember(
+          id: '',
+          name: nameOnly,
+          email: '',
+          role: nameParts.length > 1 ? nameParts[1].trim() : '',
+          department: '',
+          isOnline: false,
+        ));
+      }
+    }
+  } else if (task.assignedTo.isNotEmpty) {
+    // Fallback to assignedTo string (backward compatibility)
+    // Handle comma-separated list
+    final assignedList = task.assignedTo.contains(',')
+        ? task.assignedTo.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList()
+        : [task.assignedTo];
+    
+    for (final assignedUser in assignedList) {
+      final nameParts = assignedUser.split(' - ');
+      final nameOnly = nameParts.isNotEmpty ? nameParts[0].trim() : assignedUser;
+      
+      try {
+        final member = provider.members.firstWhere(
+          (m) => m.name == nameOnly || assignedUser.contains(m.name),
+        );
+        assignees.add(member);
+      } catch (e) {
+        // If not found, create a fallback
+        assignees.add(TeamMember(
+          id: '',
+          name: nameOnly,
+          email: '',
+          role: nameParts.length > 1 ? nameParts[1].trim() : '',
+          department: '',
+          isOnline: false,
+        ));
+      }
+    }
+  }
+  
+  return assignees;
+}
 
 class TaskCard extends StatelessWidget {
   const TaskCard({
@@ -177,13 +239,29 @@ class TaskCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        task.assignedTo,
-                        style: const TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 14,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                      Builder(
+                        builder: (context) {
+                          final provider = Provider.of<DashboardProvider>(context, listen: false);
+                          final assignees = _findAllAssigneesFromTask(provider, task);
+                          if (assignees.isEmpty) {
+                            return Text(
+                              'Unassigned',
+                              style: const TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 14,
+                              ),
+                            );
+                          }
+                          return Text(
+                            assignees.map((a) => a.name).join(', '),
+                            style: const TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 14,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          );
+                        },
                       ),
                     ],
                   ),

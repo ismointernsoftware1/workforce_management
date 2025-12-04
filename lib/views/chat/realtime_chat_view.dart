@@ -4,10 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
-import 'package:shadcn_ui/shadcn_ui.dart';
-import '../../utils/animation_utils.dart';
+import '../../components/shadcn/shadcn.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../widgets/shadcn/shadcn_widgets.dart';
@@ -336,14 +334,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
             width: ResponsiveUtils.isDesktop(context) 
                 ? 320.0 
                 : (isTablet ? 280.0 : 260.0),
-            child: _buildConversationList(context)
-                .animate()
-                .slideX(
-                  begin: -1,
-                  duration: AnimationUtils.normalDuration,
-                  curve: Curves.easeOutCubic,
-                )
-                .fadeIn(duration: AnimationUtils.normalDuration),
+            child: _buildConversationList(context),
           ),
           // Remove visual gap between sidebar and chat area
           const SizedBox(width: 0),
@@ -360,20 +351,8 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                 ),
                 border: Border.fromBorderSide(BorderSide(color: AppColors.border)),
               ),
-            child: _buildChatView(context, isMobile)
-                .animate()
-                .fade(
-                  duration: AnimationUtils.normalDuration,
-                  delay: AnimationUtils.mediumDelay,
-                )
-                .slide(
-                  begin: const Offset(0.1, 0),
-                  end: Offset.zero,
-                  duration: AnimationUtils.normalDuration,
-                  delay: AnimationUtils.mediumDelay,
-                  curve: Curves.easeOutCubic,
-                  ),
-                ),
+              child: _buildChatView(context, isMobile),
+            ),
           ),
         ],
       ),
@@ -589,19 +568,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                               });
                             }
                           },
-                        )
-                            .animate()
-                            .fade(
-                              duration: AnimationUtils.normalDuration,
-                              delay: AnimationUtils.shortDelay * (index + 1),
-                            )
-                            .slide(
-                              begin: const Offset(0, 20),
-                              end: Offset.zero,
-                              duration: AnimationUtils.normalDuration,
-                              delay: AnimationUtils.shortDelay * (index + 1),
-                              curve: Curves.easeOutCubic,
-                            );
+                        );
                       },
                     );
                   },
@@ -1251,19 +1218,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                             return RealtimeMessageBubble(
                                               message: message,
                                               isMine: isMine,
-                                            )
-                                                .animate()
-                                                .fade(
-                                                  duration: AnimationUtils.fastDuration,
-                                                  delay: AnimationUtils.shortDelay * (index % 5),
-                                                )
-                                                .slide(
-                                                  begin: Offset(isMine ? 0.1 : -0.1, 0),
-                                                  end: Offset.zero,
-                                                  duration: AnimationUtils.fastDuration,
-                                                  delay: AnimationUtils.shortDelay * (index % 5),
-                                                  curve: Curves.easeOutCubic,
-                                                );
+                                            );
                                             }
                                           },
                                         ),
@@ -2227,32 +2182,9 @@ class _DateSeparator extends StatelessWidget {
   }
 }
 
-// WhatsApp-style typing dots animation
-class _TypingDots extends StatefulWidget {
+// Static typing dots (no animation)
+class _TypingDots extends StatelessWidget {
   const _TypingDots();
-
-  @override
-  State<_TypingDots> createState() => _TypingDotsState();
-}
-
-class _TypingDotsState extends State<_TypingDots>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -2260,30 +2192,14 @@ class _TypingDotsState extends State<_TypingDots>
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(3, (index) {
-        return AnimatedBuilder(
-          animation: _controller,
-          builder: (context, child) {
-            // Create a wave effect where each dot animates with a delay
-            final delay = index * 0.2;
-            final cycle = (_controller.value + delay) % 1.0;
-            // Make dots fade in and out smoothly
-            final opacity = (cycle < 0.5) 
-                ? (cycle * 2) // Fade in from 0 to 1
-                : (2 - cycle * 2); // Fade out from 1 to 0
-            
-            return Opacity(
-              opacity: opacity.clamp(0.4, 1.0), // Keep minimum opacity for visibility
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 2),
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: AppColors.textMuted,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            );
-          },
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: AppColors.textMuted,
+            shape: BoxShape.circle,
+          ),
         );
       }),
     );
