@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
-import '../../../constants/app_colors.dart';
+import '../../constants/app_colors.dart';
 
 /// Generic reusable search input widget
 class AppSearchInput extends StatefulWidget {

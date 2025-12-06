@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../constants/app_colors.dart';
-import '../../../constants/app_spacing.dart';
+import '../../constants/app_colors.dart';
+import '../../constants/app_spacing.dart';
 
 /// Generic reusable card widget
 class AppCard extends StatelessWidget {

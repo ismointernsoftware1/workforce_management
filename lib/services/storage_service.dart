@@ -196,5 +196,67 @@ class StorageService {
       throw Exception('Failed to delete chat attachment: $e');
     }
   }
+
+  // ============= PROFILE PICTURE METHODS =============
+
+  Future<String> uploadProfilePicture({
+    required String userId,
+    required Uint8List imageData,
+  }) async {
+    try {
+      if (imageData.isEmpty) {
+        throw Exception('Image data is empty');
+      }
+
+      final uniqueFileName = '${_uuid.v4()}.jpg';
+      final ref = _storage.ref().child('profiles/$userId/$uniqueFileName');
+
+      final metadata = SettableMetadata(
+        contentType: 'image/jpeg',
+        customMetadata: {
+          'uploadedAt': DateTime.now().toIso8601String(),
+        },
+      );
+
+      debugPrint('Uploading profile picture for user: $userId');
+      
+      final uploadTask = ref.putData(imageData, metadata);
+      
+      uploadTask.snapshotEvents.listen((taskSnapshot) {
+        final progress = (taskSnapshot.bytesTransferred / taskSnapshot.totalBytes) * 100;
+        debugPrint('Profile picture upload progress: ${progress.toStringAsFixed(1)}%');
+      });
+
+      final snapshot = await uploadTask.timeout(
+        const Duration(minutes: 5),
+        onTimeout: () {
+          throw Exception('Upload timeout: Profile picture upload took too long');
+        },
+      );
+      
+      final downloadUrl = await snapshot.ref.getDownloadURL().timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Download URL timeout: Failed to get download URL');
+        },
+      );
+      
+      debugPrint('Profile picture uploaded successfully: $downloadUrl');
+      return downloadUrl;
+    } catch (e, stackTrace) {
+      debugPrint('Upload error: $e');
+      debugPrint('Stack trace: $stackTrace');
+      throw Exception('Failed to upload profile picture: $e');
+    }
+  }
+
+  Future<void> deleteProfilePicture(String fileUrl) async {
+    try {
+      final ref = _storage.refFromURL(fileUrl);
+      await ref.delete();
+    } catch (e) {
+      throw Exception('Failed to delete profile picture: $e');
+    }
+  }
 }
 

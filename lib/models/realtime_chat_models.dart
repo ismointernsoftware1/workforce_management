@@ -1,3 +1,9 @@
+enum MessageStatus {
+  sent,      // One grey tick
+  delivered, // Double grey tick
+  seen,      // Double blue tick
+}
+
 class RealtimeChatMessage {
   const RealtimeChatMessage({
     required this.id,
@@ -9,6 +15,7 @@ class RealtimeChatMessage {
     this.attachmentUrl,
     this.fileName,
     this.fileSize,
+    this.status = MessageStatus.sent,
   });
 
   final String id;
@@ -20,6 +27,7 @@ class RealtimeChatMessage {
   final String? attachmentUrl;
   final String? fileName;
   final int? fileSize;
+  final MessageStatus status;
 
   factory RealtimeChatMessage.fromMap(Map<dynamic, dynamic> data, String id) {
     return RealtimeChatMessage(
@@ -35,6 +43,10 @@ class RealtimeChatMessage {
       attachmentUrl: data['attachmentUrl'] as String?,
       fileName: data['fileName'] as String?,
       fileSize: data['fileSize'] as int?,
+      status: MessageStatus.values.firstWhere(
+        (e) => e.name == (data['status'] as String? ?? 'sent'),
+        orElse: () => MessageStatus.sent,
+      ),
     );
   }
 
@@ -44,6 +56,7 @@ class RealtimeChatMessage {
         'text': text,
         'timestamp': timestamp,
         'type': type.name,
+        'status': status.name,
         if (attachmentUrl != null) 'attachmentUrl': attachmentUrl,
         if (fileName != null) 'fileName': fileName,
         if (fileSize != null) 'fileSize': fileSize,
@@ -54,6 +67,7 @@ enum MessageType {
   text,
   image,
   file,
+  video,
 }
 
 class RealtimeChatConversation {
