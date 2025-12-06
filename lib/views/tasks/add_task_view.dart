@@ -223,14 +223,8 @@ class _AddTaskViewState extends State<AddTaskView> {
     if (assignedToUsers.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: ShadAlert(
-            title: 'Validation Error',
-            description: 'Please select at least one assignee',
-            variant: ShadAlertVariant.destructive,
-          ),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          padding: const EdgeInsets.all(16),
+          content: const Text('Please select at least one assignee'),
+          backgroundColor: AppColors.danger,
           behavior: SnackBarBehavior.floating,
         ),
       );

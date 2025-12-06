@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../constants/app_colors.dart';
 import '../../../constants/app_spacing.dart';
+import '../../../widgets/shadcn/app_card.dart';
 import '../../form_builder/models/form_models.dart';
 
 typedef OnFieldTypePicked = void Function(FormFieldType type);
@@ -30,60 +31,66 @@ class FieldControlsPanel extends StatelessWidget {
     ];
 
     return Container(
-      width: 260,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
+      width: 280,
+      color: const Color(0xFFF9FAFB), // Soft grey background
+      child: AppCard(
+        padding: EdgeInsets.zero,
+        margin: EdgeInsets.zero,
+        backgroundColor: AppColors.surface,
+        borderRadius: BorderRadius.zero,
+        showShadow: false,
         border: Border(
           right: BorderSide(
             color: AppColors.border.withValues(alpha: 0.5),
+            width: 1,
           ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Text(
-              'Field Controls',
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-                color: AppColors.textPrimary,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Text(
+                'Field Controls',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: AppColors.textPrimary,
+                ),
               ),
             ),
-          ),
-          const Divider(height: 1),
-          Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              itemCount: items.length,
-              separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-              itemBuilder: (context, index) {
-                final item = items[index];
-                final chip = _ControlChip(item: item, onTap: () => onPicked(item.type));
-                return Draggable<FormFieldType>(
-                  data: item.type,
-                  feedback: Material(
-                    color: Colors.transparent,
-                    child: Opacity(
-                      opacity: 0.8,
-                      child: Container(
-                        width: 200,
-                        child: _ControlChip(item: item),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                itemCount: items.length,
+                separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xs),
+                itemBuilder: (context, index) {
+                  final item = items[index];
+                  final chip = _ControlChip(item: item, onTap: () => onPicked(item.type));
+                  return Draggable<FormFieldType>(
+                    data: item.type,
+                    feedback: Material(
+                      color: Colors.transparent,
+                      child: Opacity(
+                        opacity: 0.8,
+                        child: Container(
+                          width: 200,
+                          child: _ControlChip(item: item),
+                        ),
                       ),
                     ),
-                  ),
-                  childWhenDragging: Opacity(
-                    opacity: 0.3,
+                    childWhenDragging: Opacity(
+                      opacity: 0.3,
+                      child: chip,
+                    ),
                     child: chip,
-                  ),
-                  child: chip,
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -97,34 +104,41 @@ class _ControlChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm,
-        ),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceAlt,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
-        ),
-        child: Row(
-          children: [
-            Icon(item.icon, size: 18, color: AppColors.textMuted),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                item.label,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.sm,
+          ),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: AppColors.border.withValues(alpha: 0.5),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(item.icon, size: 16, color: AppColors.textMuted),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  item.label,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ),
-            ),
-            const Icon(Icons.drag_indicator, size: 16, color: AppColors.textMuted),
-          ],
+              const Icon(Icons.drag_indicator, size: 14, color: AppColors.textMuted),
+            ],
+          ),
         ),
       ),
     );

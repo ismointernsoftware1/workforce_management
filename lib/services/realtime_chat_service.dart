@@ -577,79 +577,52 @@ class RealtimeChatService {
         return messages;
       }
 
-      // Create a broadcast stream controller
-      final controller = StreamController<List<RealtimeChatMessage>>.broadcast();
+      // Create a broadcast stream controller with onListen callback
+      // This ensures the Firebase listener is set up only when someone subscribes
       StreamSubscription<DatabaseEvent>? subscription;
-      bool hasEmittedInitial = false;
-      
-      // Fetch initial data immediately when stream is created (not waiting for subscription)
-      // This ensures data is ready as soon as StreamBuilder subscribes
-      messagesRef
-          .orderByChild('timestamp')
-          .get()
-          .then((snapshot) {
-            print('Initial snapshot received for conversation: $conversationId');
-            final messages = _parseSnapshot(snapshot);
-            print('Parsed ${messages.length} messages from initial snapshot');
-            if (!controller.isClosed && !hasEmittedInitial) {
-              hasEmittedInitial = true;
-              controller.add(messages);
-              print('Emitted ${messages.length} messages from initial fetch');
-            }
-          })
-          .catchError((e, stackTrace) {
-            print('Initial snapshot fetch failed for $conversationId: $e');
-            print('Stack trace: $stackTrace');
-            if (!controller.isClosed && !hasEmittedInitial) {
-              hasEmittedInitial = true;
-              controller.add(<RealtimeChatMessage>[]);
-            }
-          });
-      
-      // Set up live listener for real-time updates immediately
-      // onValue fires immediately with current data when listener is set up
-      subscription = messagesRef
-          .orderByChild('timestamp')
-          .onValue
-          .listen(
-            (event) {
-              // This fires immediately with current data when listener is set up
-              print('Stream listener received event for conversation: $conversationId');
-              final messages = _parseSnapshot(event.snapshot);
-              
-              if (!controller.isClosed) {
-                // Only emit if we haven't emitted initial data yet, or if this is an update
-                if (!hasEmittedInitial) {
-                  hasEmittedInitial = true;
-                  print('Emitting ${messages.length} messages from stream listener (initial)');
-                } else {
-                  print('Emitting ${messages.length} messages from stream listener (update)');
-                }
-                controller.add(messages);
-              } else {
-                print('Controller is closed, not emitting messages');
-              }
-            },
-            onError: (error, stackTrace) {
-              print('Error in messages stream for conversation $conversationId: $error');
-              print('Error stack trace: $stackTrace');
-              // Emit empty list on error if we haven't emitted anything yet
-              if (!controller.isClosed && !hasEmittedInitial) {
-                hasEmittedInitial = true;
-                controller.add(<RealtimeChatMessage>[]);
-              }
-            },
-            cancelOnError: false,
-          );
+      late final StreamController<List<RealtimeChatMessage>> controller;
 
-      // Clean up when stream is cancelled
-      controller.onCancel = () {
-        print('Cancelling messages stream for conversation: $conversationId');
-        subscription?.cancel();
-      };
+      controller = StreamController<List<RealtimeChatMessage>>.broadcast(
+        onListen: () {
+          // Set up live listener for real-time updates
+          // onValue fires immediately with current data when listener is set up, then continues listening for updates
+          print('Setting up Firebase listener for conversation: $conversationId');
+          subscription = messagesRef
+              .orderByChild('timestamp')
+              .onValue
+              .listen(
+                (event) {
+                  // This fires immediately with current data when listener is set up, then on every update
+                  print('Stream listener received event for conversation: $conversationId');
+                  final messages = _parseSnapshot(event.snapshot);
+                  
+                  if (!controller.isClosed) {
+                    print('Emitting ${messages.length} messages from stream listener');
+                    controller.add(messages);
+                  } else {
+                    print('Controller is closed, not emitting messages');
+                  }
+                },
+                onError: (error, stackTrace) {
+                  print('Error in messages stream for conversation $conversationId: $error');
+                  print('Error stack trace: $stackTrace');
+                  // Emit empty list on error to prevent StreamBuilder from waiting indefinitely
+                  if (!controller.isClosed) {
+                    controller.add(<RealtimeChatMessage>[]);
+                  }
+                },
+                cancelOnError: false,
+              );
+        },
+        onCancel: () {
+          print('Cancelling messages stream for conversation: $conversationId');
+          subscription?.cancel();
+          subscription = null;
+        },
+      );
 
-      // Return the controller stream directly
-      // The onValue listener fires immediately, so we should get data right away
+      // Return the controller stream
+      // The listener will be set up when StreamBuilder subscribes via onListen callback
       return controller.stream;
     } catch (e, stackTrace) {
       print('Error setting up messages stream: $e');

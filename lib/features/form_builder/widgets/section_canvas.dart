@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../constants/app_colors.dart';
 import '../../../constants/app_spacing.dart';
+import '../../../widgets/shadcn/app_button.dart';
+import '../../../widgets/shadcn/app_card.dart';
 import '../../form_builder/controllers/form_builder_controller.dart';
 import '../../form_builder/models/form_models.dart';
 
@@ -28,30 +31,25 @@ class SectionCanvas extends StatelessWidget {
           const Divider(height: 1),
           Expanded(
             child: Container(
-              color: AppColors.background,
+              color: const Color(0xFFF9FAFB), // Soft grey background
               child: ListView(
-                padding: const EdgeInsets.all(AppSpacing.md),
+                padding: const EdgeInsets.all(AppSpacing.lg),
                 children: [
-                  Row(
+                  Wrap(
+                    spacing: AppSpacing.md,
+                    runSpacing: AppSpacing.md,
                     children: [
-                      Expanded(
-                        child: Wrap(
-                          runSpacing: AppSpacing.md,
-                          children: [
-                            ...form?.sections.map((section) {
-                                  return _SectionCard(
-                                    key: ValueKey(section.id), // Force rebuild when section changes
-                                    section: section,
-                                    controller: controller,
-                                    onAddFieldFromType: (type) =>
-                                        onAddFieldFromType(type, section.id),
-                                  );
-                                }).toList() ??
-                                <Widget>[],
-                            _AddSectionCard(onTap: controller.addSection),
-                          ],
-                        ),
-                      ),
+                      ...form?.sections.map((section) {
+                            return _SectionCard(
+                              key: ValueKey(section.id), // Force rebuild when section changes
+                              section: section,
+                              controller: controller,
+                              onAddFieldFromType: (type) =>
+                                  onAddFieldFromType(type, section.id),
+                            );
+                          }).toList() ??
+                          <Widget>[],
+                      _AddSectionCard(onTap: controller.addSection),
                     ],
                   ),
                 ],
@@ -188,21 +186,18 @@ class _HeaderState extends State<_Header> {
     return Container(
       color: AppColors.surface,
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
+        horizontal: AppSpacing.lg,
         vertical: AppSpacing.md,
       ),
       child: Row(
         children: [
           Expanded(
-            child: TextField(
+            child: ShadInput(
               controller: _nameController,
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                hintText: 'Untitled Form',
-              ),
+              placeholder: const Text('Untitled Form'),
               style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                fontSize: 18,
               ),
               onChanged: (value) {
                 // Mark that user is typing to prevent overwriting
@@ -220,37 +215,30 @@ class _HeaderState extends State<_Header> {
                     ? 'Untitled Form'
                     : value.trim());
               },
-              onTap: () {
-                // Mark as typing when user focuses the field
-                _isUserTyping = true;
-              },
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
-          TextButton.icon(
+          AppButton(
+            variant: AppButtonVariant.outline,
+            icon: Icons.add,
+            label: 'Add Section',
             onPressed: widget.controller.addSection,
-            icon: const Icon(Icons.add),
-            label: const Text('Add Section'),
           ),
           const SizedBox(width: AppSpacing.sm),
           // Delete button (only show if form is saved)
           if (widget.controller.activeForm?.id.isNotEmpty == true)
-            IconButton(
+            AppButton(
+              variant: AppButtonVariant.ghost,
+              icon: Icons.delete_outline,
               onPressed: () => _deleteForm(context),
-              icon: const Icon(Icons.delete_outline, color: AppColors.danger),
-              tooltip: 'Delete Form',
             ),
           const SizedBox(width: AppSpacing.sm),
-          ElevatedButton.icon(
+          AppButton(
+            variant: AppButtonVariant.primary,
+            icon: Icons.save_outlined,
+            label: widget.controller.isSaving ? 'Saving...' : 'Save Form',
+            isLoading: widget.controller.isSaving,
             onPressed: widget.controller.isSaving ? null : _saveForm,
-            icon: widget.controller.isSaving
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.save_outlined, size: 18),
-            label: Text(widget.controller.isSaving ? 'Saving...' : 'Save Form'),
           ),
         ],
       ),
@@ -323,35 +311,33 @@ class _SectionCardState extends State<_SectionCard> {
         widget.onAddFieldFromType(details.data);
       },
       builder: (context, candidateData, rejectedData) {
-        return Container(
+        return SizedBox(
           width: 1000, // Wider section to allow horizontal field layout
-          margin: const EdgeInsets.only(right: AppSpacing.md, bottom: AppSpacing.md),
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
+          child: AppCard(
+            margin: EdgeInsets.zero,
+            padding: const EdgeInsets.all(AppSpacing.md),
+            backgroundColor: AppColors.surface,
             borderRadius: BorderRadius.circular(12),
+            showShadow: true,
             border: Border.all(
               color: (candidateData.isNotEmpty
                       ? AppColors.primary
                       : AppColors.border)
-                  .withValues(alpha: 0.6),
+                  .withValues(alpha: 0.5),
+              width: 1,
             ),
-          ),
-          child: Column(
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Expanded(
-                    child: TextField(
+                    child: ShadInput(
                       controller: _titleController,
-                      decoration: const InputDecoration(
-                        hintText: 'Untitled Section',
-                        border: InputBorder.none,
-                      ),
+                      placeholder: const Text('Untitled Section'),
                       style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
                       ),
                       onChanged: (value) {
                         // Mark that user is typing to prevent overwriting
@@ -370,16 +356,12 @@ class _SectionCardState extends State<_SectionCard> {
                           value.trim().isEmpty ? 'Untitled Section' : value.trim(),
                         );
                       },
-                      onTap: () {
-                        // Mark as typing when user focuses the field
-                        _isUserTyping = true;
-                      },
                     ),
                   ),
-                  IconButton(
+                  AppButton(
+                    variant: AppButtonVariant.ghost,
+                    icon: Icons.delete_outline,
                     onPressed: () => widget.controller.deleteSection(widget.section.id),
-                    icon: const Icon(Icons.delete_outline,
-                        color: AppColors.danger),
                   ),
                 ],
               ),
@@ -510,7 +492,8 @@ class _SectionCardState extends State<_SectionCard> {
                 ),
             ],
           ),
-        );
+        ),
+      );
       },
     );
   }
@@ -522,22 +505,31 @@ class _AddSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        width: 560,
+    return SizedBox(
+      width: 560,
+      child: AppCard(
         padding: const EdgeInsets.all(AppSpacing.lg),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceAlt,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
+        backgroundColor: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        showShadow: true,
+        border: Border.all(
+          color: AppColors.border.withValues(alpha: 0.5),
+          width: 1,
         ),
+        onTap: onTap,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.add),
-            SizedBox(width: AppSpacing.xs),
-            Text('Add Section'),
+          children: [
+            Icon(Icons.add, color: AppColors.primary, size: 20),
+            const SizedBox(width: AppSpacing.xs),
+            Text(
+              'Add Section',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+              ),
+            ),
           ],
         ),
       ),
@@ -548,12 +540,10 @@ class _AddSectionCard extends StatelessWidget {
 class _DropZone extends StatelessWidget {
   const _DropZone({
     required this.onAccept,
-    this.width,
     this.isVertical = false,
   });
 
   final void Function(FormFieldType) onAccept;
-  final double? width;
   final bool isVertical; // true for vertical placement, false for horizontal
 
   @override
@@ -563,7 +553,6 @@ class _DropZone extends StatelessWidget {
       builder: (context, candidateData, rejectedData) {
         final isActive = candidateData.isNotEmpty;
         return Container(
-          width: width,
           height: isVertical ? (isActive ? 60 : 40) : (isActive ? 80 : 60),
           margin: EdgeInsets.symmetric(
             vertical: AppSpacing.xs,
@@ -629,38 +618,46 @@ class _FieldPreviewTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tile = InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.primarySoft : AppColors.surfaceAlt,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: (selected ? AppColors.primary : AppColors.border)
-                .withValues(alpha: 0.6),
+    final tile = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.primarySoft : AppColors.surface,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: (selected ? AppColors.primary : AppColors.border)
+                  .withValues(alpha: selected ? 1.0 : 0.5),
+              width: selected ? 2 : 1,
+            ),
           ),
-        ),
-        child: Row(
-          children: [
-            Icon(_iconFor(field.type), size: 18, color: AppColors.textMuted),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                field.label.isEmpty ? 'Untitled Field' : field.label,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+          child: Row(
+            children: [
+              Icon(_iconFor(field.type), size: 16, color: AppColors.textMuted),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  field.label.isEmpty ? 'Untitled Field' : field.label,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
-            ),
-            IconButton(
-              onPressed: onDelete,
-              icon: const Icon(Icons.delete_outline,
-                  size: 18, color: AppColors.danger),
-            ),
-          ],
+              IconButton(
+                onPressed: onDelete,
+                icon: const Icon(Icons.close,
+                    size: 16, color: AppColors.danger),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -45,12 +45,11 @@ class RBACUtils {
       }
       
       print('RBAC: User document data: $data');
-      print('RBAC: accountType field value: ${data['accountType']}');
       
       _cachedUserModel = UserModel.fromMap(data, id: user.uid);
       _cacheTimestamp = DateTime.now();
       
-      print('RBAC: Parsed user model - accountType: "${_cachedUserModel!.accountType}"');
+      print('RBAC: Parsed user model - role: "${_cachedUserModel!.role}"');
       return _cachedUserModel;
     } catch (e, stackTrace) {
       print('RBAC: Error getting current user model: $e');
@@ -68,28 +67,16 @@ class RBACUtils {
         return false;
       }
       
-      final accountType = userModel.accountType.trim();
       final role = userModel.role.trim();
       
-      // Check both accountType and role fields
-      // Some users might have Super Admin in role field instead of accountType
-      final isSuperAdminByAccountType = accountType == 'Super Admin' || 
-                                        accountType.toLowerCase() == 'super admin' ||
-                                        accountType == 'SuperAdmin' ||
-                                        accountType.toLowerCase() == 'superadmin';
-      
-      final isSuperAdminByRole = role == 'Super Admin' || 
-                                 role.toLowerCase() == 'super admin' ||
-                                 role == 'SuperAdmin' ||
-                                 role.toLowerCase() == 'superadmin';
-      
-      final isSuperAdmin = isSuperAdminByAccountType || isSuperAdminByRole;
+      // Check role field for Super Admin
+      final isSuperAdmin = role == 'Super Admin' || 
+                          role.toLowerCase() == 'super admin' ||
+                          role == 'SuperAdmin' ||
+                          role.toLowerCase() == 'superadmin';
       
       print('RBAC: Checking user ${userModel.email} (${userModel.id})');
-      print('RBAC: accountType from model: "$accountType"');
       print('RBAC: role from model: "$role"');
-      print('RBAC: isSuperAdmin by accountType: $isSuperAdminByAccountType');
-      print('RBAC: isSuperAdmin by role: $isSuperAdminByRole');
       print('RBAC: isSuperAdmin result: $isSuperAdmin');
       
       return isSuperAdmin;
@@ -103,8 +90,8 @@ class RBACUtils {
   // Check if user is Admin or Super Admin
   static Future<bool> isAdmin() async {
     final userModel = await getCurrentUserModel();
-    final accountType = userModel?.accountType ?? 'Member';
-    return accountType == 'Admin' || accountType == 'Super Admin';
+    final role = userModel?.role ?? 'Employee';
+    return role == 'Admin' || role == 'Super Admin' || role.toLowerCase() == 'admin' || role.toLowerCase() == 'super admin';
   }
   
   // Clear cache (call this on logout or when user data changes)

@@ -63,6 +63,7 @@ class DefaultFormsInitializer {
       name: 'Add Task Form',
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
+      formType: FormType.task,
       sections: [
         FormSectionModel(
           id: _uuid.v4(),
@@ -138,6 +139,7 @@ class DefaultFormsInitializer {
       name: 'Add Expense Form',
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
+      formType: FormType.expense,
       sections: [
         FormSectionModel(
           id: _uuid.v4(),

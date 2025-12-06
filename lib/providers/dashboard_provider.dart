@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -14,7 +15,7 @@ import '../models/search_result.dart';
 import '../models/expense_model.dart';
 import '../utils/rbac_utils.dart';
 
-enum DashboardTab { tasks, team, chat, expenses, formBuilder }
+enum DashboardTab { tasks, team, chat, expenses, formBuilder, taskFormBuilder, expenseFormBuilder }
 
 class DashboardProvider extends ChangeNotifier {
   DashboardProvider({
@@ -33,6 +34,9 @@ class DashboardProvider extends ChangeNotifier {
   bool isLoading = false;
   String? lastError;
   bool? _isSuperAdmin;
+
+  // Real-time task stream subscription
+  StreamSubscription<List<TaskModel>>? _tasksSubscription;
 
   List<TaskModel> tasks = const [];
   List<UserModel> allUsers = const [];
@@ -62,9 +66,10 @@ class DashboardProvider extends ChangeNotifier {
     _isSuperAdmin = await RBACUtils.isSuperAdmin();
     print('DashboardProvider: isSuperAdmin = $_isSuperAdmin');
     
+    // Set initial tab based on user role
     if (_isSuperAdmin == true) {
-      print('DashboardProvider: Setting activeTab to formBuilder');
-      activeTab = DashboardTab.formBuilder;
+      print('DashboardProvider: Setting activeTab to taskFormBuilder');
+      activeTab = DashboardTab.taskFormBuilder;
     } else {
       print('DashboardProvider: Setting activeTab to tasks');
       activeTab = DashboardTab.tasks;
@@ -80,8 +85,32 @@ class DashboardProvider extends ChangeNotifier {
       refreshMembers(),
     ]);
 
+    // Set up real-time task listener
+    _setupTasksListener();
+
     isLoading = false;
     notifyListeners();
+  }
+
+  /// Set up real-time listener for tasks
+  void _setupTasksListener() {
+    // Cancel existing subscription if any
+    _tasksSubscription?.cancel();
+
+    // Listen to task stream and update tasks list automatically
+    _tasksSubscription = _taskController.fetchTasksStream().listen(
+      (updatedTasks) {
+        tasks = updatedTasks;
+        lastError = null;
+        notifyListeners(); // Auto-update UI when tasks change
+        print('DashboardProvider: Tasks updated via stream (${tasks.length} tasks)');
+      },
+      onError: (error) {
+        lastError = error.toString();
+        print('DashboardProvider: Error in tasks stream: $error');
+        notifyListeners();
+      },
+    );
   }
 
   bool? get isSuperAdmin => _isSuperAdmin;
@@ -125,7 +154,7 @@ class DashboardProvider extends ChangeNotifier {
                 name: user.name,
                 email: user.email,
                 role: user.role,
-                department: user.department,
+                department: '', // Department removed from UserModel
                 isOnline: user.status == 'Active',
               ),
             )
@@ -199,13 +228,15 @@ class DashboardProvider extends ChangeNotifier {
     
     // Check RBAC restrictions
     if (isSuperAdmin) {
-      // Super Admin: Only allow Form Builder tab
-      if (tab != DashboardTab.formBuilder) {
+      // Super Admin: Only allow Form Builder tabs
+      if (tab != DashboardTab.taskFormBuilder && tab != DashboardTab.expenseFormBuilder) {
         return;
       }
     } else {
-      // Non-Super Admin: Don't allow Form Builder tab
-      if (tab == DashboardTab.formBuilder) {
+      // Non-Super Admin: Don't allow Form Builder tabs
+      if (tab == DashboardTab.formBuilder ||
+          tab == DashboardTab.taskFormBuilder ||
+          tab == DashboardTab.expenseFormBuilder) {
         return;
       }
     }
@@ -461,7 +492,8 @@ class DashboardProvider extends ChangeNotifier {
 
     if (lowerQuery.isEmpty) {
       globalSearchResults = [];
-      notifyListeners();
+      // Defer notifyListeners to avoid calling during build phase
+      Future.microtask(() => notifyListeners());
       return;
     }
 
@@ -508,8 +540,7 @@ class DashboardProvider extends ChangeNotifier {
     for (final user in allUsers) {
       if (user.name.toLowerCase().contains(lowerQuery) ||
           user.email.toLowerCase().contains(lowerQuery) ||
-          user.role.toLowerCase().contains(lowerQuery) ||
-          user.department.toLowerCase().contains(lowerQuery)) {
+          user.role.toLowerCase().contains(lowerQuery)) {
         // Check if not already added from members list
         if (!results.any((r) => r.type == SearchResultType.teamMember && r.id == user.id)) {
           final initials = user.name
@@ -582,7 +613,16 @@ class DashboardProvider extends ChangeNotifier {
     }
 
     globalSearchResults = results;
-    notifyListeners();
+    // Defer notifyListeners to avoid calling during build phase
+    Future.microtask(() => notifyListeners());
+  }
+
+  @override
+  void dispose() {
+    // Cancel task stream subscription to prevent memory leaks
+    _tasksSubscription?.cancel();
+    _tasksSubscription = null;
+    super.dispose();
   }
 }
 

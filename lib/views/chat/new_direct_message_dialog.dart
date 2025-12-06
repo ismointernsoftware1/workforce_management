@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../widgets/shadcn/shadcn_widgets.dart';

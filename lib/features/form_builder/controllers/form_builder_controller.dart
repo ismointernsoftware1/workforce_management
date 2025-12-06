@@ -6,9 +6,10 @@ import '../services/form_builder_firestore_service.dart';
 
 /// Controller (MVC-style) that manages state and operations for the form builder.
 class FormBuilderController extends ChangeNotifier {
-  FormBuilderController(this._service);
+  FormBuilderController(this._service, {this.formType});
 
   final FormBuilderFirestoreService _service;
+  final FormType? formType; // Filter forms by type
   final _uuid = const Uuid();
 
   List<FormModel> availableForms = <FormModel>[];
@@ -25,7 +26,7 @@ class FormBuilderController extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
     try {
-      availableForms = await _service.getForms();
+      availableForms = await _service.getForms(formType: formType);
     } finally {
       isLoading = false;
       notifyListeners();
@@ -69,6 +70,7 @@ class FormBuilderController extends ChangeNotifier {
       name: 'Untitled Form',
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
+      formType: formType ?? FormType.general,
       sections: <FormSectionModel>[],
     );
     selectedSection = null;
@@ -120,6 +122,7 @@ class FormBuilderController extends ChangeNotifier {
       name: 'Untitled Form',
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
+      formType: formType ?? FormType.general,
       sections: <FormSectionModel>[],
     );
 
@@ -166,6 +169,7 @@ class FormBuilderController extends ChangeNotifier {
       name: 'Untitled Form',
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
+      formType: formType ?? FormType.general,
       sections: <FormSectionModel>[],
     );
     activeForm!.sections.add(section);

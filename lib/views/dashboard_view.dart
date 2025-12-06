@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
-import '../components/shadcn/shadcn.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_spacing.dart';
 import '../providers/dashboard_provider.dart';
@@ -16,6 +16,8 @@ import 'tasks/tasks_view.dart';
 import 'team/team_view.dart';
 import 'widgets/sidebar.dart';
 import '../features/form_builder/screens/form_builder_screen.dart';
+import '../features/form_builder/screens/task_form_builder_screen.dart';
+import '../features/form_builder/screens/expense_form_builder_screen.dart';
 
 class DashboardView extends StatefulWidget {
   const DashboardView({super.key});
@@ -160,8 +162,10 @@ bool _sidebarOpen = true; // Sidebar open by default on web
       return const Center(child: CircularProgressIndicator());
     }
     
-    // Super Admin: Only allow Form Builder
-    if (isSuperAdmin && provider.activeTab != DashboardTab.formBuilder) {
+    // Super Admin: Only allow Form Builders
+    if (isSuperAdmin && 
+        provider.activeTab != DashboardTab.taskFormBuilder && 
+        provider.activeTab != DashboardTab.expenseFormBuilder) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -182,7 +186,7 @@ bool _sidebarOpen = true; // Sidebar open by default on web
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'Super Administrators can only access Form Builder.',
+              'Super Administrators can only access Form Builders.',
               style: TextStyle(
                 color: AppColors.textMuted,
                 fontSize: 16,
@@ -194,8 +198,11 @@ bool _sidebarOpen = true; // Sidebar open by default on web
       );
     }
     
-    // Non-Super Admin: Don't allow Form Builder
-    if (!isSuperAdmin && provider.activeTab == DashboardTab.formBuilder) {
+    // Non-Super Admin: Don't allow Form Builders
+    if (!isSuperAdmin && 
+        (provider.activeTab == DashboardTab.formBuilder ||
+         provider.activeTab == DashboardTab.taskFormBuilder ||
+         provider.activeTab == DashboardTab.expenseFormBuilder)) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -240,6 +247,10 @@ bool _sidebarOpen = true; // Sidebar open by default on web
         return ExpensesView(key: ValueKey('expenses-${provider.activeTab}'));
       case DashboardTab.formBuilder:
         return const FormBuilderScreen(key: ValueKey('form_builder'));
+      case DashboardTab.taskFormBuilder:
+        return const TaskFormBuilderScreen(key: ValueKey('task_form_builder'));
+      case DashboardTab.expenseFormBuilder:
+        return const ExpenseFormBuilderScreen(key: ValueKey('expense_form_builder'));
     }
   }
 
@@ -546,11 +557,15 @@ class _TopBarState extends State<_TopBar> {
   @override
   void didUpdateWidget(_TopBar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Clear search when tab changes
+    // Clear search when tab changes - defer to avoid calling during build
     if (oldWidget.activeTab != widget.activeTab) {
-      _searchController.clear();
-      setState(() {
-        _showSearchResults = false;
+      Future.microtask(() {
+        if (mounted) {
+          _searchController.clear();
+          setState(() {
+            _showSearchResults = false;
+          });
+        }
       });
     }
   }
@@ -592,17 +607,29 @@ class _TopBarState extends State<_TopBar> {
           children: [
             // Always show hamburger menu
             ShadTooltip(
-              message: 'Menu',
-              child: ShadButton(
-                onPressed: widget.onMenuTap,
-                variant: ShadButtonVariant.ghost,
-                size: ShadButtonSize.icon,
-                icon: const Icon(
-                  Icons.menu,
-                  size: 24,
-                  color: AppColors.textPrimary,
+              builder: (context) => const Text('Menu'),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: widget.onMenuTap,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceAlt,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.border.withValues(alpha: 0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.menu,
+                      size: 24,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
                 ),
-                child: const SizedBox.shrink(),
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
@@ -611,14 +638,12 @@ class _TopBarState extends State<_TopBar> {
                   // For chat, header and search are handled inside RealtimeChatView's sidebar,
                   // so we render an empty placeholder here to keep layout consistent.
                   ? const SizedBox.shrink()
-                  : ShadInput(
+                  : AppSearchInput(
                       controller: _searchController,
-                      focusNode: _searchFocusNode,
-                      hintText: 'Search tasks, team, expenses...',
-                      prefixIcon: const Icon(
-                        Icons.search,
-                        color: AppColors.textMuted,
-                      ),
+                      placeholder: 'Search tasks, team, expenses...',
+                      onChanged: (value) {
+                        // Search functionality handled by controller
+                      },
                     ),
             ),
           ],

@@ -1,3 +1,4 @@
+import 'dart:async';
 import '../models/task_model.dart';
 import '../services/firebase_service.dart';
 
@@ -7,6 +8,9 @@ class TaskController {
   final FirebaseService _service;
 
   Future<List<TaskModel>> fetchTasks() => _service.fetchTasks();
+
+  /// Real-time stream of tasks from Firestore
+  Stream<List<TaskModel>> fetchTasksStream() => _service.fetchTasksStream();
 
   Future<String> createTask(TaskModel task) => _service.addTask(task);
 

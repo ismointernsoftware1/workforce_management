@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/team_model.dart';
-import '../../utils/responsive_utils.dart';
+import '../../widgets/shadcn/app_button.dart';
 
 class AddTeamDialog extends StatefulWidget {
   const AddTeamDialog({
@@ -71,168 +72,181 @@ class _AddTeamDialogState extends State<AddTeamDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = ResponsiveUtils.isMobile(context);
-    final isDesktop = ResponsiveUtils.isDesktop(context);
-    return Dialog(
-      insetPadding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 16 : (isDesktop ? 120 : 40),
-        vertical: isMobile ? 20 : 80,
-      ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      backgroundColor: const Color(0xFFF4F5FA),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: isMobile ? double.infinity : 500,
-          maxHeight: MediaQuery.of(context).size.height * 0.6,
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(isMobile ? 16 : 24),
+    return ShadDialog(
+      title: Text(_isEditing ? 'Edit Team' : 'Create Team'),
+      child: Material(
+        color: Colors.transparent,
         child: Form(
           key: _formKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    _isEditing ? 'Edit Team' : 'Create Team',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              TextFormField(
+              _buildShadInputField(
                 controller: _nameController,
-                decoration: _inputDecoration('Team name'),
+                label: 'Team name',
                 validator: (value) =>
                     value == null || value.trim().isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: AppSpacing.md),
-              TextFormField(
-                controller: _descriptionController,
-                decoration: _inputDecoration('Description (optional)'),
-                maxLines: 2,
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              Builder(
-                builder: (context) {
-                  final isMobile = ResponsiveUtils.isMobile(context);
-                  if (isMobile) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        ElevatedButton(
-                          onPressed: _isSaving ? null : _handleSave,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primarySoft,
-                            foregroundColor: AppColors.primary,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 14,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: _isSaving
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : Text(_isEditing ? 'Save changes' : 'Create Team'),
-                        ),
-                        const SizedBox(height: 12),
-                        TextButton(
-                          onPressed: _isSaving
-                              ? null
-                              : () => Navigator.of(context).pop(),
-                          child: const Text('Cancel'),
-                        ),
-                      ],
-                    );
-                  }
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Flexible(
-                        child: TextButton(
-                          onPressed: _isSaving
-                              ? null
-                              : () => Navigator.of(context).pop(),
-                          child: const Text('Cancel'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Flexible(
-                        child: ElevatedButton(
-                          onPressed: _isSaving ? null : _handleSave,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primarySoft,
-                            foregroundColor: AppColors.primary,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 14,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: _isSaving
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(_isEditing ? 'Save changes' : 'Create Team'),
-                                ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
+              _buildDescriptionField(),
             ],
           ),
         ),
-        ),
       ),
+      actions: [
+        AppButton(
+          variant: AppButtonVariant.outline,
+          onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        AppButton(
+          isLoading: _isSaving,
+          onPressed: _isSaving ? null : _handleSave,
+          child: Text(_isEditing ? 'Save Changes' : 'Create Team'),
+        ),
+      ],
     );
   }
 
-  InputDecoration _inputDecoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      filled: true,
-      fillColor: Colors.white,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.border),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.border),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.primary, width: 1.4),
-      ),
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.lg,
-        vertical: AppSpacing.md,
-      ),
+  Widget _buildShadInputField({
+    required TextEditingController controller,
+    required String label,
+    String? Function(String?)? validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+        TextFormField(
+          controller: controller,
+          validator: validator,
+          decoration: InputDecoration(
+            hintText: 'Enter $label',
+            hintStyle: TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 14,
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(
+                color: AppColors.border.withValues(alpha: 0.5),
+                width: 1,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(
+                color: AppColors.border.withValues(alpha: 0.5),
+                width: 1,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(
+                color: AppColors.primary,
+                width: 2,
+              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(
+                color: AppColors.danger,
+                width: 1,
+              ),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(
+                color: AppColors.danger,
+                width: 2,
+              ),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.md + 2,
+            ),
+          ),
+          style: const TextStyle(
+            fontSize: 14,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDescriptionField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+          child: Text(
+            'Description (optional)',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+        TextFormField(
+          controller: _descriptionController,
+          maxLines: 3,
+          decoration: InputDecoration(
+            hintText: 'Enter team description',
+            hintStyle: TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 14,
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(
+                color: AppColors.border.withValues(alpha: 0.5),
+                width: 1,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(
+                color: AppColors.border.withValues(alpha: 0.5),
+                width: 1,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(
+                color: AppColors.primary,
+                width: 2,
+              ),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.md + 2,
+            ),
+          ),
+          style: const TextStyle(
+            fontSize: 14,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ],
     );
   }
 }

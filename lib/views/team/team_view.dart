@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
-import '../../components/shadcn/shadcn.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../providers/dashboard_provider.dart';
@@ -27,10 +27,8 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
   final TextEditingController _teamSearchController = TextEditingController();
   String _statusFilter = 'All';
   bool _isGridView = true; // Grid view by default (ClickUp style)
-  String _membersFilter = 'All';
   String _createdFilter = 'All';
-  String _creatorFilter = 'All';
-  String _sortBy = 'Name';
+  String _sortBy = 'Default';
 
   @override
   void initState() {
@@ -56,31 +54,35 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
     
     if (isMobile) {
       // For mobile: full page scroll
-      return SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildHeader(context, provider),
-            _buildTabs(),
-            _buildTabContent(context, provider),
-          ],
+      return Container(
+        color: const Color(0xFFF5F6F8),
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              _buildTabs(),
+              _buildTabContent(context, provider),
+            ],
+          ),
         ),
       );
     } else {
       // For desktop/tablet: use TabBarView with Expanded
-      return Column(
-        children: [
-          _buildHeader(context, provider),
-          _buildTabs(),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildAllPeopleView(context, provider),
-                _buildAllTeamsView(context, provider),
-              ],
+      return Container(
+        color: const Color(0xFFF5F6F8),
+        child: Column(
+          children: [
+            _buildTabs(),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildAllPeopleView(context, provider),
+                  _buildAllTeamsView(context, provider),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       );
     }
   }
@@ -96,54 +98,6 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
           return _buildAllTeamsView(context, provider);
         }
       },
-    );
-  }
-
-  Widget _buildHeader(BuildContext context, DashboardProvider provider) {
-    return Padding(
-      padding: ResponsiveUtils.getPadding(context),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-            'People',
-            style: TextStyle(
-                    fontSize: ResponsiveUtils.getFontSize(
-                      context,
-                      mobile: 20,
-                      tablet: 22,
-                      desktop: 24,
-                    ),
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-                    letterSpacing: -0.3,
-                    height: 1.2,
-            ),
-          ),
-                const SizedBox(height: AppSpacing.xs / 2),
-                Text(
-                  'Manage your team members and groups',
-                  style: TextStyle(
-                color: AppColors.textMuted,
-                    fontSize: ResponsiveUtils.getFontSize(
-                      context,
-                      mobile: 12,
-                      tablet: 13,
-                      desktop: 13,
-                    ),
-                    height: 1.4,
-                    fontWeight: FontWeight.w400,
-                  ),
-              ),
-            ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -244,54 +198,83 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
         ? Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-            child: isMobile
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildPeopleHeaderTexts(context),
-                      const SizedBox(height: AppSpacing.sm),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: ShadIconButton(
-                          onPressed: () => _showAddUserDialog(context, provider),
-                          icon: const Icon(Icons.add, size: 18),
-                        ),
-                      ),
-                    ],
-                  )
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: _buildPeopleHeaderTexts(context)),
-                      const SizedBox(width: AppSpacing.md),
-                      AppButton(
-                        variant: AppButtonVariant.outline,
-                        onPressed: () => _showAddUserDialog(context, provider),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.add, size: 20),
-                            SizedBox(width: 8),
-                            Text('Add User'),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+              _buildPeopleHeaderSection(context, provider, isMobile: true),
+              const SizedBox(height: AppSpacing.lg),
+              _buildPeopleSearchSection(isMobile: true),
+              const SizedBox(height: AppSpacing.lg),
+              _buildPeopleContent(context, provider, filteredUsers, isMobile: true),
+            ],
+          )
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildPeopleHeaderSection(context, provider, isMobile: false),
+              const SizedBox(height: AppSpacing.lg),
+              _buildPeopleSearchSection(isMobile: false),
+              const SizedBox(height: AppSpacing.lg),
+              Expanded(
+                child: _buildPeopleContent(context, provider, filteredUsers, isMobile: false),
+              ),
+            ],
           ),
-          const SizedBox(height: AppSpacing.xl),
-          if (isMobile) ...[
-            AppSearchInput(
+    );
+  }
+
+  Widget _buildPeopleHeaderSection(BuildContext context, DashboardProvider provider, {required bool isMobile}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: _buildPeopleHeaderTexts(context)),
+        if (!isMobile) ...[
+          const SizedBox(width: AppSpacing.md),
+          AppButton(
+            onPressed: () => _showAddUserDialog(context, provider),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.add, size: 18),
+                SizedBox(width: 6),
+                Text('Add User'),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildPeopleSearchSection({required bool isMobile}) {
+    if (isMobile) {
+      return Column(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.border.withValues(alpha: 0.5),
+                width: 1,
+              ),
+            ),
+            child: AppSearchInput(
               controller: _searchController,
               placeholder: 'Search by name or email...',
               onChanged: (value) {
                 setState(() {});
               },
+            ),
           ),
-            const SizedBox(height: AppSpacing.md),
-            AppSelect<String>(
+          const SizedBox(height: AppSpacing.md),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.border.withValues(alpha: 0.5),
+                width: 1,
+              ),
+            ),
+            child: AppSelect<String>(
               placeholder: 'All Status',
               options: SelectOption.fromStringList([
                 'All',
@@ -307,354 +290,196 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
                 setState(() => _statusFilter = value ?? 'All');
               },
             ),
-          ] else ...[
-          Row(
-            children: [
-              Expanded(
-                  child: AppSearchInput(
-                  controller: _searchController,
-                    placeholder: 'Search by name or email...',
-                    onChanged: (query) {
-                      setState(() {});
-                    },
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              SizedBox(
-                width: 160,
-                  child: AppSelect<String>(
-                    placeholder: 'All Status',
-                    options: SelectOption.fromStringList([
-                      'All',
-                      'Active',
-                      'On leave',
-                      'Inactive',
-                    ]),
-                    selectedOptionBuilder: (context, value) {
-                      final label = _statusFilter == 'All' ? 'All Status' : _statusFilter;
-                      return Text(label);
-                    },
-                    onChanged: (value) {
-                      setState(() => _statusFilter = value ?? 'All');
-                    },
-                    width: 160,
-                  ),
-              ),
-            ],
           ),
-          ],
-          const SizedBox(height: AppSpacing.lg),
-          if (provider.users.isEmpty && !provider.isLoading)
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl * 2),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(AppSpacing.xl),
-                      decoration: BoxDecoration(
-                        color: AppColors.primarySoft,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                      Icons.people_alt_outlined,
-                      size: 64,
-                        color: AppColors.primary,
-                    ),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    const Text(
-                      'No employees yet',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    const Text(
-                      'Add your first user to get started.',
-                      style: TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 13,
-                    ),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    AppButton(
-                      variant: AppButtonVariant.outline,
-                      onPressed: () => _showAddUserDialog(context, provider),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.add, size: 20),
-                          SizedBox(width: 8),
-                          Text('Add User'),
-                        ],
-                      ),
-                    ),
-                  ],
+        ],
+      );
+    } else {
+      return Row(
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.border.withValues(alpha: 0.5),
+                  width: 1,
                 ),
               ),
-            )
-          else
-            isMobile
-                ? Container(
-                    constraints: BoxConstraints(
-                      maxHeight: MediaQuery.of(context).size.height * 0.5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppColors.border.withValues(alpha: 0.5),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.textPrimary.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: filteredUsers.isEmpty
-                        ? Container(
-                            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl * 2),
-                            child: const Center(
-                              child: Text(
-                                  'No employees match the current filters.',
-                                  style: TextStyle(
-                                    color: AppColors.textMuted,
-                                    fontSize: 13,
-                                  ),
-                              ),
-                            ),
-                          )
-                        : ListView(
-                            shrinkWrap: true,
-                            children: filteredUsers.map((user) {
-                              return _buildMobileUserCard(user, provider);
-                            }).toList(),
-                          ),
-                  )
-                : Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: AppColors.border.withValues(alpha: 0.5),
-                          width: 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.textPrimary.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: filteredUsers.isEmpty
-                          ? Container(
-                              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl * 2),
-                              child: const Center(
-                                child: Text(
-                                  'No employees match the current filters.',
-                                  style: TextStyle(
-                                    color: AppColors.textMuted,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ),
-                            )
-                          : Column(
-                              children: [
-                                _buildTableHeader(),
-                                Expanded(
-                                  child: ListView.builder(
-                                    shrinkWrap: false,
-                                    itemCount: filteredUsers.length,
-                                    itemBuilder: (context, index) {
-                                      final user = filteredUsers[index];
-                                      final isLast = index == filteredUsers.length - 1;
-                                      return _buildTableRow(user, provider, isLast: isLast);
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                    ),
-                  ),
-          if (isMobile) const SizedBox(height: AppSpacing.xl),
-        ],
-      )
-      : SizedBox.expand(
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: _buildPeopleHeaderTexts(context)),
-                      const SizedBox(width: AppSpacing.md),
-                      AppButton(
-                        variant: AppButtonVariant.outline,
-                        onPressed: () => _showAddUserDialog(context, provider),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.add, size: 20),
-                            SizedBox(width: 8),
-                            Text('Add User'),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Row(
-                  children: [
-                    Expanded(
-                  child: AppSearchInput(
-                  controller: _searchController,
-                    placeholder: 'Search by name or email...',
-                    onChanged: (value) {
-                      setState(() {});
-                    },
-                ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    SizedBox(
-                      width: 160,
-                        child: AppSelect<String>(
-                          placeholder: 'All Status',
-                          options: SelectOption.fromStringList([
-                            'All',
-                            'Active',
-                            'On leave',
-                            'Inactive',
-                          ]),
-                          selectedOptionBuilder: (context, value) {
-                            final label = _statusFilter == 'All' ? 'All Status' : _statusFilter;
-                            return Text(label);
-                          },
-                          onChanged: (value) {
-                            setState(() => _statusFilter = value ?? 'All');
-                          },
-                          width: 160,
-                        ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                if (provider.users.isEmpty && !provider.isLoading)
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl * 2),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(AppSpacing.xl),
-                            decoration: BoxDecoration(
-                              color: AppColors.primarySoft,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.people_alt_outlined,
-                              size: 64,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.xl),
-                          const Text(
-                            'No employees yet',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          const Text(
-                            'Add your first user to get started.',
-                            style: TextStyle(
-                              color: AppColors.textMuted,
-                              fontSize: 13,
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.xl),
-                          AppButton(
-                            variant: AppButtonVariant.outline,
-                            onPressed: () => _showAddUserDialog(context, provider),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.add, size: 20),
-                                SizedBox(width: 8),
-                                Text('Add User'),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                else
-                  Container(
-                    constraints: BoxConstraints(
-                      minHeight: MediaQuery.of(context).size.height - 300,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppColors.border.withValues(alpha: 0.5),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.textPrimary.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: filteredUsers.isEmpty
-                        ? Container(
-                            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl * 2),
-                            child: const Center(
-                              child: Text(
-                                  'No employees match the current filters.',
-                                  style: TextStyle(
-                                    color: AppColors.textMuted,
-                                    fontSize: 13,
-                                  ),
-                              ),
-                            ),
-                          )
-                        : Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _buildTableHeader(),
-                              ...filteredUsers.asMap().entries.map((entry) {
-                                final index = entry.key;
-                                final user = entry.value;
-                                final isLast = index == filteredUsers.length - 1;
-                                return _buildTableRow(user, provider, isLast: isLast);
-                              }).toList(),
-                            ],
-                          ),
-                  ),
-                const SizedBox(height: AppSpacing.xl),
-              ],
+              child: AppSearchInput(
+                controller: _searchController,
+                placeholder: 'Search by name or email...',
+                onChanged: (query) {
+                  setState(() {});
+                },
+              ),
             ),
           ),
+          const SizedBox(width: AppSpacing.md),
+          Container(
+            width: 160,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.border.withValues(alpha: 0.5),
+                width: 1,
+              ),
+            ),
+            child: AppSelect<String>(
+              placeholder: 'All Status',
+              options: SelectOption.fromStringList([
+                'All',
+                'Active',
+                'On leave',
+                'Inactive',
+              ]),
+              selectedOptionBuilder: (context, value) {
+                final label = _statusFilter == 'All' ? 'All Status' : _statusFilter;
+                return Text(label);
+              },
+              onChanged: (value) {
+                setState(() => _statusFilter = value ?? 'All');
+              },
+            ),
+          ),
+        ],
+      );
+    }
+  }
+
+  Widget _buildPeopleContent(BuildContext context, DashboardProvider provider, List<UserModel> filteredUsers, {required bool isMobile}) {
+    if (provider.users.isEmpty && !provider.isLoading) {
+      return _buildEmptyState(context, provider);
+    }
+
+    if (filteredUsers.isEmpty) {
+      return _buildNoResultsState();
+    }
+
+    if (isMobile) {
+      return Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.5,
         ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.border.withValues(alpha: 0.3),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.textPrimary.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: filteredUsers.map((user) {
+            return _buildModernMobileUserCard(user, provider);
+          }).toList(),
+        ),
+      );
+    } else {
+      return AppCard(
+        backgroundColor: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.border.withValues(alpha: 0.3),
+          width: 1,
+        ),
+        showShadow: true,
+        padding: EdgeInsets.zero,
+        child: Column(
+          children: [
+            _buildModernTableHeader(),
+            Expanded(
+              child: ListView.builder(
+                itemCount: filteredUsers.length,
+                itemBuilder: (context, index) {
+                  final user = filteredUsers[index];
+                  return _buildModernTableRow(user, provider, index == filteredUsers.length - 1);
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Widget _buildEmptyState(BuildContext context, DashboardProvider provider) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl * 2),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              decoration: BoxDecoration(
+                color: AppColors.primarySoft,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.people_alt_outlined,
+                size: 64,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            const Text(
+              'No employees yet',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.2,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Add your first user to get started.',
+              style: TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            AppButton(
+              onPressed: () => _showAddUserDialog(context, provider),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add, size: 18),
+                  SizedBox(width: 6),
+                  Text('Add User'),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoResultsState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl * 2),
+        child: Text(
+          'No employees match the current filters.',
+          style: TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 14,
+          ),
+        ),
+      ),
     );
   }
 
@@ -663,125 +488,137 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
     final filteredTeams = _filteredTeams(provider.teams);
     final isMobile = ResponsiveUtils.isMobile(context);
 
-    return Padding(
-      padding: ResponsiveUtils.getPadding(context),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header with title and Create Team button
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: _buildTeamHeaderTexts(isMobile)),
-              if (!isMobile) ...[
-                const SizedBox(width: AppSpacing.md),
-                AppButton(
-                  variant: AppButtonVariant.outline,
-                  onPressed: () => _showAddTeamDialog(context, provider),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.group_add, size: 18),
-                      SizedBox(width: 8),
-                      Text('Create Team'),
-                    ],
+    return SingleChildScrollView(
+      child: Padding(
+        padding: ResponsiveUtils.getPadding(context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header with title and Create Team button
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _buildTeamHeaderTexts(isMobile)),
+                if (!isMobile) ...[
+                  const SizedBox(width: AppSpacing.md),
+                  AppButton(
+                    variant: AppButtonVariant.outline,
+                    onPressed: () => _showAddTeamDialog(context, provider),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.group_add, size: 18),
+                        SizedBox(width: 8),
+                        Text('Create Team'),
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ],
-            ],
-          ),
-          if (isMobile) ...[
-            const SizedBox(height: AppSpacing.sm),
-                AppButton(
-                  variant: AppButtonVariant.outline,
-                  onPressed: () => _showAddTeamDialog(context, provider),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.group_add, size: 18),
-                      SizedBox(width: 8),
-                      Text('Create Team'),
-                    ],
-                  ),
-                ),
-          ],
-          const SizedBox(height: AppSpacing.md),
-          // Search bar
-          AppSearchInput(
-            controller: _teamSearchController,
-            placeholder: 'Search',
-            onChanged: (value) {
-              setState(() {});
-            },
-          ),
-          const SizedBox(height: AppSpacing.md),
-          // Filter bar (ClickUp style)
-          if (!isMobile) _buildFilterBar(),
-          if (isMobile) ...[
-            _buildMobileFilterBar(),
-            const SizedBox(height: AppSpacing.sm),
-          ],
-          const SizedBox(height: AppSpacing.md),
-          // Teams grid/list
-          if (filteredTeams.isEmpty)
-            Expanded(
-              child: Center(
-                child: Column(
+            ),
+            if (isMobile) ...[
+              const SizedBox(height: AppSpacing.sm),
+              AppButton(
+                variant: AppButtonVariant.outline,
+                onPressed: () => _showAddTeamDialog(context, provider),
+                child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(AppSpacing.xl),
-                      decoration: BoxDecoration(
-                        color: AppColors.primarySoft,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.groups_outlined,
-                        size: 64,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    const Text(
-                      'No teams yet',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    const Text(
-                      'Create a team to collaborate with your members.',
-                      style: TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    AppButton(
-                      variant: AppButtonVariant.outline,
-                      onPressed: () => _showAddTeamDialog(context, provider),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.group_add, size: 20),
-                          SizedBox(width: 8),
-                          Text('Create Team'),
-                        ],
-                      ),
-                    ),
+                    Icon(Icons.group_add, size: 18),
+                    SizedBox(width: 8),
+                    Text('Create Team'),
                   ],
                 ),
               ),
-            )
-          else
-            Expanded(
-              child: _isGridView
+            ],
+            const SizedBox(height: AppSpacing.md),
+            // Search bar
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.border.withValues(alpha: 0.5),
+                  width: 1,
+                ),
+              ),
+              child: AppSearchInput(
+                controller: _teamSearchController,
+                placeholder: 'Search',
+                onChanged: (value) {
+                  setState(() {});
+                },
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            // Filter bar
+            if (!isMobile) _buildFilterBar(),
+            if (isMobile) ...[
+              _buildMobileFilterBar(),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+            const SizedBox(height: AppSpacing.md),
+            // Teams grid/list
+            if (filteredTeams.isEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl * 2),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(AppSpacing.xl),
+                        decoration: BoxDecoration(
+                          color: AppColors.primarySoft,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.groups_outlined,
+                          size: 64,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      const Text(
+                        'No teams yet',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      const Text(
+                        'Create a team to collaborate with your members.',
+                        style: TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      AppButton(
+                        variant: AppButtonVariant.outline,
+                        onPressed: () => _showAddTeamDialog(context, provider),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.group_add, size: 20),
+                            SizedBox(width: 8),
+                            Text('Create Team'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              _isGridView
                   ? _buildTeamsGrid(filteredTeams, provider, context, isMobile)
                   : _buildTeamsList(filteredTeams, provider, context),
-            ),
-        ],
+            const SizedBox(height: AppSpacing.xl),
+          ],
+        ),
       ),
     );
   }
@@ -809,23 +646,47 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
       filtered = filtered.where((team) => team.name.toLowerCase().contains(query)).toList();
     }
     
-    // Filter by members count
-    if (_membersFilter != 'All') {
-      final count = int.tryParse(_membersFilter) ?? 0;
-      filtered = filtered.where((team) => team.memberIds.length == count).toList();
+    // Filter by created date
+    if (_createdFilter != 'All') {
+      final now = DateTime.now();
+      filtered = filtered.where((team) {
+        switch (_createdFilter) {
+          case 'Today':
+            final today = DateTime(now.year, now.month, now.day);
+            return team.createdAt.isAfter(today);
+          case 'This Week':
+            final weekAgo = now.subtract(const Duration(days: 7));
+            return team.createdAt.isAfter(weekAgo);
+          case 'This Month':
+            final monthAgo = now.subtract(const Duration(days: 30));
+            return team.createdAt.isAfter(monthAgo);
+          default:
+            return true;
+        }
+      }).toList();
     }
     
-    // Sort teams
+    // Sort teams alphabetically and by other criteria
     filtered.sort((a, b) {
       switch (_sortBy) {
-        case 'Name':
-          return a.name.compareTo(b.name);
-        case 'Created':
-          return b.createdAt.compareTo(a.createdAt);
-        case 'Members':
+        case 'Default':
+          // Default: alphabetical by name (A-Z)
+          return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        case 'A - Z':
+          // Case-insensitive alphabetical sort (A-Z)
+          return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        case 'Z - A':
+          // Case-insensitive alphabetical sort (Z-A)
+          return b.name.toLowerCase().compareTo(a.name.toLowerCase());
+        case 'Most Members':
+          // Most members first (descending)
           return b.memberIds.length.compareTo(a.memberIds.length);
+        case 'Least Members':
+          // Least members first (ascending)
+          return a.memberIds.length.compareTo(b.memberIds.length);
         default:
-          return 0;
+          // Default: alphabetical by name
+          return a.name.toLowerCase().compareTo(b.name.toLowerCase());
       }
     });
     
@@ -833,33 +694,37 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
   }
 
   Widget _buildFilterBar() {
-    return Row(
-      children: [
-        _buildFilterDropdown('Members', _membersFilter, ['All', '0', '1', '2', '3', '4', '5+'], (value) {
-          setState(() => _membersFilter = value);
-        }),
-        const SizedBox(width: AppSpacing.sm),
-        _buildFilterDropdown('Created', _createdFilter, ['All', 'Today', 'This Week', 'This Month'], (value) {
-          setState(() => _createdFilter = value);
-        }),
-        const SizedBox(width: AppSpacing.sm),
-        _buildFilterDropdown('Creator', _creatorFilter, ['All', 'Me', 'Others'], (value) {
-          setState(() => _creatorFilter = value);
-        }),
-        const SizedBox(width: AppSpacing.sm),
-        _buildFilterDropdown('Sort', _sortBy, ['Name', 'Created', 'Members'], (value) {
-          setState(() => _sortBy = value);
-        }),
-        const Spacer(),
-        // View toggle buttons
-        Row(
-          children: [
-            _buildViewToggleButton(Icons.grid_view, true),
-            const SizedBox(width: AppSpacing.xs),
-            _buildViewToggleButton(Icons.view_list, false),
-          ],
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.border.withValues(alpha: 0.5),
+          width: 1,
         ),
-      ],
+      ),
+      child: Row(
+        children: [
+          _buildFilterDropdown('Created', _createdFilter, ['All', 'Today', 'This Week', 'This Month'], (value) {
+            setState(() => _createdFilter = value);
+          }),
+          const SizedBox(width: AppSpacing.sm),
+          _buildSortDropdown(),
+          const Spacer(),
+          // View toggle buttons
+          Row(
+            children: [
+              _buildViewToggleButton(Icons.grid_view, true),
+              const SizedBox(width: AppSpacing.xs),
+              _buildViewToggleButton(Icons.view_list, false),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -868,15 +733,10 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
       spacing: AppSpacing.xs,
       runSpacing: AppSpacing.xs,
       children: [
-        _buildFilterDropdown('Members', _membersFilter, ['All', '0', '1', '2', '3', '4', '5+'], (value) {
-          setState(() => _membersFilter = value);
-        }),
         _buildFilterDropdown('Created', _createdFilter, ['All', 'Today', 'This Week', 'This Month'], (value) {
           setState(() => _createdFilter = value);
         }),
-        _buildFilterDropdown('Sort', _sortBy, ['Name', 'Created', 'Members'], (value) {
-          setState(() => _sortBy = value);
-        }),
+        _buildSortDropdown(),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -925,6 +785,50 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
     );
   }
 
+  Widget _buildSortDropdown() {
+    final sortOptions = ['Default', 'A - Z', 'Z - A', 'Most Members', 'Least Members'];
+    return AppSelect<String>(
+      placeholder: 'Sort',
+      value: _sortBy,
+      options: sortOptions.map((option) {
+        final isSelected = option == _sortBy;
+        return SelectOption<String>(
+          value: option,
+          label: option,
+          icon: isSelected ? Icons.check : null,
+        );
+      }).toList(),
+      selectedOptionBuilder: (context, selectedValue) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Sort',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              selectedValue ?? _sortBy,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ],
+        );
+      },
+      onChanged: (newValue) {
+        if (newValue != null) {
+          setState(() => _sortBy = newValue);
+        }
+      },
+    );
+  }
+
   Widget _buildViewToggleButton(IconData icon, bool isGrid) {
     final isSelected = _isGridView == isGrid;
     return GestureDetector(
@@ -951,21 +855,27 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
       builder: (context, constraints) {
         final crossAxisCount = isMobile 
             ? 2 
-            : (constraints.maxWidth > 1400 ? 5 : constraints.maxWidth > 1000 ? 4 : constraints.maxWidth > 800 ? 3 : 2);
-        final spacing = AppSpacing.sm;
+            : (constraints.maxWidth > 1600 ? 6 
+                : constraints.maxWidth > 1400 ? 5 
+                : constraints.maxWidth > 1000 ? 4 
+                : constraints.maxWidth > 800 ? 3 
+                : 2);
+        final spacing = AppSpacing.md;
         
         return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
           padding: EdgeInsets.all(spacing),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: spacing,
             mainAxisSpacing: spacing,
-            childAspectRatio: 0.85,
+            childAspectRatio: 0.9,
           ),
           itemCount: teams.length,
           itemBuilder: (context, index) {
             final team = teams[index];
-            return _buildClickUpTeamCard(team, provider, context);
+            return _buildModernTeamCard(team, provider, context);
           },
         );
       },
@@ -974,79 +884,191 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
 
   Widget _buildTeamsList(List<Team> teams, DashboardProvider provider, BuildContext context) {
     return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.all(AppSpacing.sm),
       itemCount: teams.length,
       itemBuilder: (context, index) {
         final team = teams[index];
-        return _buildClickUpTeamListCard(team, provider, context);
+        return _buildModernTeamListCard(team, provider, context);
       },
     );
   }
 
-  Widget _buildTableHeader() {
+  Widget _buildModernTeamListCard(Team team, DashboardProvider provider, BuildContext context) {
+    final initial = team.name.isNotEmpty ? team.name[0].toUpperCase() : '?';
+    
+    return AppCard(
+      backgroundColor: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: AppColors.border.withValues(alpha: 0.3),
+        width: 1,
+      ),
+      showShadow: true,
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TeamDetailPage(teamId: team.id),
+          ),
+        );
+      },
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: AppColors.primarySoft,
+            child: Text(
+              initial,
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  team.name,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${team.memberIds.length} ${team.memberIds.length == 1 ? 'member' : 'members'}',
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          PopupMenuButton<String>(
+            icon: Icon(
+              Icons.more_vert,
+              size: 18,
+              color: AppColors.textMuted,
+            ),
+            color: AppColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'add',
+                child: Row(
+                  children: [
+                    const Icon(Icons.person_add_alt_1, size: 16),
+                    const SizedBox(width: AppSpacing.xs),
+                    const Text('Add Members', style: TextStyle(fontSize: 13)),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    const Icon(Icons.edit_outlined, size: 16),
+                    const SizedBox(width: AppSpacing.xs),
+                    const Text('Edit', style: TextStyle(fontSize: 13)),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
+                    const SizedBox(width: AppSpacing.xs),
+                    Text('Delete', style: TextStyle(color: AppColors.danger, fontSize: 13)),
+                  ],
+                ),
+              ),
+            ],
+            onSelected: (value) {
+              if (value == 'add') {
+                _showTeamMembersDialog(context, provider, team);
+              } else if (value == 'edit') {
+                _showEditTeamDialog(context, provider, team);
+              } else if (value == 'delete') {
+                _confirmDeleteTeam(context, provider, team);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModernTableHeader() {
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.lg,
-        vertical: AppSpacing.lg,
+        vertical: AppSpacing.md + 4,
       ),
       decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
+        color: const Color(0xFFF9FAFB),
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(16),
           topRight: Radius.circular(16),
         ),
         border: Border(
           bottom: BorderSide(
-            color: AppColors.border.withValues(alpha: 0.5),
+            color: AppColors.border.withValues(alpha: 0.3),
             width: 1,
           ),
         ),
       ),
       child: Row(
         children: const [
-          Expanded(flex: 2, child: _HeaderCell('Name')),
-          Expanded(flex: 2, child: _HeaderCell('Role')),
-          Expanded(flex: 2, child: _HeaderCell('Email')),
-          Expanded(child: _HeaderCell('Status')),
-          SizedBox(width: 120, child: _HeaderCell('Actions')),
+          Expanded(flex: 2, child: _ModernHeaderCell('Name')),
+          Expanded(flex: 2, child: _ModernHeaderCell('Role')),
+          Expanded(flex: 2, child: _ModernHeaderCell('Email')),
+          Expanded(child: _ModernHeaderCell('Status')),
+          SizedBox(width: 120, child: _ModernHeaderCell('Actions')),
         ],
       ),
     );
   }
 
-  Widget _buildMobileUserCard(UserModel user, DashboardProvider provider) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.border.withValues(alpha: 0.5),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.textPrimary.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+  Widget _buildModernMobileUserCard(UserModel user, DashboardProvider provider) {
+    return AppCard(
+      backgroundColor: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: AppColors.border.withValues(alpha: 0.3),
+        width: 1,
       ),
+      showShadow: true,
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.md + 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               CircleAvatar(
-                radius: 24,
+                radius: 22,
                 backgroundColor: AppColors.primarySoft,
                 child: Text(
                   user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
                   style: const TextStyle(
                     color: AppColors.primary,
                     fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                    fontSize: 15,
                   ),
                 ),
               ),
@@ -1058,31 +1080,25 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
                     Text(
                       user.name,
                       style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 15,
+                        color: AppColors.textPrimary,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       user.email,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textMuted,
-                        fontSize: 12,
+                        fontSize: 13,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              SizedBox(
-                width: 80,
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: _StatusChip(status: user.status),
-                ),
-              ),
+              _ModernStatusBadge(status: user.status),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -1097,6 +1113,7 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textMuted,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -1104,36 +1121,29 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
                       user.role,
                       style: const TextStyle(
                         fontWeight: FontWeight.w500,
+                        fontSize: 14,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                   ],
                 ),
               ),
-              SizedBox(
-                width: 72,
-                child: Wrap(
-                  spacing: 2,
-                  runSpacing: 4,
-                  alignment: WrapAlignment.end,
-                  children: [
-                    ShadTooltip(
-                      builder: (context) => const Text('Edit'),
-                      child: ShadIconButton(
-                        onPressed: () =>
-                            _showAddUserDialog(context, provider, user: user),
-                        icon: const Icon(Icons.edit, size: 18),
-                      ),
-                    ),
-                    ShadTooltip(
-                      builder: (context) => const Text('Remove'),
-                      child: ShadIconButton(
-                        onPressed: () => _confirmDelete(context, provider, user),
-                        icon: const Icon(Icons.delete_outline,
-                            size: 18, color: AppColors.danger),
-                      ),
-                    ),
-                  ],
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildActionButton(
+                    icon: Icons.edit_outlined,
+                    tooltip: 'Edit',
+                    onPressed: () => _showAddUserDialog(context, provider, user: user),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  _buildActionButton(
+                    icon: Icons.delete_outline,
+                    tooltip: 'Delete',
+                    onPressed: () => _confirmDelete(context, provider, user),
+                    isDestructive: true,
+                  ),
+                ],
               ),
             ],
           ),
@@ -1142,126 +1152,141 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
     );
   }
 
-  Widget _buildTableRow(UserModel user, DashboardProvider provider, {bool isLast = false}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.lg,
-        vertical: AppSpacing.md,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: isLast
-            ? const BorderRadius.only(
-                bottomLeft: Radius.circular(16),
-                bottomRight: Radius.circular(16),
-              )
-            : null,
-        border: Border(
-          top: BorderSide(
-            color: AppColors.border.withValues(alpha: 0.3),
-            width: 0.5,
+  Widget _buildModernTableRow(UserModel user, DashboardProvider provider, bool isLast) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {},
+        hoverColor: const Color(0xFFF9FAFB),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md + 2,
           ),
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: AppColors.primarySoft,
-                  child: Text(
-                    user.name.isNotEmpty
-                        ? user.name[0].toUpperCase()
-                        : '?',
-                    style: const TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.bold,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: isLast
+                ? const BorderRadius.only(
+                    bottomLeft: Radius.circular(16),
+                    bottomRight: Radius.circular(16),
+                  )
+                : null,
+            border: Border(
+              top: BorderSide(
+                color: AppColors.border.withValues(alpha: 0.2),
+                width: 1,
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: AppColors.primarySoft,
+                      child: Text(
+                        user.name.isNotEmpty
+                            ? user.name[0].toUpperCase()
+                            : '?',
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Text(
                         user.name,
                         style: const TextStyle(
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                          color: AppColors.textPrimary,
                         ),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
                       ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              user.role,
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              user.email,
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-              style: const TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 13,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: _StatusChip(status: user.status),
-            ),
-          ),
-          SizedBox(
-            width: 120,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Flexible(
-                  child: ShadTooltip(
-                    builder: (context) => const Text('Edit'),
-                    child: ShadIconButton(
-                  onPressed: () =>
-                      _showAddUserDialog(context, provider, user: user),
-                  icon: const Icon(Icons.edit, size: 18),
                     ),
+                  ],
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  user.role,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14,
                   ),
                 ),
-                const SizedBox(width: 2),
-                Flexible(
-                  child: ShadTooltip(
-                    builder: (context) => const Text('Remove'),
-                    child: ShadIconButton(
-                  onPressed: () => _confirmDelete(context, provider, user),
-                      icon: const Icon(Icons.delete_outline,
-                          size: 18, color: AppColors.danger),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  user.email,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: _ModernStatusBadge(status: user.status),
+                ),
+              ),
+              SizedBox(
+                width: 120,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    _buildActionButton(
+                      icon: Icons.edit_outlined,
+                      tooltip: 'Edit',
+                      onPressed: () => _showAddUserDialog(context, provider, user: user),
                     ),
-                  ),
+                    const SizedBox(width: AppSpacing.xs),
+                    _buildActionButton(
+                      icon: Icons.delete_outline,
+                      tooltip: 'Delete',
+                      onPressed: () => _confirmDelete(context, provider, user),
+                      isDestructive: true,
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onPressed,
+    bool isDestructive = false,
+  }) {
+    return ShadTooltip(
+      builder: (context) => Text(tooltip),
+      child: ShadIconButton.ghost(
+        onPressed: onPressed,
+        icon: Icon(
+          icon,
+          size: 18,
+          color: isDestructive ? AppColors.danger : AppColors.textMuted,
+        ),
       ),
     );
   }
@@ -1321,25 +1346,27 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
           style: TextStyle(
             fontSize: ResponsiveUtils.getFontSize(
               context,
-              mobile: 18,
-              tablet: 19,
-              desktop: 20,
+              mobile: 24,
+              tablet: 26,
+              desktop: 24,
             ),
             fontWeight: FontWeight.w600,
             color: AppColors.textPrimary,
+            letterSpacing: -0.3,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         Text(
           'Manage and view all users',
           style: TextStyle(
             color: AppColors.textMuted,
             fontSize: ResponsiveUtils.getFontSize(
               context,
-              mobile: 12,
-              tablet: 12,
-              desktop: 13,
+              mobile: 14,
+              tablet: 15,
+              desktop: 14,
             ),
+            fontWeight: FontWeight.w400,
           ),
         ),
       ],
@@ -1369,244 +1396,54 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
     );
   }
 
-  // ClickUp-style team card with colored background
-  Widget _buildClickUpTeamCard(Team team, DashboardProvider provider, BuildContext context) {
-    final colors = [
-      const Color(0xFF7C3AED), // Purple
-      const Color(0xFF92400E), // Brown
-      const Color(0xFF1E40AF), // Blue
-      const Color(0xFF059669), // Green
-      const Color(0xFFDC2626), // Red
-      const Color(0xFFEA580C), // Orange
-    ];
-    final colorIndex = team.name.hashCode.abs() % colors.length;
-    final cardColor = colors[colorIndex];
+  // Modern white team card using AppCard
+  Widget _buildModernTeamCard(Team team, DashboardProvider provider, BuildContext context) {
     final initial = team.name.isNotEmpty ? team.name[0].toUpperCase() : '?';
     
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => TeamDetailPage(teamId: team.id),
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: cardColor.withValues(alpha: 0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+    return AppCard(
+      backgroundColor: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(
+        color: AppColors.border.withValues(alpha: 0.3),
+        width: 1,
+      ),
+      showShadow: true,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TeamDetailPage(teamId: team.id),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          initial,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                    PopupMenuButton<String>(
-                      icon: const Icon(
-                        Icons.more_vert,
-                        size: 18,
-                        color: Colors.white70,
-                      ),
-                      color: AppColors.surface,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      itemBuilder: (context) => [
-                        PopupMenuItem(
-                          value: 'add',
-                          child: Row(
-                            children: [
-                              const Icon(Icons.person_add_alt_1, size: 16),
-                              const SizedBox(width: AppSpacing.xs),
-                              const Text('Add Members', style: TextStyle(fontSize: 13)),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'edit',
-                          child: Row(
-                            children: [
-                              const Icon(Icons.edit_outlined, size: 16),
-                              const SizedBox(width: AppSpacing.xs),
-                              const Text('Edit', style: TextStyle(fontSize: 13)),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
-                              const SizedBox(width: AppSpacing.xs),
-                              Text('Delete', style: TextStyle(color: AppColors.danger, fontSize: 13)),
-                            ],
-                          ),
-                        ),
-                      ],
-                      onSelected: (value) {
-                        if (value == 'add') {
-                          _showTeamMembersDialog(context, provider, team);
-                        } else if (value == 'edit') {
-                          _showEditTeamDialog(context, provider, team);
-                        } else if (value == 'delete') {
-                          _confirmDeleteTeam(context, provider, team);
-                        }
-                      },
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                Text(
-                  team.name,
+        );
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: AppColors.primarySoft,
+                child: Text(
+                  initial,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: AppColors.primary,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.people,
-                      size: 14,
-                      color: Colors.white70,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${team.memberIds.length} ${team.memberIds.length == 1 ? 'member' : 'members'}',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ClickUp-style list card
-  Widget _buildClickUpTeamListCard(Team team, DashboardProvider provider, BuildContext context) {
-    final colors = [
-      const Color(0xFF7C3AED),
-      const Color(0xFF92400E),
-      const Color(0xFF1E40AF),
-      const Color(0xFF059669),
-      const Color(0xFFDC2626),
-      const Color(0xFFEA580C),
-    ];
-    final colorIndex = team.name.hashCode.abs() % colors.length;
-    final cardColor = colors[colorIndex];
-    final initial = team.name.isNotEmpty ? team.name[0].toUpperCase() : '?';
-    
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => TeamDetailPage(teamId: team.id),
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: AppSpacing.xs),
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.border, width: 1),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    initial,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      team.name,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${team.memberIds.length} ${team.memberIds.length == 1 ? 'member' : 'members'}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ],
                 ),
               ),
               PopupMenuButton<String>(
-                icon: const Icon(
+                icon: Icon(
                   Icons.more_vert,
                   size: 18,
                   color: AppColors.textMuted,
+                ),
+                color: AppColors.surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 itemBuilder: (context) => [
                   PopupMenuItem(
@@ -1652,175 +1489,31 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
               ),
             ],
           ),
-        ),
+          const Spacer(),
+          Text(
+            team.name,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${team.memberIds.length} ${team.memberIds.length == 1 ? 'member' : 'members'}',
+            style: TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 12,
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildTeamCard(Team team, DashboardProvider provider, BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => TeamDetailPage(teamId: team.id),
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppColors.border.withValues(alpha: 0.2),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.textPrimary.withValues(alpha: 0.03),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-                spreadRadius: 0,
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(4),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: AppColors.primarySoft,
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                      child: Icon(
-                        Icons.groups,
-                        size: 12,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    PopupMenuButton<String>(
-                      icon: Icon(
-                        Icons.more_vert,
-                        size: 12,
-                        color: AppColors.textMuted,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      itemBuilder: (context) => [
-                        PopupMenuItem(
-                          value: 'add',
-                          child: Row(
-                            children: [
-                              const Icon(Icons.person_add_alt_1, size: 16),
-                              const SizedBox(width: AppSpacing.xs),
-                              const Text('Add Members', style: TextStyle(fontSize: 13)),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'edit',
-                          child: Row(
-                            children: [
-                              const Icon(Icons.edit_outlined, size: 16),
-                              const SizedBox(width: AppSpacing.xs),
-                              const Text('Edit', style: TextStyle(fontSize: 13)),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
-                              const SizedBox(width: AppSpacing.xs),
-                              Text('Delete', style: TextStyle(color: AppColors.danger, fontSize: 13)),
-                            ],
-                          ),
-                        ),
-                      ],
-                      onSelected: (value) {
-                        if (value == 'add') {
-                          _showTeamMembersDialog(context, provider, team);
-                        } else if (value == 'edit') {
-                          _showEditTeamDialog(context, provider, team);
-                        } else if (value == 'delete') {
-                          _confirmDeleteTeam(context, provider, team);
-                        }
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        team.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                          height: 1.1,
-                        ),
-                      ),
-                      if (team.description.isNotEmpty) ...[
-                        const SizedBox(height: 1),
-                        Text(
-                          team.description,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: AppColors.textMuted,
-                            height: 1.1,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.people_outline,
-                      size: 10,
-                      color: AppColors.textMuted,
-                    ),
-                    const SizedBox(width: 2),
-                    Text(
-                      '${team.memberIds.length}',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: AppColors.textMuted,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+
 
   void _showTeamMembersDialog(
     BuildContext context,
@@ -1906,8 +1599,8 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
   }
 }
 
-class _HeaderCell extends StatelessWidget {
-  const _HeaderCell(this.label);
+class _ModernHeaderCell extends StatelessWidget {
+  const _ModernHeaderCell(this.label);
 
   final String label;
 
@@ -1917,38 +1610,38 @@ class _HeaderCell extends StatelessWidget {
       label,
       style: TextStyle(
         fontWeight: FontWeight.w600,
-        color: AppColors.textPrimary,
-        fontSize: 13,
-        letterSpacing: 0.2,
+        color: AppColors.textMuted,
+        fontSize: 12,
+        letterSpacing: 0.3,
       ),
     );
   }
 }
 
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
+class _ModernStatusBadge extends StatelessWidget {
+  const _ModernStatusBadge({required this.status});
 
   final String status;
 
   Color get _backgroundColor {
     switch (status) {
       case 'Active':
-        return AppColors.success.withValues(alpha: 0.15);
+        return const Color(0xFFD1FAE5);
       case 'On leave':
-        return AppColors.warning.withValues(alpha: 0.15);
+        return const Color(0xFFFEF3C7);
       default:
-        return AppColors.border;
+        return const Color(0xFFF3F4F6);
     }
   }
 
   Color get _textColor {
     switch (status) {
       case 'Active':
-        return AppColors.success;
+        return const Color(0xFF065F46);
       case 'On leave':
-        return AppColors.warning;
+        return const Color(0xFF92400E);
       default:
-        return AppColors.textMuted;
+        return const Color(0xFF6B7280);
     }
   }
 
@@ -1956,19 +1649,20 @@ class _StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.xs,
+        horizontal: 10,
+        vertical: 4,
       ),
       decoration: BoxDecoration(
         color: _backgroundColor,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         status,
         style: TextStyle(
           color: _textColor,
-          fontWeight: FontWeight.w600,
-          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          fontSize: 11,
+          letterSpacing: 0.2,
         ),
       ),
     );

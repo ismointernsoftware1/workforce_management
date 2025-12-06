@@ -90,17 +90,11 @@ class UserMigrationService {
             if (userData['status'] != null) {
               updateData['status'] = userData['status'];
             }
-            if (userData['joinDate'] != null) {
-              updateData['joinDate'] = userData['joinDate'];
-            }
             if (userData['manager'] != null) {
               updateData['manager'] = userData['manager'];
             }
             if (userData['team'] != null) {
               updateData['team'] = userData['team'];
-            }
-            if (userData['accountType'] != null) {
-              updateData['accountType'] = userData['accountType'];
             }
             if (userData['userStatus'] != null) {
               updateData['userStatus'] = userData['userStatus'];

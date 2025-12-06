@@ -16,7 +16,6 @@ class _LoginViewState extends State<LoginView> {
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
   final _roleController = TextEditingController();
-  final _departmentController = TextEditingController();
 
   bool _isLoading = false;
   bool _isSignUp = false;
@@ -28,7 +27,6 @@ class _LoginViewState extends State<LoginView> {
     _passwordController.dispose();
     _nameController.dispose();
     _roleController.dispose();
-    _departmentController.dispose();
     super.dispose();
   }
 
@@ -48,8 +46,6 @@ class _LoginViewState extends State<LoginView> {
           password: _passwordController.text,
           name: _nameController.text,
           role: _roleController.text.isEmpty ? null : _roleController.text,
-          department:
-              _departmentController.text.isEmpty ? null : _departmentController.text,
         );
       } else {
         await authService.signInWithEmailAndPassword(
@@ -210,15 +206,6 @@ class _LoginViewState extends State<LoginView> {
                             decoration: const InputDecoration(
                               labelText: 'Role (Optional)',
                               prefixIcon: Icon(Icons.badge_outlined),
-                            ),
-                            textCapitalization: TextCapitalization.words,
-                          ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _departmentController,
-                            decoration: const InputDecoration(
-                              labelText: 'Department (Optional)',
-                              prefixIcon: Icon(Icons.business_outlined),
                             ),
                             textCapitalization: TextCapitalization.words,
                           ),

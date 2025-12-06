@@ -14,9 +14,17 @@ class FormBuilderFirestoreService {
   CollectionReference<Map<String, dynamic>> get _formsCol =>
       _firestore.collection('forms');
 
-  Future<List<FormModel>> getForms() async {
-    final snapshot =
-        await _formsCol.orderBy('createdAt', descending: true).get();
+  Future<List<FormModel>> getForms({FormType? formType}) async {
+    Query<Map<String, dynamic>> query;
+    
+    // Filter by form type if specified - must apply where before orderBy
+    if (formType != null) {
+      query = _formsCol.where('formType', isEqualTo: formType.name).orderBy('createdAt', descending: true);
+    } else {
+      query = _formsCol.orderBy('createdAt', descending: true);
+    }
+    
+    final snapshot = await query.get();
     return snapshot.docs.map(FormModel.fromSnapshot).toList();
   }
 

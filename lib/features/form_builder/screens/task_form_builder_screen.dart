@@ -5,6 +5,7 @@ import '../../../constants/app_colors.dart';
 import '../../../constants/app_spacing.dart';
 import '../../../utils/responsive_utils.dart';
 import '../../../utils/rbac_utils.dart';
+import '../../../widgets/shadcn/app_button.dart';
 import '../../form_builder/controllers/form_builder_controller.dart';
 import '../../form_builder/services/form_builder_firestore_service.dart';
 import '../../form_builder/services/default_forms_initializer.dart';
@@ -13,40 +14,42 @@ import '../../form_builder/widgets/field_controls_panel.dart';
 import '../../form_builder/widgets/properties_panel.dart';
 import '../../form_builder/widgets/section_canvas.dart';
 
-class FormBuilderScreen extends StatefulWidget {
-  const FormBuilderScreen({super.key});
+class TaskFormBuilderScreen extends StatefulWidget {
+  const TaskFormBuilderScreen({super.key});
 
   @override
-  State<FormBuilderScreen> createState() => _FormBuilderScreenState();
+  State<TaskFormBuilderScreen> createState() => _TaskFormBuilderScreenState();
 }
 
-class _FormBuilderScreenState extends State<FormBuilderScreen> {
+class _TaskFormBuilderScreenState extends State<TaskFormBuilderScreen> {
   late FormBuilderController _controller;
   bool _isInitializing = true;
 
   @override
   void initState() {
     super.initState();
-    _controller = FormBuilderController(FormBuilderFirestoreService());
+    _controller = FormBuilderController(
+      FormBuilderFirestoreService(),
+      formType: FormType.task,
+    );
     _initializeAndLoad();
   }
 
   Future<void> _initializeAndLoad() async {
     try {
-      // Initialize default forms first
+      // Initialize default task forms first
       final initializer = DefaultFormsInitializer(FormBuilderFirestoreService());
       await initializer.initializeDefaultForms();
-      // Then load all forms (this will refresh the list)
+      // Then load task forms only
       await _controller.loadForms();
       // Create a new empty form for editing
       _controller.loadFormById(null);
-      debugPrint('Forms initialized. Total forms: ${_controller.availableForms.length}');
+      debugPrint('Task forms initialized. Total forms: ${_controller.availableForms.length}');
       for (var form in _controller.availableForms) {
         debugPrint('  - ${form.name} (${form.id})');
       }
     } catch (e) {
-      // Handle error silently or show message
-      debugPrint('Error initializing forms: $e');
+      debugPrint('Error initializing task forms: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -68,7 +71,6 @@ class _FormBuilderScreenState extends State<FormBuilderScreen> {
         }
         
         if (snapshot.data != true) {
-          // User is not super admin, show access denied
           return Scaffold(
             body: Center(
               child: Column(
@@ -83,7 +85,7 @@ class _FormBuilderScreenState extends State<FormBuilderScreen> {
                   Text(
                     'Access Denied',
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
                     ),
@@ -93,7 +95,7 @@ class _FormBuilderScreenState extends State<FormBuilderScreen> {
                     'This page is only accessible to Super Administrators.',
                     style: TextStyle(
                       color: AppColors.textMuted,
-                      fontSize: 16,
+                      fontSize: 14,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -109,15 +111,15 @@ class _FormBuilderScreenState extends State<FormBuilderScreen> {
               ? const Scaffold(
                   body: Center(child: CircularProgressIndicator()),
                 )
-              : const _FormBuilderBody(),
+              : const _TaskFormBuilderBody(),
         );
       },
     );
   }
 }
 
-class _FormBuilderBody extends StatelessWidget {
-  const _FormBuilderBody();
+class _TaskFormBuilderBody extends StatelessWidget {
+  const _TaskFormBuilderBody();
 
   @override
   Widget build(BuildContext context) {
@@ -131,56 +133,50 @@ class _FormBuilderBody extends StatelessWidget {
         elevation: 0,
         title: isMobile
             ? const Text(
-                'Form Builder',
+                'Task Form Builder',
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
+                  fontSize: 16,
                 ),
               )
             : Row(
                 children: [
                   const Text(
-                    'Dynamic Form Builder',
+                    'Task Form Builder',
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
+                      fontSize: 16,
                     ),
                   ),
                   const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: controller.activeForm?.id.isNotEmpty == true
-                            ? controller.activeForm!.id
-                            : '__new__',
-                        hint: const Text('Select Form'),
-                        items: [
-                          const DropdownMenuItem<String>(
-                            value: '__new__',
-                            child: Row(
-                              children: [
-                                Icon(Icons.add, size: 18),
-                                SizedBox(width: AppSpacing.sm),
-                                Text('New Form'),
-                              ],
-                            ),
+                  AppButton(
+                    variant: AppButtonVariant.outline,
+                    onPressed: () => _showFormSelectorDialog(context, controller),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.add,
+                          size: 16,
+                          color: AppColors.primary,
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Text(
+                          controller.activeForm?.id.isNotEmpty == true
+                              ? controller.activeForm!.name
+                              : 'New Task Form',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
                           ),
-                          ...controller.availableForms
-                              .map(
-                                (f) => DropdownMenuItem(
-                                  value: f.id,
-                                  child: Text(f.name),
-                                ),
-                              )
-                              .toList(),
-                        ],
-                        onChanged: (id) {
-                          if (id == '__new__') {
-                            // Explicitly create new form, clearing unsaved state
-                            controller.createNewForm();
-                          } else if (id != null) {
-                            controller.loadFormById(id);
-                          }
-                        },
-                      ),
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Icon(
+                          Icons.arrow_drop_down,
+                          size: 18,
+                          color: AppColors.textMuted,
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -202,7 +198,7 @@ class _FormBuilderBody extends StatelessWidget {
                         children: [
                           Icon(Icons.add, size: 18),
                           SizedBox(width: AppSpacing.sm),
-                          Text('New Form'),
+                          Text('New Task Form'),
                         ],
                       ),
                     ),
@@ -220,6 +216,7 @@ class _FormBuilderBody extends StatelessWidget {
               ]
             : null,
       ),
+      backgroundColor: const Color(0xFFF9FAFB), // Soft grey background
       body: isMobile
           ? _buildMobileLayout(context, controller)
           : Row(
@@ -352,6 +349,51 @@ class _FormBuilderBody extends StatelessWidget {
       ],
     );
   }
+
+  void _showFormSelectorDialog(BuildContext context, FormBuilderController controller) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Task Form'),
+        content: SizedBox(
+          width: 300,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.add, color: AppColors.primary),
+                title: const Text('New Task Form'),
+                onTap: () {
+                  controller.createNewForm();
+                  Navigator.of(context).pop();
+                },
+              ),
+              const Divider(),
+              ...controller.availableForms.map(
+                (form) => ListTile(
+                  leading: const Icon(Icons.description, color: AppColors.textMuted),
+                  title: Text(form.name),
+                  trailing: controller.activeForm?.id == form.id
+                      ? const Icon(Icons.check, color: AppColors.primary, size: 20)
+                      : null,
+                  onTap: () {
+                    controller.loadFormById(form.id);
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ControlItem {
@@ -407,5 +449,4 @@ class _ControlChip extends StatelessWidget {
     );
   }
 }
-
 

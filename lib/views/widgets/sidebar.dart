@@ -24,7 +24,7 @@ class Sidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMobile = ResponsiveUtils.isMobile(context);
-    final sidebarWidth = isMobile ? 280.0 : 220.0;
+    final sidebarWidth = isMobile ? 280.0 : 240.0; // Increased width to accommodate full text
     
     return Container(
       width: sidebarWidth,
@@ -62,11 +62,14 @@ class Sidebar extends StatelessWidget {
                   // Filter tabs based on user role
                   final availableTabs = DashboardTab.values.where((tab) {
                     if (isSuperAdmin == true) {
-                      // Super Admin: Show ONLY Form Builder
-                      return tab == DashboardTab.formBuilder;
+                      // Super Admin: Show ONLY Task Form Builder and Expense Form Builder
+                      return tab == DashboardTab.taskFormBuilder || 
+                             tab == DashboardTab.expenseFormBuilder;
                     } else {
-                      // Non-Super Admin: Show all tabs EXCEPT Form Builder
-                      return tab != DashboardTab.formBuilder;
+                      // Non-Super Admin: Show all tabs EXCEPT form builders
+                      return tab != DashboardTab.formBuilder &&
+                             tab != DashboardTab.taskFormBuilder &&
+                             tab != DashboardTab.expenseFormBuilder;
                     }
                   }).toList();
                   
@@ -120,6 +123,10 @@ class Sidebar extends StatelessWidget {
         return Icons.receipt_long;
       case DashboardTab.formBuilder:
         return Icons.view_quilt_rounded;
+      case DashboardTab.taskFormBuilder:
+        return Icons.assignment;
+      case DashboardTab.expenseFormBuilder:
+        return Icons.receipt_long;
     }
   }
 
@@ -135,6 +142,10 @@ class Sidebar extends StatelessWidget {
         return 'Expenses';
       case DashboardTab.formBuilder:
         return 'Form Builder';
+      case DashboardTab.taskFormBuilder:
+        return 'Task Form Builder';
+      case DashboardTab.expenseFormBuilder:
+        return 'Expense Form Builder';
     }
   }
 }
@@ -224,21 +235,29 @@ class _SidebarItem extends StatelessWidget {
               vertical: AppSpacing.md,
             ),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Icon(
                   icon,
+                  size: 20, // Slightly smaller icon
                   color: isActive ? AppColors.primary : Colors.white.withValues(alpha: 0.7),
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: isActive ? Colors.white : Colors.white.withValues(alpha: 0.7),
-                    fontWeight: FontWeight.w600,
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: isActive ? Colors.white : Colors.white.withValues(alpha: 0.7),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13, // Reduced font size
+                    ),
+                    overflow: TextOverflow.visible,
+                    maxLines: 2, // Allow wrapping to 2 lines
+                    softWrap: true,
                   ),
                 ),
-                const Spacer(),
-                if (isActive)
+                if (isActive) ...[
+                  const SizedBox(width: AppSpacing.xs),
                   Container(
                     width: 6,
                     height: 6,
@@ -247,6 +266,7 @@ class _SidebarItem extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                   ),
+                ],
               ],
             ),
           ),

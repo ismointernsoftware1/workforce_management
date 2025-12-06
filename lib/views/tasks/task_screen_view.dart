@@ -16,47 +16,6 @@ import 'edit_task_view.dart';
 import 'task_detail_view.dart';
 import 'calendar_view.dart';
 
-// Helper function to find assignee by matching name from "name - role" format or direct name
-TeamMember _findAssigneeFromTask(DashboardProvider provider, String assignedTo) {
-  if (assignedTo.isEmpty) {
-    return TeamMember(
-      id: '',
-      name: '',
-      email: '',
-      role: '',
-      department: '',
-      isOnline: false,
-    );
-  }
-
-  // Try to find by exact match first
-  try {
-    return provider.members.firstWhere(
-      (m) => m.name == assignedTo,
-    );
-  } catch (e) {
-    // If not found, try to extract name from "name - role" format
-    final nameParts = assignedTo.split(' - ');
-    final nameOnly = nameParts.isNotEmpty ? nameParts[0].trim() : assignedTo;
-    
-    try {
-      return provider.members.firstWhere(
-        (m) => m.name == nameOnly || assignedTo.contains(m.name),
-      );
-    } catch (e) {
-      // If still not found, return a fallback with the assigned name
-      return TeamMember(
-        id: '',
-        name: nameOnly,
-        email: '',
-        role: nameParts.length > 1 ? nameParts[1].trim() : '',
-        department: '',
-        isOnline: false,
-      );
-    }
-  }
-}
-
 // Helper function to get all assignees from a task
 List<TeamMember> _findAllAssigneesFromTask(DashboardProvider provider, TaskModel task) {
   final assignees = <TeamMember>[];
@@ -265,9 +224,9 @@ class _TaskScreenViewState extends State<TaskScreenView> {
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                 child: AppButton(
                   onPressed: () => _openAddTask(context),
-                  variant: ShadButtonVariant.default_,
-                  size: ShadButtonSize.md,
-                  icon: const Icon(Icons.add, size: 18),
+                  variant: AppButtonVariant.primary,
+                  size: AppButtonSize.medium,
+                  icon: Icons.add,
                   child: const Text('Add New'),
                 ),
               ),
@@ -417,33 +376,6 @@ class _TaskScreenViewState extends State<TaskScreenView> {
                     ),
                   ],
                 ),
-              ),
-              SizedBox(width: isMobile ? AppSpacing.sm : AppSpacing.md),
-              // Assignee Filter
-              Expanded(
-                child: _buildFilterDropdown(
-                  label: controller.selectedAssigneeFilter ?? 'All',
-                  items: ['All', ...provider.members.map((m) => m.name)],
-                  onSelected: (value) {
-                    controller.setAssigneeFilter(value == 'All' ? null : value);
-                  },
-                  isMobile: isMobile,
-                ),
-              ),
-              SizedBox(width: isMobile ? AppSpacing.sm : AppSpacing.md),
-              // Priority Filter
-              Expanded(
-                child: _buildFilterDropdown(
-                  label: controller.selectedPriorityFilter ?? 'All',
-                  items: ['All', 'High', 'Medium', 'Low'],
-                  onSelected: (value) {
-                    controller.setPriorityFilter(value == 'All' ? null : value);
-                  },
-                  isMobile: isMobile,
-                ),
-              ),
-            ],
-          ),
         );
       },
     );
@@ -689,53 +621,43 @@ class _TaskScreenViewState extends State<TaskScreenView> {
     Color color,
     IconData icon,
   ) {
-    final isMobile = ResponsiveUtils.isMobile(context);
-    return DragTarget<TaskModel>(
-      onWillAccept: (data) {
-        // Allow accepting if the task status is different
-        return data != null && data.status != status;
-      },
-      onAccept: (droppedTask) {
-        // Only update if the task is being moved to a different status
-        if (droppedTask.status != status) {
-          final provider = context.read<DashboardProvider>();
-          provider.updateTaskStatus(droppedTask.id, status).then((_) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: ShadAlert(
-                    title: 'Success',
-                    description: 'Task status updated',
-                    variant: ShadAlertVariant.success,
-                  ),
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                  padding: const EdgeInsets.all(16),
-                  behavior: SnackBarBehavior.floating,
-                  duration: const Duration(seconds: 2),
-                ),
-              );
+    return Builder(
+      builder: (builderContext) {
+        final isMobile = ResponsiveUtils.isMobile(builderContext);
+        return DragTarget<TaskModel>(
+          onWillAccept: (data) {
+            // Allow accepting if the task status is different
+            return data != null && data.status != status;
+          },
+          onAccept: (droppedTask) {
+            // Only update if the task is being moved to a different status
+            if (droppedTask.status != status) {
+              final provider = builderContext.read<DashboardProvider>();
+              provider.updateTaskStatus(droppedTask.id, status).then((_) {
+                if (builderContext.mounted) {
+                  ScaffoldMessenger.of(builderContext).showSnackBar(
+                    SnackBar(
+                      content: const Text('Task status updated'),
+                      backgroundColor: AppColors.success,
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              }).catchError((e) {
+                if (builderContext.mounted) {
+                  ScaffoldMessenger.of(builderContext).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to update task status: ${e.toString()}'),
+                      backgroundColor: AppColors.danger,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              });
             }
-          }).catchError((e) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: ShadAlert(
-                    title: 'Error',
-                    description: 'Failed to update task status: ${e.toString()}',
-                    variant: ShadAlertVariant.destructive,
-                  ),
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                  padding: const EdgeInsets.all(16),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            }
-          });
-        }
-      },
-      builder: (context, candidateData, rejectedData) {
+          },
+          builder: (context, candidateData, rejectedData) {
         // Visual feedback when dragging over
         final isDraggingOver = candidateData.isNotEmpty;
         
@@ -809,7 +731,7 @@ class _TaskScreenViewState extends State<TaskScreenView> {
                     SizedBox(width: isMobile ? AppSpacing.xs : AppSpacing.sm),
                     IconButton(
                       icon: Icon(Icons.add, size: isMobile ? 16 : 18, color: AppColors.textMuted),
-                      onPressed: () => _openAddTask(context),
+                      onPressed: () => _openAddTask(builderContext),
                       tooltip: 'Add Task',
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -935,6 +857,8 @@ class _TaskScreenViewState extends State<TaskScreenView> {
             ],
           ),
         );
+      },
+    );
       },
     );
   }

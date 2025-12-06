@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../constants/app_colors.dart';
@@ -7,18 +8,18 @@ import '../../constants/app_spacing.dart';
 import '../../models/team_model.dart';
 import '../../models/user_model.dart';
 import '../../models/task_model.dart';
+import '../../models/timesheet_entry.dart';
 import '../../providers/dashboard_provider.dart';
+import '../../services/firebase_service.dart';
+import '../../utils/responsive_utils.dart';
 import '../../widgets/shadcn/shadcn_widgets.dart';
+import '../../widgets/shadcn/app_button.dart';
 import '../widgets/add_team_dialog.dart';
 import '../widgets/team_members_dialog.dart';
 
 enum TeamTab {
   overview,
-  analytics,
-  priorities,
-  feed,
   team,
-  standUp,
   workload,
   timesheet,
 }
@@ -34,11 +35,9 @@ class TeamDetailPage extends StatefulWidget {
 
 class _TeamDetailPageState extends State<TeamDetailPage> {
   TeamTab _activeTab = TeamTab.overview;
-  UserModel? _selectedMember;
   bool _isGridView = true;
   final TextEditingController _searchController = TextEditingController();
   String _statusFilter = 'All';
-  String _accountTypeFilter = 'All';
   String _managerFilter = 'All';
   String _sortBy = 'Name';
   
@@ -62,6 +61,15 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
   
   // Workload backlog state
   bool _showBacklog = false;
+  
+  // Timesheet state
+  DateTime _timesheetStartDate = DateTime.now().subtract(const Duration(days: 6));
+  DateTime _timesheetEndDate = DateTime.now();
+  List<TimesheetEntry> _timesheetEntries = [];
+  bool _isLoadingTimesheet = false;
+  String? _editingEntryId;
+  String? _editingUserId;
+  DateTime? _editingDate;
 
   @override
   void initState() {
@@ -135,9 +143,6 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                   ],
                 ),
               ),
-              // Right sidebar for member details
-              if (_selectedMember != null)
-                _buildMemberSidebar(context, _selectedMember!, provider),
             ],
           ),
         );
@@ -160,80 +165,200 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
           ),
         ),
       ),
-      child: Row(
-        children: [
-              IconButton(
-            icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          // Team avatar/icon
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: const Color(0xFF7C3AED),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                team.name.isNotEmpty ? team.name[0].toUpperCase() : 'T',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                team.name,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              Text(
-                '@${team.name.toLowerCase().replaceAll(' ', '')}',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textMuted,
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          IconButton(
-            icon: const Icon(Icons.edit, size: 20, color: AppColors.textPrimary),
-            onPressed: () => _showEditDialog(context, provider, team),
-                tooltip: 'Edit team',
-              ),
-              IconButton(
-            icon: const Icon(Icons.delete_outline, size: 20, color: AppColors.textPrimary),
-            onPressed: () => _confirmDelete(context, provider, team),
-                tooltip: 'Delete team',
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          AppButton(
-            variant: AppButtonVariant.outline,
-            onPressed: () => _showMembersDialog(context, provider, team),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = ResponsiveUtils.isMobile(context);
+          
+          if (isMobile) {
+            // Mobile: Stack vertically or use menu
+            return Row(
               children: [
-                Icon(Icons.person_add_alt_1, size: 16),
-                SizedBox(width: 4),
-                Text('Add member'),
+                IconButton(
+                  icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                // Team avatar/icon
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7C3AED),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      team.name.isNotEmpty ? team.name[0].toUpperCase() : 'T',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                // Team name - flexible to prevent overflow
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        team.name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                      Text(
+                        '@${team.name.toLowerCase().replaceAll(' ', '')}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ],
+                  ),
+                ),
+                // Menu button for actions on mobile
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, color: AppColors.textPrimary),
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      _showEditDialog(context, provider, team);
+                    } else if (value == 'delete') {
+                      _confirmDelete(context, provider, team);
+                    } else if (value == 'add_member') {
+                      _showMembersDialog(context, provider, team);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'add_member',
+                      child: Row(
+                        children: [
+                          Icon(Icons.person_add_alt_1, size: 18),
+                          SizedBox(width: 8),
+                          Text('Add member'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, size: 18),
+                          SizedBox(width: 8),
+                          Text('Edit team'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline, size: 18, color: AppColors.danger),
+                          SizedBox(width: 8),
+                          Text('Delete team', style: TextStyle(color: AppColors.danger)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ],
-            ),
-          ),
-            ],
-          ),
+            );
+          } else {
+            // Desktop/Tablet: Full horizontal layout
+            return Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                // Team avatar/icon
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7C3AED),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      team.name.isNotEmpty ? team.name[0].toUpperCase() : 'T',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                // Team name - flexible to prevent overflow
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        team.name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                      Text(
+                        '@${team.name.toLowerCase().replaceAll(' ', '')}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.edit, size: 20, color: AppColors.textPrimary),
+                  onPressed: () => _showEditDialog(context, provider, team),
+                  tooltip: 'Edit team',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 20, color: AppColors.textPrimary),
+                  onPressed: () => _confirmDelete(context, provider, team),
+                  tooltip: 'Delete team',
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                AppButton(
+                  variant: AppButtonVariant.outline,
+                  onPressed: () => _showMembersDialog(context, provider, team),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.person_add_alt_1, size: 16),
+                      SizedBox(width: 4),
+                      Text('Add member'),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          }
+        },
+      ),
     );
   }
 
@@ -258,53 +383,12 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _buildTabButton(TeamTab.overview, Icons.info_outline, 'Overview'),
-                  _buildTabButton(TeamTab.analytics, Icons.bar_chart, 'Analytics'),
-                  _buildTabButton(TeamTab.priorities, Icons.flag, 'Priorities'),
-                  _buildTabButton(TeamTab.feed, Icons.rss_feed, 'Feed'),
                   _buildTabButton(TeamTab.team, Icons.people, 'Team'),
-                  _buildTabButton(TeamTab.standUp, Icons.chat_bubble_outline, 'StandUp'),
                   _buildTabButton(TeamTab.workload, Icons.grid_view, 'Workload'),
                   _buildTabButton(TeamTab.timesheet, Icons.access_time, 'Timesheet'),
                 ],
               ),
             ),
-          ),
-          Consumer<DashboardProvider>(
-            builder: (context, provider, _) {
-              Team? team;
-              try {
-                team = provider.teams.firstWhere((t) => t.id == widget.teamId);
-              } catch (_) {
-                team = null;
-              }
-              if (team == null) return const SizedBox.shrink();
-              return Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AppButton(
-                    onPressed: () {
-                      // Export functionality
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Export feature coming soon')),
-                      );
-                    },
-                    child: const Text('Export'),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  AppButton(
-                    onPressed: () => _showMembersDialog(context, provider, team!),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.person_add_alt_1, size: 16),
-                        SizedBox(width: 4),
-                        Text('Add member'),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            },
           ),
         ],
       ),
@@ -314,7 +398,12 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
   Widget _buildTabButton(TeamTab tab, IconData icon, String label) {
     final isSelected = _activeTab == tab;
     return GestureDetector(
-      onTap: () => setState(() => _activeTab = tab),
+      onTap: () {
+        setState(() => _activeTab = tab);
+        if (tab == TeamTab.timesheet) {
+          _loadTimesheetEntries();
+        }
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
@@ -382,11 +471,7 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                         setState(() => _statusFilter = value);
                       }),
                       const SizedBox(width: AppSpacing.sm),
-                      _buildFilterDropdown('Account type', _accountTypeFilter, ['All', 'Member', 'Admin', 'Manager'], (value) {
-                        setState(() => _accountTypeFilter = value);
-                      }),
-                      const SizedBox(width: AppSpacing.sm),
-                      _buildFilterDropdown('Sort', _sortBy, ['Name', 'Role', 'Status', 'Join Date'], (value) {
+                      _buildFilterDropdown('Sort', _sortBy, ['Name', 'Role', 'Status'], (value) {
                         setState(() => _sortBy = value);
                       }),
                       const SizedBox(width: AppSpacing.sm),
@@ -416,10 +501,6 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                 const SizedBox(width: AppSpacing.md),
                 _buildFilterDropdown('Status', _statusFilter, ['All', 'Active', 'On leave', 'Inactive'], (value) {
                   setState(() => _statusFilter = value);
-                }),
-                const SizedBox(width: AppSpacing.sm),
-                _buildFilterDropdown('Account type', _accountTypeFilter, ['All', 'Member', 'Admin', 'Manager'], (value) {
-                  setState(() => _accountTypeFilter = value);
                 }),
                 const SizedBox(width: AppSpacing.sm),
                 _buildFilterDropdown('Manager', _managerFilter, ['All', 'Me', 'Others'], (value) {
@@ -510,14 +591,6 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
         return _buildTeamTab(context, team, provider, members);
       case TeamTab.overview:
         return _buildOverviewTab(context, team);
-      case TeamTab.analytics:
-        return _buildAnalyticsTab(context);
-      case TeamTab.priorities:
-        return _buildPrioritiesTab(context);
-      case TeamTab.feed:
-        return _buildFeedTab(context);
-      case TeamTab.standUp:
-        return _buildStandUpTab(context);
       case TeamTab.workload:
         return _buildWorkloadTab(context);
       case TeamTab.timesheet:
@@ -577,20 +650,20 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
   Widget _buildMembersGrid(List<UserModel> members) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final crossAxisCount = constraints.maxWidth > 1200
-            ? 4
-            : constraints.maxWidth > 800
-                ? 3
-                : constraints.maxWidth > 600
-                    ? 2
-                    : 1;
+        final isMobile = ResponsiveUtils.isMobile(context);
+        final isTablet = ResponsiveUtils.isTablet(context);
+        
+        // Responsive card width
+        final maxCrossAxisExtent = isMobile ? 160.0 : (isTablet ? 170.0 : 180.0);
+        
         return GridView.builder(
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            crossAxisSpacing: AppSpacing.md,
-            mainAxisSpacing: AppSpacing.md,
-            childAspectRatio: 0.75,
+          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: maxCrossAxisExtent,
+            crossAxisSpacing: isMobile ? 8 : 12,
+            mainAxisSpacing: isMobile ? 8 : 12,
+            childAspectRatio: isMobile ? 0.85 : 0.9,
           ),
+          padding: EdgeInsets.all(isMobile ? AppSpacing.sm : AppSpacing.md),
           itemCount: members.length,
           itemBuilder: (context, index) {
             return _buildMemberCard(members[index], true);
@@ -623,32 +696,28 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
     ];
     final colorIndex = user.name.hashCode.abs() % colors.length;
     final avatarColor = colors[colorIndex];
-    final isSelected = _selectedMember?.id == user.id;
     final isOnline = user.status == 'Active'; // Simplified online status
 
-    return GestureDetector(
-      onTap: () => setState(() => _selectedMember = user),
-      child: Container(
-        padding: EdgeInsets.all(isGrid ? AppSpacing.lg : AppSpacing.md),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primarySoft.withValues(alpha: 0.1) : AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected
-                ? AppColors.primary
-                : AppColors.border.withValues(alpha: 0.5),
-            width: isSelected ? 2 : 1,
-          ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.border.withValues(alpha: 0.3),
+          width: 1,
         ),
-        child: isGrid
+      ),
+      child: isGrid
             ? Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Stack(
                     children: [
                       Container(
-                        width: 80,
-                        height: 80,
+                        width: 36,
+                        height: 36,
                         decoration: BoxDecoration(
                           color: avatarColor.withValues(alpha: 0.2),
                           shape: BoxShape.circle,
@@ -660,7 +729,7 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                                 : '?',
                             style: TextStyle(
                               color: avatarColor,
-                              fontSize: 32,
+                              fontSize: 15,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -671,8 +740,8 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                           right: 0,
                           bottom: 0,
                           child: Container(
-                            width: 20,
-                            height: 20,
+                            width: 10,
+                            height: 10,
                             decoration: BoxDecoration(
                               color: AppColors.success,
                               shape: BoxShape.circle,
@@ -685,15 +754,17 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                         ),
                     ],
                   ),
-                  const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: 8),
                   Text(
                     user.name,
                     style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
                       color: AppColors.textPrimary,
                     ),
                     textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               )
@@ -760,274 +831,846 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                   ),
                 ],
               ),
+    );
+  }
+
+
+  // Placeholder tabs
+  Widget _buildOverviewTab(BuildContext context, Team team) {
+    return Consumer<DashboardProvider>(
+      builder: (context, provider, _) {
+        final usersById = {for (final user in provider.allUsers) user.id: user};
+        final members = team.memberIds
+            .map((id) => usersById[id])
+            .whereType<UserModel>()
+            .toList();
+        
+        final teamMemberIds = members.map((m) => m.id).toSet();
+        final teamTasks = provider.tasks.where((task) => 
+          teamMemberIds.contains(task.assignedTo) || 
+          task.assignedToUsers.any((id) => teamMemberIds.contains(id))
+        ).toList();
+        
+        final tasksInProgress = teamTasks.where((t) => t.status == TaskStatus.inProgress).length;
+        final tasksCompleted = teamTasks.where((t) => t.status == TaskStatus.completed).length;
+        final tasksThisWeek = teamTasks.where((task) {
+          final now = DateTime.now();
+          final weekAgo = now.subtract(const Duration(days: 7));
+          return task.createdAt != null && task.createdAt!.isAfter(weekAgo);
+        }).length;
+        
+        final today = DateTime.now();
+        final startOfToday = DateTime(today.year, today.month, today.day);
+        final tasksCompletedToday = teamTasks.where((task) {
+          if (task.updatedAt == null) return false;
+          return task.status == TaskStatus.completed &&
+              task.updatedAt!.isAfter(startOfToday);
+        }).length;
+        
+        final activeProjects = provider.teams.length;
+        final completionRate = teamTasks.isNotEmpty 
+            ? ((tasksCompleted / teamTasks.length) * 100).toInt() 
+            : 0;
+        
+        return FutureBuilder<List<TimesheetEntry>>(
+          future: _loadTeamTimesheetEntries(team.id),
+          builder: (context, timesheetSnapshot) {
+            final timesheetEntries = timesheetSnapshot.data ?? [];
+            
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = ResponsiveUtils.isMobile(context);
+        final isTablet = ResponsiveUtils.isTablet(context);
+        
+        return SingleChildScrollView(
+          padding: EdgeInsets.all(isMobile ? AppSpacing.md : (isTablet ? AppSpacing.lg : AppSpacing.xl)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildOverviewHeader(context, team, provider),
+              SizedBox(height: isMobile ? AppSpacing.lg : AppSpacing.xl),
+              _buildQuickStats(
+                members.length, 
+                activeProjects, 
+                tasksThisWeek, 
+                completionRate,
+              ),
+              SizedBox(height: isMobile ? AppSpacing.lg : AppSpacing.xl),
+              _buildTeamDescription(team, provider),
+              SizedBox(height: isMobile ? AppSpacing.lg : AppSpacing.xl),
+              isMobile
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildCurrentWorkSummary(tasksInProgress, tasksCompletedToday),
+                        SizedBox(height: AppSpacing.lg),
+                        _buildRecentActivity(teamTasks, provider),
+                        SizedBox(height: AppSpacing.lg),
+                        _buildTeamMembersList(members, teamTasks, timesheetEntries),
+                        SizedBox(height: AppSpacing.lg),
+                        _buildTeamHealthSummary(teamTasks, timesheetEntries, members),
+                        SizedBox(height: AppSpacing.lg),
+                        _buildQuickNavigation(context),
+                      ],
+                    )
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: isTablet ? 3 : 2,
+                          child: Column(
+                            children: [
+                              _buildCurrentWorkSummary(tasksInProgress, tasksCompletedToday),
+                              SizedBox(height: AppSpacing.xl),
+                              _buildRecentActivity(teamTasks, provider),
+                              SizedBox(height: AppSpacing.xl),
+                              _buildTeamMembersList(members, teamTasks, timesheetEntries),
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: isTablet ? AppSpacing.md : AppSpacing.xl),
+                        Expanded(
+                          flex: isTablet ? 2 : 1,
+                          child: Column(
+                            children: [
+                              _buildTeamHealthSummary(teamTasks, timesheetEntries, members),
+                              SizedBox(height: AppSpacing.xl),
+                              _buildQuickNavigation(context),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+            ],
+          ),
+        );
+      },
+    );
+          },
+        );
+      },
+    );
+  }
+
+  Future<List<TimesheetEntry>> _loadTeamTimesheetEntries(String teamId) async {
+    try {
+      final firebaseService = FirebaseService();
+      final weekAgo = DateTime.now().subtract(const Duration(days: 7));
+      return await firebaseService.fetchTimesheetEntries(
+        teamId: teamId,
+        startDate: weekAgo,
+        endDate: DateTime.now(),
+      );
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Widget _buildOverviewHeader(BuildContext context, Team team, DashboardProvider provider) {
+    return Row(
+      children: [
+        Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: AppColors.primarySoft,
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Text(
+              team.name.isNotEmpty ? team.name[0].toUpperCase() : 'T',
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                team.name,
+                      style: const TextStyle(
+                  fontSize: 24,
+                        fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+              const SizedBox(height: 4),
+              Text(
+                'Team workspace',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.edit_outlined, size: 20),
+          onPressed: () => _showEditDialog(context, provider, team),
+          tooltip: 'Edit team',
+        ),
+        const SizedBox(width: AppSpacing.xs),
+        AppButton(
+          onPressed: () => _showMembersDialog(context, provider, team),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.person_add, size: 16),
+              SizedBox(width: 4),
+              Text('Add member'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickStats(int members, int projects, int tasks, int completionRate) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = ResponsiveUtils.isMobile(context);
+        
+        if (isMobile) {
+          return Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      icon: Icons.people_outline,
+                      value: members.toString(),
+                      label: 'Members',
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: _buildStatCard(
+                      icon: Icons.folder_outlined,
+                      value: projects.toString(),
+                      label: 'Active projects',
+                      color: const Color(0xFF7C3AED),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      icon: Icons.task_outlined,
+                      value: tasks.toString(),
+                      label: 'Tasks this week',
+                      color: const Color(0xFFDC2626),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: _buildStatCard(
+                      icon: Icons.check_circle_outline,
+                      value: '$completionRate%',
+                      label: 'Completion rate',
+                      color: const Color(0xFF059669),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        } else {
+          return Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  icon: Icons.people_outline,
+                  value: members.toString(),
+                  label: 'Members',
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: _buildStatCard(
+                  icon: Icons.folder_outlined,
+                  value: projects.toString(),
+                  label: 'Active projects',
+                  color: const Color(0xFF7C3AED),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: _buildStatCard(
+                  icon: Icons.task_outlined,
+                  value: tasks.toString(),
+                  label: 'Tasks this week',
+                  color: const Color(0xFFDC2626),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: _buildStatCard(
+                  icon: Icons.check_circle_outline,
+                  value: '$completionRate%',
+                  label: 'Completion rate',
+                  color: const Color(0xFF059669),
+                ),
+              ),
+            ],
+          );
+        }
+      },
+    );
+  }
+
+  Widget _buildStatCard({
+    required IconData icon,
+    required String value,
+    required String label,
+    required Color color,
+  }) {
+    return AppCard(
+      borderRadius: BorderRadius.circular(16),
+                padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 20, color: color),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textMuted,
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildMemberSidebar(BuildContext context, UserModel user, DashboardProvider provider) {
-    return Container(
-      width: 400,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(
-          left: BorderSide(
-            color: AppColors.border.withValues(alpha: 0.5),
-            width: 1,
-          ),
-        ),
-      ),
+  Widget _buildTeamDescription(Team team, DashboardProvider provider) {
+    return AppCard(
+      borderRadius: BorderRadius.circular(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: AppColors.border.withValues(alpha: 0.5),
-                  width: 1,
+          const Text(
+            'Team Description',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+                  team.description.isEmpty
+                ? 'Add team description, information, and wiki'
+                      : team.description,
+                  style: TextStyle(
+              fontSize: 14,
+                    color: team.description.isEmpty
+                        ? AppColors.textMuted
+                        : AppColors.textPrimary,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCurrentWorkSummary(int inProgress, int completedToday) {
+    return AppCard(
+      borderRadius: BorderRadius.circular(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Current Work Summary',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+          Text(
+                      inProgress.toString(),
+            style: const TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Tasks in progress',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    user.name,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      completedToday.toString(),
+                      style: const TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Tasks completed today',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close, size: 20),
-                  onPressed: () => setState(() => _selectedMember = null),
+              ),
+            ],
                 ),
-              ],
+                const SizedBox(height: AppSpacing.md),
+          Container(
+            height: 120,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(
+              child: Icon(
+                Icons.bar_chart_outlined,
+                size: 32,
+                color: AppColors.textMuted.withValues(alpha: 0.5),
+              ),
             ),
           ),
-          // Content
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Description
-                  Row(
-                    children: [
-                      const Icon(Icons.edit, size: 16, color: AppColors.textMuted),
-                      const SizedBox(width: AppSpacing.xs),
-                      Text(
-                        'Add descript...',
-                        style: TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentActivity(List<TaskModel> teamTasks, DashboardProvider provider) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _loadRecentAuditLogs(teamTasks),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return AppCard(
+            borderRadius: BorderRadius.circular(16),
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: const Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final activities = snapshot.data ?? [];
+        
+        if (activities.isEmpty) {
+          return AppCard(
+            borderRadius: BorderRadius.circular(16),
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Recent Activity',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
                   ),
-                  const SizedBox(height: AppSpacing.sm),
-                  // Status
-                  Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: AppColors.success,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                      const Text(
-                        'Online',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  // Tabs
-                  Row(
-                    children: [
-                      _buildSidebarTab('Activity', true),
-                      const SizedBox(width: AppSpacing.md),
-                      _buildSidebarTab('Tasks (0)', false),
-                      const SizedBox(width: AppSpacing.md),
-                      _buildSidebarTab('Comments (0)', false),
-                      const SizedBox(width: AppSpacing.md),
-                      _buildSidebarTab('Calendar', false),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  // Contact info
-                  _buildInfoRow(Icons.email, user.email),
-                  const SizedBox(height: AppSpacing.sm),
-                  _buildInfoRow(
-                    Icons.access_time,
-                    '${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')} ${DateTime.now().hour < 12 ? 'am' : 'pm'} local time',
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  _buildInfoRow(Icons.person, 'Select manager'),
-                  const SizedBox(height: AppSpacing.sm),
-                  _buildInfoRow(Icons.group, user.team ?? 'No team'),
-                  const SizedBox(height: AppSpacing.lg),
-                  // Priorities
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.info_outline, size: 16, color: AppColors.textMuted),
-                          const SizedBox(width: AppSpacing.xs),
-                          const Text(
-                            'Priorities',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Center(
+                  child: Text(
+                    'No recent activity',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textMuted,
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+        return AppCard(
+          borderRadius: BorderRadius.circular(16),
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Recent Activity',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              ...activities.asMap().entries.map((entry) {
+                final index = entry.key;
+                final activity = entry.value;
+                final userName = activity['actionByName'] as String? ?? 'Unknown';
+                final description = activity['description'] as String? ?? 'Activity';
+                final timestamp = activity['timestamp'];
+                DateTime? activityTime;
+                if (timestamp != null) {
+                  if (timestamp is DateTime) {
+                    activityTime = timestamp;
+                  } else if (timestamp is Timestamp) {
+                    activityTime = timestamp.toDate();
+                  }
+                }
+                final timeAgo = activityTime != null 
+                    ? _formatTimeAgo(activityTime)
+                    : 'Recently';
+                
+                return Column(
+                  children: [
+                    if (index > 0) const Divider(height: 32),
+                    Row(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: AppColors.primarySoft,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
-                        ],
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+                                '$userName $description',
+          style: const TextStyle(
+            fontSize: 14,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                timeAgo,
+                                style: TextStyle(
+                                  fontSize: 12,
+            color: AppColors.textMuted,
+          ),
+        ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _loadRecentAuditLogs(List<TaskModel> teamTasks) async {
+    try {
+      final firebaseService = FirebaseService();
+      final allLogs = <Map<String, dynamic>>[];
+      
+      for (final task in teamTasks.take(10)) {
+        try {
+          final logs = await firebaseService.getAuditLogs(task.id);
+          allLogs.addAll(logs);
+        } catch (e) {
+          continue;
+        }
+      }
+      
+      allLogs.sort((a, b) {
+        final aTime = a['timestamp'];
+        final bTime = b['timestamp'];
+        DateTime? aDate, bDate;
+        
+        if (aTime is DateTime) aDate = aTime;
+        else if (aTime is Timestamp) aDate = aTime.toDate();
+        
+        if (bTime is DateTime) bDate = bTime;
+        else if (bTime is Timestamp) bDate = bTime.toDate();
+        
+        if (aDate == null || bDate == null) return 0;
+        return bDate.compareTo(aDate);
+      });
+      
+      return allLogs.take(5).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  String _formatTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+    
+    if (difference.inMinutes < 1) {
+      return 'Just now';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}d ago';
+    } else {
+      return '${(difference.inDays / 7).floor()}w ago';
+    }
+  }
+
+  Widget _buildTeamMembersList(List<UserModel> members, List<TaskModel> tasks, List<TimesheetEntry> timesheetEntries) {
+    return AppCard(
+      borderRadius: BorderRadius.circular(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Team Members',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          ...members.map((member) {
+            final memberTasks = tasks.where((t) => 
+              t.assignedTo == member.id || t.assignedToUsers.contains(member.id)
+            ).toList();
+            final tasksThisWeek = memberTasks.where((task) {
+              final now = DateTime.now();
+              final weekAgo = now.subtract(const Duration(days: 7));
+              return task.createdAt != null && task.createdAt!.isAfter(weekAgo);
+            }).length;
+            
+            final memberHours = timesheetEntries
+                .where((e) => e.userId == member.id)
+                .fold<double>(0.0, (sum, entry) => sum + entry.hours);
+            
+            return Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySoft,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        member.name.isNotEmpty ? member.name[0].toUpperCase() : 'U',
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      TextButton(
-                        onPressed: () {},
-                        child: const Text('+ Add'),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+        Text(
+                          member.name,
+          style: const TextStyle(
+            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+                        const SizedBox(height: 2),
+                        ShadBadge(
+                          child: Text(
+                            member.role,
+                            style: const TextStyle(fontSize: 11),
+          ),
+        ),
+      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '$tasksThisWeek tasks',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${memberHours.toStringAsFixed(1)}h logged',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     ],
                   ),
                 ],
               ),
-            ),
-          ),
+            );
+          }),
         ],
       ),
     );
   }
 
-  Widget _buildSidebarTab(String label, bool isActive) {
-    return GestureDetector(
-      onTap: () {},
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm,
-          vertical: AppSpacing.xs,
-        ),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: isActive ? AppColors.primary : Colors.transparent,
-              width: 2,
-            ),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-            color: isActive ? AppColors.primary : AppColors.textMuted,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: AppColors.textMuted),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Placeholder tabs
-  Widget _buildOverviewTab(BuildContext context, Team team) {
-    final provider = Provider.of<DashboardProvider>(context, listen: false);
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.xl),
+  Widget _buildTeamHealthSummary(List<TaskModel> tasks, List<TimesheetEntry> timesheetEntries, List<UserModel> members) {
+    final overdueTasks = tasks.where((t) => 
+      t.dueDate.isBefore(DateTime.now()) && t.status != TaskStatus.completed
+    ).length;
+    
+    final now = DateTime.now();
+    final weekAgo = now.subtract(const Duration(days: 7));
+    final weekTimesheetEntries = timesheetEntries.where((e) => 
+      e.date.isAfter(weekAgo)
+    ).toList();
+    
+    final totalHours = weekTimesheetEntries.fold<double>(0.0, (sum, e) => sum + e.hours);
+    final expectedHours = members.length * 40.0;
+    final overtimeHours = totalHours > expectedHours ? totalHours - expectedHours : 0.0;
+    
+    final taskDistribution = <String, int>{};
+    for (final task in tasks) {
+      final assignee = task.assignedTo;
+      if (assignee.isNotEmpty) {
+        taskDistribution[assignee] = (taskDistribution[assignee] ?? 0) + 1;
+      }
+    }
+    
+    final maxTasks = taskDistribution.values.isNotEmpty ? taskDistribution.values.reduce((a, b) => a > b ? a : b) : 0;
+    final minTasks = taskDistribution.values.isNotEmpty ? taskDistribution.values.reduce((a, b) => a < b ? a : b) : 0;
+    final workloadStatus = maxTasks == 0 
+        ? 'No tasks'
+        : (maxTasks - minTasks) <= 2 
+            ? 'Balanced'
+            : 'Unbalanced';
+    
+    return AppCard(
+      borderRadius: BorderRadius.circular(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-            'Team Description',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+        children: [
+          const Text(
+            'Team Health Summary',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: AppSpacing.md),
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => _showEditDialog(context, provider, team),
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceAlt,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Text(
-                  team.description.isEmpty
-                      ? 'Add Team description, information, and wiki'
-                      : team.description,
-                  style: TextStyle(
-                    color: team.description.isEmpty
-                        ? AppColors.textMuted
-                        : AppColors.textPrimary,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          // Team info section
-          Text(
-            'Team Information',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.border),
-            ),
+          _buildHealthBox('Overdue tasks', overdueTasks.toString(), Icons.warning_outlined, AppColors.danger),
+          const SizedBox(height: AppSpacing.md),
+          _buildHealthBox('Overtime hours', '${overtimeHours.toStringAsFixed(1)}h', Icons.access_time, AppColors.warning),
+          const SizedBox(height: AppSpacing.md),
+          _buildHealthBox('Workload distribution', workloadStatus, Icons.pie_chart_outline, 
+            workloadStatus == 'Balanced' ? AppColors.success : AppColors.warning),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHealthBox(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: color),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildInfoRowText('Team Name', team.name),
-                const SizedBox(height: AppSpacing.sm),
-                _buildInfoRowText('Team ID', team.id),
-                const SizedBox(height: AppSpacing.sm),
-                _buildInfoRowText('Created', _formatDate(team.createdAt)),
-                const SizedBox(height: AppSpacing.sm),
-                _buildInfoRowText('Members', '${team.memberIds.length}'),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1036,56 +1679,79 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
     );
   }
 
-  Widget _buildInfoRowText(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            color: AppColors.textMuted,
+  Widget _buildQuickNavigation(BuildContext context) {
+    return AppCard(
+      borderRadius: BorderRadius.circular(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Quick Navigation',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
           ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: AppColors.textPrimary,
+          const SizedBox(height: AppSpacing.md),
+          _buildNavCard(
+            context,
+            'View Tasks',
+            Icons.task_outlined,
+            () => setState(() => _activeTab = TeamTab.team),
           ),
+          const SizedBox(height: AppSpacing.sm),
+          _buildNavCard(
+            context,
+            'Workload',
+            Icons.grid_view,
+            () => setState(() => _activeTab = TeamTab.workload),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _buildNavCard(
+            context,
+            'Timesheet',
+            Icons.access_time,
+            () => setState(() => _activeTab = TeamTab.timesheet),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavCard(BuildContext context, String label, IconData icon, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceAlt,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
         ),
-      ],
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: AppColors.primary),
+            const SizedBox(width: AppSpacing.md),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const Spacer(),
+            Icon(Icons.arrow_forward_ios, size: 14, color: AppColors.textMuted),
+          ],
+        ),
+      ),
     );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
-  }
 
-  Widget _buildAnalyticsTab(BuildContext context) {
-    return const Center(
-      child: Text('Analytics coming soon'),
-    );
-  }
-
-  Widget _buildPrioritiesTab(BuildContext context) {
-    return const Center(
-      child: Text('Priorities coming soon'),
-    );
-  }
-
-  Widget _buildFeedTab(BuildContext context) {
-    return const Center(
-      child: Text('Feed coming soon'),
-    );
-  }
-
-  Widget _buildStandUpTab(BuildContext context) {
-    return const Center(
-      child: Text('StandUp coming soon'),
-    );
-  }
 
   Widget _buildWorkloadTab(BuildContext context) {
     return Consumer<DashboardProvider>(
@@ -1137,11 +1803,14 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
           return _buildBacklogView(context, teamTasks, members);
         }
         
-        return Row(
-          children: [
-            // Main workload area
-                Expanded(
-              child: Column(
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isMobile = ResponsiveUtils.isMobile(context);
+            final isTablet = ResponsiveUtils.isTablet(context);
+            
+            if (isMobile) {
+              // Mobile: Stack vertically
+              return Column(
                 children: [
                   // Top controls
                   _buildWorkloadControls(context),
@@ -1154,18 +1823,53 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                   Expanded(
                     child: _buildWorkloadGrid(context, members, dates, teamTasks, provider),
                   ),
+                  // Bottom task sidebar (collapsible) - no fixed width on mobile
+                  SizedBox(
+                    height: 300,
+                    child: _buildWorkloadTaskSidebar(context, teamTasks, isMobile: true),
+                  ),
                 ],
-              ),
-            ),
-            // Right sidebar for tasks
-            _buildWorkloadTaskSidebar(context, teamTasks),
-          ],
+              );
+            } else {
+              // Desktop/Tablet: Side by side
+              return Row(
+                children: [
+                  // Main workload area
+                  Expanded(
+                    flex: isTablet ? 2 : 3,
+                    child: Column(
+                      children: [
+                        // Top controls
+                        _buildWorkloadControls(context),
+                        // Search bar (if visible)
+                        if (_workloadShowSearch)
+                          _buildWorkloadSearchBar(context),
+                        // Date navigation
+                        _buildWorkloadDateNavigation(context, dates),
+                        // Calendar grid
+                        Expanded(
+                          child: _buildWorkloadGrid(context, members, dates, teamTasks, provider),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Right sidebar for tasks
+                  SizedBox(
+                    width: isTablet ? 280 : 320,
+                    child: _buildWorkloadTaskSidebar(context, teamTasks, isMobile: false),
+                  ),
+                ],
+              );
+            }
+          },
         );
       },
     );
   }
 
   Widget _buildWorkloadControls(BuildContext context) {
+    final isMobile = ResponsiveUtils.isMobile(context);
+    
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -1177,113 +1881,214 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
           ),
         ),
       ),
-      child: Row(
-        children: [
-          _buildWorkloadDropdown('Today', _workloadView, ['Today', '7 days', '14 days', '30 days'], (value) {
-            setState(() => _workloadView = value);
-          }),
-          const SizedBox(width: AppSpacing.sm),
-          _buildWorkloadDropdown('Time Estimates', _workloadTimeEstimate, ['Time Estimates', 'Hours', 'Days'], (value) {
-            setState(() => _workloadTimeEstimate = value);
-          }),
-          const SizedBox(width: AppSpacing.sm),
-          _buildWorkloadDropdown('14 days', _workloadView, ['7 days', '14 days', '30 days'], (value) {
-            setState(() => _workloadView = value);
-          }),
-          const SizedBox(width: AppSpacing.sm),
-          _buildWorkloadDropdown('Daily Scheduled', _workloadScheduleType, ['Daily Scheduled', 'Weekly', 'Monthly'], (value) {
-            setState(() => _workloadScheduleType = value);
-          }),
-          const Spacer(),
-          _buildWorkloadDropdown('Group: Assignee', _workloadGroupBy, ['Assignee', 'Project', 'Status'], (value) {
-            setState(() => _workloadGroupBy = value);
-          }),
-          const SizedBox(width: AppSpacing.sm),
-          AppButton(
-            variant: AppButtonVariant.outline,
-            onPressed: () => _showWorkloadFilterDialog(context),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+      child: isMobile
+          ? Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
               children: [
-                const Icon(Icons.filter_list, size: 16),
-                const SizedBox(width: 4),
-                Text(
-                  'Filter${_workloadPriorityFilter != null || _workloadStatusFilter != null || _workloadProjectFilter != null ? ' (${[_workloadPriorityFilter, _workloadStatusFilter, _workloadProjectFilter].where((f) => f != null).length})' : ''}',
+                _buildWorkloadDropdown('Today', _workloadView, ['Today', '7 days', '14 days', '30 days'], (value) {
+                  setState(() => _workloadView = value);
+                }),
+                _buildWorkloadDropdown('Time Estimates', _workloadTimeEstimate, ['Time Estimates', 'Hours', 'Days'], (value) {
+                  setState(() => _workloadTimeEstimate = value);
+                }),
+                _buildWorkloadDropdown('14 days', _workloadView, ['7 days', '14 days', '30 days'], (value) {
+                  setState(() => _workloadView = value);
+                }),
+                _buildWorkloadDropdown('Daily Scheduled', _workloadScheduleType, ['Daily Scheduled', 'Weekly', 'Monthly'], (value) {
+                  setState(() => _workloadScheduleType = value);
+                }),
+                _buildWorkloadDropdown('Group: Assignee', _workloadGroupBy, ['Assignee', 'Project', 'Status'], (value) {
+                  setState(() => _workloadGroupBy = value);
+                }),
+                AppButton(
+                  variant: AppButtonVariant.outline,
+                  onPressed: () => _showWorkloadFilterDialog(context),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.filter_list, size: 16),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Filter${_workloadPriorityFilter != null || _workloadStatusFilter != null || _workloadProjectFilter != null ? ' (${[_workloadPriorityFilter, _workloadStatusFilter, _workloadProjectFilter].where((f) => f != null).length})' : ''}',
+                      ),
+                    ],
+                  ),
+                ),
+                _workloadShowClosed
+                    ? AppButton(
+                        onPressed: () {
+                          setState(() => _workloadShowClosed = !_workloadShowClosed);
+                        },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.check_circle,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Closed',
+                              style: TextStyle(
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : AppButton(
+                        variant: AppButtonVariant.outline,
+                        onPressed: () {
+                          setState(() => _workloadShowClosed = !_workloadShowClosed);
+                        },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.check_circle,
+                              size: 16,
+                              color: AppColors.primary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Closed',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                IconButton(
+                  icon: Icon(Icons.search, size: 20, color: _workloadShowSearch ? AppColors.primary : AppColors.textMuted),
+                  onPressed: () {
+                    setState(() => _workloadShowSearch = !_workloadShowSearch);
+                  },
+                  tooltip: 'Search',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.settings, size: 20),
+                  onPressed: () => _showWorkloadSettingsDialog(context),
+                  tooltip: 'Customize',
+                ),
+                IconButton(
+                  icon: Icon(Icons.book, size: 20, color: _showBacklog ? AppColors.primary : AppColors.textMuted),
+                  onPressed: () {
+                    setState(() => _showBacklog = !_showBacklog);
+                  },
+                  tooltip: 'Backlog',
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                _buildWorkloadDropdown('Today', _workloadView, ['Today', '7 days', '14 days', '30 days'], (value) {
+                  setState(() => _workloadView = value);
+                }),
+                const SizedBox(width: AppSpacing.sm),
+                _buildWorkloadDropdown('Time Estimates', _workloadTimeEstimate, ['Time Estimates', 'Hours', 'Days'], (value) {
+                  setState(() => _workloadTimeEstimate = value);
+                }),
+                const SizedBox(width: AppSpacing.sm),
+                _buildWorkloadDropdown('14 days', _workloadView, ['7 days', '14 days', '30 days'], (value) {
+                  setState(() => _workloadView = value);
+                }),
+                const SizedBox(width: AppSpacing.sm),
+                _buildWorkloadDropdown('Daily Scheduled', _workloadScheduleType, ['Daily Scheduled', 'Weekly', 'Monthly'], (value) {
+                  setState(() => _workloadScheduleType = value);
+                }),
+                const Spacer(),
+                _buildWorkloadDropdown('Group: Assignee', _workloadGroupBy, ['Assignee', 'Project', 'Status'], (value) {
+                  setState(() => _workloadGroupBy = value);
+                }),
+                const SizedBox(width: AppSpacing.sm),
+                AppButton(
+                  variant: AppButtonVariant.outline,
+                  onPressed: () => _showWorkloadFilterDialog(context),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.filter_list, size: 16),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Filter${_workloadPriorityFilter != null || _workloadStatusFilter != null || _workloadProjectFilter != null ? ' (${[_workloadPriorityFilter, _workloadStatusFilter, _workloadProjectFilter].where((f) => f != null).length})' : ''}',
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                _workloadShowClosed
+                    ? AppButton(
+                        onPressed: () {
+                          setState(() => _workloadShowClosed = !_workloadShowClosed);
+                        },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.check_circle,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Closed',
+                              style: TextStyle(
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : AppButton(
+                        variant: AppButtonVariant.outline,
+                        onPressed: () {
+                          setState(() => _workloadShowClosed = !_workloadShowClosed);
+                        },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.check_circle,
+                              size: 16,
+                              color: AppColors.primary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Closed',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                const SizedBox(width: AppSpacing.sm),
+                IconButton(
+                  icon: Icon(Icons.search, size: 20, color: _workloadShowSearch ? AppColors.primary : AppColors.textMuted),
+                  onPressed: () {
+                    setState(() => _workloadShowSearch = !_workloadShowSearch);
+                  },
+                  tooltip: 'Search',
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                IconButton(
+                  icon: const Icon(Icons.settings, size: 20),
+                  onPressed: () => _showWorkloadSettingsDialog(context),
+                  tooltip: 'Customize',
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                IconButton(
+                  icon: Icon(Icons.book, size: 20, color: _showBacklog ? AppColors.primary : AppColors.textMuted),
+                  onPressed: () {
+                    setState(() => _showBacklog = !_showBacklog);
+                  },
+                  tooltip: 'Backlog',
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          _workloadShowClosed
-              ? AppButton(
-                  onPressed: () {
-                    setState(() => _workloadShowClosed = !_workloadShowClosed);
-                  },
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.check_circle,
-                        size: 16,
-                        color: Colors.white,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Closed',
-                        style: TextStyle(
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : AppButton(
-                  variant: AppButtonVariant.outline,
-                  onPressed: () {
-                    setState(() => _workloadShowClosed = !_workloadShowClosed);
-                  },
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.check_circle,
-                        size: 16,
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Closed',
-                        style: TextStyle(
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-          const SizedBox(width: AppSpacing.sm),
-          IconButton(
-            icon: Icon(Icons.search, size: 20, color: _workloadShowSearch ? AppColors.primary : AppColors.textMuted),
-            onPressed: () {
-              setState(() => _workloadShowSearch = !_workloadShowSearch);
-            },
-            tooltip: 'Search',
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          IconButton(
-            icon: const Icon(Icons.settings, size: 20),
-            onPressed: () => _showWorkloadSettingsDialog(context),
-            tooltip: 'Customize',
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          IconButton(
-            icon: Icon(Icons.book, size: 20, color: _showBacklog ? AppColors.primary : AppColors.textMuted),
-            onPressed: () {
-              setState(() => _showBacklog = !_showBacklog);
-            },
-            tooltip: 'Backlog',
-          ),
-        ],
-      ),
     );
   }
 
@@ -1293,28 +2098,15 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
       value: value,
       options: SelectOption.fromStringList(options),
       selectedOptionBuilder: (context, selectedValue) {
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            if (selectedValue != null) ...[
-              const SizedBox(width: 4),
-              Text(
-                selectedValue,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textMuted,
-                ),
-              ),
-            ],
-          ],
+        // Show only the selected value, or label if no value selected
+        final displayText = selectedValue ?? label;
+        return Text(
+          displayText,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textPrimary,
+          ),
         );
       },
       onChanged: (selectedValue) {
@@ -1695,20 +2487,24 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
     );
   }
 
-  Widget _buildWorkloadTaskSidebar(BuildContext context, List<TaskModel> tasks) {
+  Widget _buildWorkloadTaskSidebar(BuildContext context, List<TaskModel> tasks, {bool isMobile = false}) {
     final unscheduledTasks = tasks.where((t) => t.status != TaskStatus.completed && t.dueDate.isAfter(DateTime.now().add(const Duration(days: 7)))).toList();
     final overdueTasks = tasks.where((t) => t.dueDate.isBefore(DateTime.now()) && t.status != TaskStatus.completed).toList();
     final noEstimateTasks = tasks.where((t) => true).toList(); // Placeholder
     
     return Container(
-      width: 300,
+      width: isMobile ? null : 300,
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(
-          left: BorderSide(
+          left: isMobile ? BorderSide.none : BorderSide(
             color: AppColors.border.withValues(alpha: 0.5),
             width: 1,
           ),
+          top: isMobile ? BorderSide(
+            color: AppColors.border.withValues(alpha: 0.5),
+            width: 1,
+          ) : BorderSide.none,
         ),
       ),
       child: Column(
@@ -1943,9 +2739,856 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
   }
 
   Widget _buildTimesheetTab(BuildContext context) {
-    return const Center(
-      child: Text('Timesheet coming soon'),
+    return Consumer<DashboardProvider>(
+      builder: (context, provider, _) {
+        Team? team;
+        try {
+          team = provider.teams.firstWhere((t) => t.id == widget.teamId);
+        } catch (_) {
+          team = null;
+        }
+        if (team == null) return const SizedBox.shrink();
+
+        final usersById = {
+          for (final user in provider.allUsers) user.id: user,
+        };
+        final members = team.memberIds
+            .map((id) => usersById[id])
+            .whereType<UserModel>()
+            .toList();
+
+        return Column(
+          children: [
+            // Header with date range and actions
+            _buildTimesheetHeader(context, team, provider, members),
+            // Timesheet table
+            Expanded(
+              child: _buildTimesheetTable(context, team, provider, members),
+            ),
+          ],
+        );
+      },
     );
+  }
+
+  Widget _buildTimesheetHeader(
+    BuildContext context,
+    Team team,
+    DashboardProvider provider,
+    List<UserModel> members,
+  ) {
+    final isMobile = ResponsiveUtils.isMobile(context);
+    final isTablet = ResponsiveUtils.isTablet(context);
+    
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? AppSpacing.md : (isTablet ? AppSpacing.lg : AppSpacing.xl),
+        vertical: isMobile ? AppSpacing.md : AppSpacing.lg,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: AppColors.border.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Date range picker with improved ShadCN styling
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => _showTimesheetDateRangePicker(context),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm + 2,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceAlt,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppColors.border.withValues(alpha: 0.5),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.calendar_today_outlined,
+                      size: 16,
+                      color: AppColors.textMuted,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(
+                      _formatDateRange(_timesheetStartDate, _timesheetEndDate),
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Icon(
+                      Icons.keyboard_arrow_down,
+                      size: 18,
+                      color: AppColors.textMuted,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          // Previous week button with ShadCN styling
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                final daysDiff = _timesheetEndDate.difference(_timesheetStartDate).inDays;
+                setState(() {
+                  _timesheetEndDate = _timesheetStartDate.subtract(const Duration(days: 1));
+                  _timesheetStartDate = _timesheetEndDate.subtract(Duration(days: daysDiff));
+                });
+                _loadTimesheetEntries();
+              },
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Icon(
+                  Icons.chevron_left,
+                  size: 20,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          // Next week button with ShadCN styling
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                final daysDiff = _timesheetEndDate.difference(_timesheetStartDate).inDays;
+                setState(() {
+                  _timesheetStartDate = _timesheetEndDate.add(const Duration(days: 1));
+                  _timesheetEndDate = _timesheetStartDate.add(Duration(days: daysDiff));
+                });
+                _loadTimesheetEntries();
+              },
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Icon(
+                  Icons.chevron_right,
+                  size: 20,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimesheetTable(
+    BuildContext context,
+    Team team,
+    DashboardProvider provider,
+    List<UserModel> members,
+  ) {
+    if (_isLoadingTimesheet) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final dates = _generateDateRange(_timesheetStartDate, _timesheetEndDate);
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header row
+            _buildTimesheetHeaderRow(dates),
+            // Member rows
+            ...members.map((member) => _buildTimesheetMemberRow(
+                  context,
+                  member,
+                  dates,
+                  team,
+                )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimesheetHeaderRow(List<DateTime> dates) {
+    final isMobile = ResponsiveUtils.isMobile(context);
+    final isTablet = ResponsiveUtils.isTablet(context);
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceAlt,
+        border: Border(
+          bottom: BorderSide(color: AppColors.border, width: 1),
+        ),
+      ),
+      child: Row(
+        children: [
+          // People column
+          Container(
+            width: isMobile ? 150 : 200,
+            padding: EdgeInsets.all(isMobile ? AppSpacing.sm : AppSpacing.md),
+            decoration: BoxDecoration(
+              border: Border(
+                right: BorderSide(color: AppColors.border, width: 1),
+              ),
+            ),
+            child: const Text(
+              'People',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          // Date columns
+          ...dates.map((date) => Container(
+                width: isMobile ? 90 : (isTablet ? 100 : 120),
+                padding: EdgeInsets.all(isMobile ? AppSpacing.xs : AppSpacing.md),
+                decoration: BoxDecoration(
+                  border: Border(
+                    right: BorderSide(color: AppColors.border, width: 1),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      _getDayName(date.weekday),
+                      style: TextStyle(
+                        fontSize: isMobile ? 10 : 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${date.month}/${date.day}',
+                      style: TextStyle(
+                        fontSize: isMobile ? 11 : 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+          // Total column
+          Container(
+            width: isMobile ? 80 : 100,
+            padding: EdgeInsets.all(isMobile ? AppSpacing.sm : AppSpacing.md),
+            child: const Text(
+              'Total',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimesheetMemberRow(
+    BuildContext context,
+    UserModel member,
+    List<DateTime> dates,
+    Team team,
+  ) {
+    // Filter entries for this member within the visible date range only
+    final visibleDateSet = dates.map((d) => '${d.year}-${d.month}-${d.day}').toSet();
+    final memberEntries = _timesheetEntries.where((e) {
+      if (e.userId != member.id) return false;
+      final entryDateKey = '${e.date.year}-${e.date.month}-${e.date.day}';
+      return visibleDateSet.contains(entryDateKey);
+    }).toList();
+
+    final totalHours = memberEntries.fold<double>(
+      0.0,
+      (sum, entry) => sum + entry.hours,
+    );
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          bottom: BorderSide(color: AppColors.border.withValues(alpha: 0.5), width: 1),
+        ),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = ResponsiveUtils.isMobile(context);
+          
+          return Row(
+            children: [
+              // Member info column
+              Container(
+                width: isMobile ? 150 : 200,
+                padding: EdgeInsets.all(isMobile ? AppSpacing.sm : AppSpacing.md),
+                decoration: BoxDecoration(
+                  border: Border(
+                    right: BorderSide(color: AppColors.border, width: 1),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        // Avatar
+                        Container(
+                          width: isMobile ? 24 : 32,
+                          height: isMobile ? 24 : 32,
+                          decoration: BoxDecoration(
+                            color: AppColors.primarySoft,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              member.name.isNotEmpty
+                                  ? member.name[0].toUpperCase()
+                                  : 'U',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontSize: isMobile ? 12 : 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: isMobile ? AppSpacing.xs : AppSpacing.sm),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                member.name,
+                                style: TextStyle(
+                                  fontSize: isMobile ? 12 : 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                '${totalHours.toStringAsFixed(1)}h',
+                                style: TextStyle(
+                                  fontSize: isMobile ? 10 : 12,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              // Date columns
+              ...dates.map((date) => _buildTimesheetCell(
+                    context,
+                    member,
+                    date,
+                    team,
+                  )),
+              // Total column
+              Container(
+                width: isMobile ? 80 : 100,
+                padding: EdgeInsets.all(isMobile ? AppSpacing.sm : AppSpacing.md),
+                child: Text(
+                  '${totalHours.toStringAsFixed(1)}h',
+                  style: TextStyle(
+                    fontSize: isMobile ? 12 : 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTimesheetCell(
+    BuildContext context,
+    UserModel member,
+    DateTime date,
+    Team team,
+  ) {
+    // Normalize date to start of day for consistent comparison
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    
+    final entry = _timesheetEntries.firstWhere(
+      (e) {
+        // Normalize entry date for comparison
+        final entryDate = DateTime(e.date.year, e.date.month, e.date.day);
+        return e.userId == member.id &&
+            entryDate.year == normalizedDate.year &&
+            entryDate.month == normalizedDate.month &&
+            entryDate.day == normalizedDate.day;
+      },
+      orElse: () => TimesheetEntry(
+        id: '',
+        userId: member.id,
+        userName: member.name,
+        teamId: team.id,
+        date: normalizedDate,
+        hours: 0.0,
+      ),
+    );
+
+    final isEditing = _editingEntryId == entry.id ||
+        (_editingUserId == member.id &&
+            _editingDate != null &&
+            _editingDate!.year == date.year &&
+            _editingDate!.month == date.month &&
+            _editingDate!.day == date.day);
+
+    final isMobile = ResponsiveUtils.isMobile(context);
+    final isTablet = ResponsiveUtils.isTablet(context);
+    
+    return InkWell(
+      onTap: () => _showTimeEntryDialog(context, member, date, team, entry),
+      child: Container(
+        width: isMobile ? 90 : (isTablet ? 100 : 120),
+        padding: EdgeInsets.all(isMobile ? AppSpacing.xs : AppSpacing.md),
+        decoration: BoxDecoration(
+          color: isEditing ? AppColors.primarySoft.withValues(alpha: 0.3) : AppColors.surface,
+          border: Border(
+            right: BorderSide(color: AppColors.border, width: 1),
+          ),
+        ),
+        child: Center(
+          child: Text(
+            entry.hours > 0 ? '${entry.hours.toStringAsFixed(1)}h' : '0h',
+            style: TextStyle(
+              color: entry.hours > 0 ? AppColors.textPrimary : AppColors.textMuted,
+              fontWeight: entry.hours > 0 ? FontWeight.w500 : FontWeight.normal,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showTimeEntryDialog(
+    BuildContext context,
+    UserModel member,
+    DateTime date,
+    Team team,
+    TimesheetEntry? existingEntry,
+  ) async {
+    final hoursController = TextEditingController(
+      text: existingEntry?.hours.toStringAsFixed(2) ?? '0.00',
+    );
+    final descriptionController = TextEditingController(
+      text: existingEntry?.description ?? '',
+    );
+    final taskTitleController = TextEditingController(
+      text: existingEntry?.taskTitle ?? '',
+    );
+    BillableStatus? billableStatus = existingEntry?.billableStatus;
+    final selectedTags = <String>[...?existingEntry?.tags];
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return ShadDialog(
+              title: Text('Log time for ${member.name}'),
+              child: Material(
+                color: Colors.transparent,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: AppSpacing.sm),
+                      // Hours input
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Hours',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          ShadInput(
+                            controller: hoursController,
+                            placeholder: const Text('0.00'),
+                            keyboardType: TextInputType.numberWithOptions(decimal: true),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      // Task/Project input
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Task/Project',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          ShadInput(
+                            controller: taskTitleController,
+                            placeholder: const Text('Enter task or project name...'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      // Description input
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Description',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          ShadInput(
+                            controller: descriptionController,
+                            placeholder: const Text('Enter description...'),
+                            maxLines: 3,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      // Billable Status dropdown
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Billable Status',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          AppSelect<BillableStatus>(
+                            value: billableStatus,
+                            options: BillableStatus.values.map((status) {
+                              return SelectOption<BillableStatus>(
+                                value: status,
+                                label: status.name,
+                              );
+                            }).toList(),
+                            selectedOptionBuilder: (context, value) {
+                              return Text(value?.name ?? 'Select status...');
+                            },
+                            onChanged: (value) {
+                              setState(() {
+                                billableStatus = value;
+                              });
+                            },
+                            placeholder: 'Select billable status...',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                AppButton(
+                  label: 'Cancel',
+                  variant: AppButtonVariant.outline,
+                  onPressed: () => Navigator.pop(context),
+                ),
+                if (existingEntry != null && existingEntry.id.isNotEmpty)
+                  AppButton(
+                    label: 'Delete',
+                    variant: AppButtonVariant.destructive,
+                    onPressed: () {
+                      Navigator.pop(context, {'action': 'delete'});
+                    },
+                  ),
+                AppButton(
+                  label: 'Save',
+                  variant: AppButtonVariant.primary,
+                  onPressed: () {
+                    final hours = double.tryParse(hoursController.text) ?? 0.0;
+                    Navigator.pop(context, {
+                      'action': 'save',
+                      'hours': hours,
+                      'description': descriptionController.text,
+                      'taskTitle': taskTitleController.text,
+                      'billableStatus': billableStatus ?? BillableStatus.notSet,
+                      'tags': selectedTags,
+                    });
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null) {
+      final firebaseService = FirebaseService();
+      if (result['action'] == 'delete' && existingEntry != null && existingEntry.id.isNotEmpty) {
+        await firebaseService.deleteTimesheetEntry(existingEntry.id);
+        // Small delay to ensure Firebase has processed the delete
+        await Future.delayed(const Duration(milliseconds: 300));
+        if (mounted) {
+          _loadTimesheetEntries();
+        }
+      } else if (result['action'] == 'save') {
+        try {
+          final hours = result['hours'] as double;
+          // Normalize date to start of day (00:00:00) to ensure consistent comparison
+          final normalizedDate = DateTime(date.year, date.month, date.day);
+          
+          if (hours > 0) {
+            // Check if an entry already exists for this user/date/team combination
+            final existingEntryInDb = await firebaseService.getTimesheetEntryByDate(
+              userId: member.id,
+              teamId: team.id,
+              date: normalizedDate,
+            );
+
+            final entry = TimesheetEntry(
+              id: existingEntryInDb?.id ?? existingEntry?.id ?? '',
+              userId: member.id,
+              userName: member.name,
+              teamId: team.id,
+              date: normalizedDate,
+              hours: hours,
+              taskId: result['taskId'] as String?,
+              taskTitle: result['taskTitle'] as String?,
+              description: result['description'] as String?,
+              billableStatus: result['billableStatus'] as BillableStatus,
+              tags: (result['tags'] as List<dynamic>?)?.cast<String>() ?? [],
+            );
+
+            if (existingEntryInDb != null && existingEntryInDb.id.isNotEmpty) {
+              // Update existing entry
+              await firebaseService.updateTimesheetEntry(entry);
+            } else {
+              // Create new entry
+              await firebaseService.addTimesheetEntry(entry);
+            }
+            
+            // Small delay to ensure Firebase has processed the write
+            await Future.delayed(const Duration(milliseconds: 500));
+            
+            if (mounted) {
+              await _loadTimesheetEntries();
+            }
+          } else {
+            // If hours is 0, delete the entry if it exists
+            if (existingEntry != null && existingEntry.id.isNotEmpty) {
+              await firebaseService.deleteTimesheetEntry(existingEntry.id);
+              await Future.delayed(const Duration(milliseconds: 500));
+              if (mounted) {
+                await _loadTimesheetEntries();
+              }
+            }
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error saving timesheet entry: $e')),
+            );
+          }
+        }
+      }
+    }
+  }
+
+  List<DateTime> _generateDateRange(DateTime start, DateTime end) {
+    final dates = <DateTime>[];
+    var current = DateTime(start.year, start.month, start.day);
+    final endDate = DateTime(end.year, end.month, end.day);
+    while (!current.isAfter(endDate)) {
+      dates.add(current);
+      current = current.add(const Duration(days: 1));
+    }
+    return dates;
+  }
+
+  String _formatDateRange(DateTime start, DateTime end) {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[start.month - 1]} ${start.day} - ${months[end.month - 1]} ${end.day}';
+  }
+
+  Future<void> _showTimesheetDateRangePicker(BuildContext context) async {
+    final DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDateRange: DateTimeRange(
+        start: _timesheetStartDate,
+        end: _timesheetEndDate,
+      ),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: AppColors.textPrimary,
+              secondary: AppColors.primarySoft,
+              onSecondary: AppColors.primary,
+            ),
+            dialogTheme: DialogThemeData(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              backgroundColor: Colors.white,
+              elevation: 8,
+            ),
+            textTheme: Theme.of(context).textTheme.copyWith(
+              bodyLarge: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+              bodyMedium: TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 12,
+              ),
+              titleMedium: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            inputDecorationTheme: InputDecorationTheme(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color: AppColors.border.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color: AppColors.border.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color: AppColors.primary,
+                  width: 2,
+                ),
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        _timesheetStartDate = picked.start;
+        _timesheetEndDate = picked.end;
+      });
+      _loadTimesheetEntries();
+    }
+  }
+
+  Future<void> _loadTimesheetEntries() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoadingTimesheet = true;
+    });
+
+    try {
+      final firebaseService = FirebaseService();
+      // Normalize dates to start/end of day for proper range query
+      final startDate = DateTime(_timesheetStartDate.year, _timesheetStartDate.month, _timesheetStartDate.day);
+      final endDate = DateTime(_timesheetEndDate.year, _timesheetEndDate.month, _timesheetEndDate.day, 23, 59, 59);
+      
+      final entries = await firebaseService.fetchTimesheetEntries(
+        teamId: widget.teamId,
+        startDate: startDate,
+        endDate: endDate,
+      );
+      
+      // Deduplicate entries: if multiple entries exist for same user/date, keep the most recent one
+      final deduplicatedEntries = <String, TimesheetEntry>{};
+      for (final entry in entries) {
+        final key = '${entry.userId}_${entry.date.year}_${entry.date.month}_${entry.date.day}';
+        if (!deduplicatedEntries.containsKey(key)) {
+          deduplicatedEntries[key] = entry;
+        } else {
+          // Keep the entry with the most recent updatedAt or createdAt
+          final existing = deduplicatedEntries[key]!;
+          final existingTime = existing.updatedAt ?? existing.createdAt ?? DateTime(1970);
+          final newTime = entry.updatedAt ?? entry.createdAt ?? DateTime(1970);
+          if (newTime.isAfter(existingTime)) {
+            deduplicatedEntries[key] = entry;
+          }
+        }
+      }
+      
+      if (mounted) {
+        setState(() {
+          _timesheetEntries = deduplicatedEntries.values.toList();
+          _isLoadingTimesheet = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingTimesheet = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading timesheet: $e')),
+        );
+      }
+    }
   }
 
   List<UserModel> _filterMembers(List<UserModel> members) {
@@ -1965,11 +3608,6 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
       filtered = filtered.where((user) => user.status == _statusFilter).toList();
     }
 
-    // Account type filter
-    if (_accountTypeFilter != 'All') {
-      filtered = filtered.where((user) => user.accountType == _accountTypeFilter).toList();
-    }
-
     // Sort
     filtered.sort((a, b) {
       switch (_sortBy) {
@@ -1979,8 +3617,6 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
           return a.role.compareTo(b.role);
         case 'Status':
           return a.status.compareTo(b.status);
-        case 'Join Date':
-          return b.joinDate.compareTo(a.joinDate);
         default:
           return 0;
       }
@@ -2019,19 +3655,24 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
       BuildContext context, DashboardProvider provider, Team team) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => ShadDialog(
         title: const Text('Delete team'),
-        content: Text('Are you sure you want to delete ${team.name}?'),
+        child: Text(
+          'Are you sure you want to delete ${team.name}?',
+          style: const TextStyle(
+            fontSize: 14,
+            color: AppColors.textPrimary,
+          ),
+        ),
         actions: [
-          TextButton(
+          AppButton(
+            variant: AppButtonVariant.outline,
             onPressed: () => Navigator.of(context).pop(false),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
+          AppButton(
+            variant: AppButtonVariant.destructive,
             onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.danger,
-            ),
             child: const Text('Delete'),
           ),
         ],
@@ -2205,10 +3846,7 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                   name: 'Unassigned',
                   email: '',
                   role: '',
-                  department: 'General',
                   status: 'Active',
-                  accountType: 'Employee',
-                  joinDate: DateTime.now(),
                 ),
               );
               

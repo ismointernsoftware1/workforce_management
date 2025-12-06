@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../constants/app_colors.dart';
 import '../../../constants/app_spacing.dart';
+import '../../../widgets/shadcn/app_button.dart';
+import '../../../widgets/shadcn/app_card.dart';
 import '../../form_builder/controllers/form_builder_controller.dart';
 import '../../form_builder/models/form_models.dart';
 
@@ -17,52 +20,66 @@ class PropertiesPanel extends StatelessWidget {
 
     return Container(
       width: 320,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
+      color: const Color(0xFFF9FAFB), // Soft grey background
+      child: AppCard(
+        padding: EdgeInsets.zero,
+        margin: EdgeInsets.zero,
+        backgroundColor: AppColors.surface,
+        borderRadius: BorderRadius.zero,
+        showShadow: false,
         border: Border(
-          left: BorderSide(color: AppColors.border.withValues(alpha: 0.5)),
+          left: BorderSide(
+            color: AppColors.border.withValues(alpha: 0.5),
+            width: 1,
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Text(
-              'Properties',
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-                color: AppColors.textPrimary,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Text(
+                'Properties',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: AppColors.textPrimary,
+                ),
               ),
             ),
-          ),
-          const Divider(height: 1),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: field != null
-                    ? _FieldProperties(
-                        key: ValueKey(field.id), // Force rebuild when field changes
-                        controller: controller,
-                        field: field,
-                      )
-                    : section != null
-                        ? _SectionProperties(
-                            controller: controller,
-                            section: section,
-                          )
-                        : const Center(
-                            child: Text(
-                              'Select a field or section',
-                              style: TextStyle(color: AppColors.textMuted),
+            const Divider(height: 1),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: field != null
+                      ? _FieldProperties(
+                          key: ValueKey(field.id), // Force rebuild when field changes
+                          controller: controller,
+                          field: field,
+                        )
+                      : section != null
+                          ? _SectionProperties(
+                              controller: controller,
+                              section: section,
+                            )
+                          : Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(AppSpacing.lg),
+                                child: Text(
+                                  'Select a field or section',
+                                  style: TextStyle(
+                                    color: AppColors.textMuted,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -149,7 +166,7 @@ class _FieldPropertiesState extends State<_FieldProperties> {
         children: [
           _LabeledField(
             label: 'Label',
-            child: TextField(
+            child: ShadInput(
               controller: _labelCtrl,
               onChanged: (v) =>
                   widget.controller.updateField(widget.field, (f) {
@@ -159,7 +176,7 @@ class _FieldPropertiesState extends State<_FieldProperties> {
           ),
           _LabeledField(
             label: 'Placeholder',
-            child: TextField(
+            child: ShadInput(
               controller: _placeholderCtrl,
               onChanged: (v) =>
                   widget.controller.updateField(widget.field, (f) {
@@ -167,24 +184,34 @@ class _FieldPropertiesState extends State<_FieldProperties> {
               }),
             ),
           ),
-          Row(
-            children: [
-              const Text('Required'),
-              const Spacer(),
-              Switch(
-                value: _required,
-                onChanged: (v) {
-                  setState(() => _required = v);
-                  widget.controller.updateField(widget.field, (f) {
-                    f.required = v;
-                  });
-                },
-              ),
-            ],
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+            child: Row(
+              children: [
+                Text(
+                  'Required',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const Spacer(),
+                ShadSwitch(
+                  value: _required,
+                  onChanged: (v) {
+                    setState(() => _required = v);
+                    widget.controller.updateField(widget.field, (f) {
+                      f.required = v;
+                    });
+                  },
+                ),
+              ],
+            ),
           ),
           _LabeledField(
             label: 'Help text',
-            child: TextField(
+            child: ShadInput(
               controller: _helpCtrl,
               minLines: 2,
               maxLines: 3,
@@ -214,21 +241,21 @@ class _FieldPropertiesState extends State<_FieldProperties> {
                   margin: const EdgeInsets.only(bottom: AppSpacing.xs),
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.sm,
-                    vertical: AppSpacing.sm,
+                    vertical: AppSpacing.xs,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceAlt,
-                    borderRadius: BorderRadius.circular(8),
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(6),
                     border: Border.all(
-                        color: AppColors.border.withValues(alpha: 0.6)),
+                        color: AppColors.border.withValues(alpha: 0.5)),
                   ),
                   child: Row(
                     children: [
                       const Icon(Icons.drag_indicator,
-                          size: 18, color: AppColors.textMuted),
+                          size: 16, color: AppColors.textMuted),
                       const SizedBox(width: AppSpacing.xs),
                       Expanded(
-                        child: TextField(
+                        child: ShadInput(
                           controller: TextEditingController(text: option)
                             ..selection = TextSelection.fromPosition(
                               TextPosition(offset: option.length),
@@ -249,6 +276,7 @@ class _FieldPropertiesState extends State<_FieldProperties> {
                           },
                         ),
                       ),
+                      const SizedBox(width: AppSpacing.xs),
                       IconButton(
                         onPressed: () {
                           widget.controller.updateField(widget.field, (f) {
@@ -256,7 +284,9 @@ class _FieldPropertiesState extends State<_FieldProperties> {
                           });
                         },
                         icon: const Icon(Icons.close,
-                            size: 18, color: AppColors.danger),
+                            size: 16, color: AppColors.danger),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                       ),
                     ],
                   ),
@@ -264,26 +294,28 @@ class _FieldPropertiesState extends State<_FieldProperties> {
               },
             ),
             const SizedBox(height: AppSpacing.sm),
-            OutlinedButton.icon(
+            AppButton(
+              variant: AppButtonVariant.outline,
+              icon: Icons.add,
+              label: 'Add option',
               onPressed: () {
                 widget.controller.updateField(widget.field, (f) {
                   f.options.add('Option ${f.options.length + 1}');
                 });
               },
-              icon: const Icon(Icons.add),
-              label: const Text('Add option'),
             ),
           ],
           const SizedBox(height: AppSpacing.lg),
-          OutlinedButton.icon(
+          AppButton(
+            variant: AppButtonVariant.destructive,
+            icon: Icons.delete_outline,
+            label: 'Delete field',
             onPressed: () {
               final sectionId = widget.controller.selectedSection?.id;
               if (sectionId != null) {
                 widget.controller.deleteField(sectionId, widget.field.id);
               }
             },
-            icon: const Icon(Icons.delete_outline, color: AppColors.danger),
-            label: const Text('Delete field'),
           ),
         ],
       ),
@@ -303,16 +335,17 @@ class _SectionProperties extends StatelessWidget {
       children: [
         _LabeledField(
           label: 'Section label',
-          child: TextField(
+          child: ShadInput(
             controller: TextEditingController(text: section.title),
             onSubmitted: (v) => controller.updateSectionTitle(section.id, v),
           ),
         ),
         const SizedBox(height: AppSpacing.md),
-        OutlinedButton.icon(
+        AppButton(
+          variant: AppButtonVariant.destructive,
+          icon: Icons.delete_outline,
+          label: 'Delete section',
           onPressed: () => controller.deleteSection(section.id),
-          icon: const Icon(Icons.delete_outline, color: AppColors.danger),
-          label: const Text('Delete section'),
         ),
       ],
     );
@@ -334,7 +367,8 @@ class _LabeledField extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
               color: AppColors.textPrimary,
             ),
           ),

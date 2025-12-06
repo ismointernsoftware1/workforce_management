@@ -47,7 +47,6 @@ class AuthService {
     required String password,
     required String name,
     String? role,
-    String? department,
   }) async {
     try {
       final credential = await _auth.createUserWithEmailAndPassword(
@@ -63,7 +62,6 @@ class AuthService {
         credential.user!,
         name: name,
         role: role ?? 'Employee',
-        department: department ?? 'General',
       );
 
       return credential;
@@ -92,7 +90,6 @@ class AuthService {
           user,
           name: displayName,
           role: 'Employee',
-          department: 'General',
         );
       } else {
         // Update email if changed
@@ -112,7 +109,6 @@ class AuthService {
     User user, {
     required String name,
     required String role,
-    required String department,
   }) async {
     try {
       final userModel = UserModel(
@@ -120,9 +116,7 @@ class AuthService {
         name: name,
         email: user.email ?? '',
         role: role,
-        department: department,
         status: 'Active',
-        joinDate: DateTime.now(),
       );
 
       await _firestore.collection('users').doc(user.uid).set(userModel.toMap());

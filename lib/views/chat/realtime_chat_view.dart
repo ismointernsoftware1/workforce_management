@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
-import '../../components/shadcn/shadcn.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
+
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../widgets/shadcn/shadcn_widgets.dart';
@@ -341,15 +342,16 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
           // Main chat area
           Expanded(
             child: Container(
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                // Rounded only on the outer right side so it joins the
-                // sidebar without any visible gap.
-                borderRadius: BorderRadius.only(
-                  topRight: Radius.circular(8),
-                  bottomRight: Radius.circular(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
                 ),
-                border: Border.fromBorderSide(BorderSide(color: AppColors.border)),
+                border: Border.all(
+                  color: AppColors.border.withValues(alpha: 0.3),
+                  width: 1,
+                ),
               ),
               child: _buildChatView(context, isMobile),
             ),
@@ -366,14 +368,15 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
     return Container(
           height: isMobile ? constraints.maxHeight : null,
       decoration: BoxDecoration(
-        color: AppColors.surface,
-            // Rounded only on the outer left side so it sits flush against
-            // the conversation panel with no gap in between.
+        color: Colors.white,
             borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(8),
-              bottomLeft: Radius.circular(8),
+              topLeft: Radius.circular(16),
+              bottomLeft: Radius.circular(16),
             ),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: AppColors.border.withValues(alpha: 0.3),
+          width: 1,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
@@ -386,7 +389,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
               padding: const EdgeInsets.only(
                 left: AppSpacing.xs,
                 right: AppSpacing.xs,
-                bottom: AppSpacing.sm,
+                bottom: AppSpacing.md,
               ),
               child: Row(
                 children: [
@@ -399,18 +402,22 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: isMobile ? Colors.transparent : AppColors.surfaceAlt,
+                          color: const Color(0xFFF9FAFB),
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: AppColors.border.withValues(alpha: 0.3),
+                            width: 1,
+                          ),
                         ),
-                        child: Icon(
+                        child: const Icon(
                           Icons.menu,
-                          size: 24,
+                          size: 20,
                           color: AppColors.textPrimary,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.sm),
+                  const SizedBox(width: AppSpacing.md),
                   // Chat title
                   Expanded(
                     child: Text(
@@ -418,12 +425,13 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                       style: TextStyle(
                         fontSize: ResponsiveUtils.getFontSize(
                           context,
-                          mobile: 18,
-                          tablet: 20,
-                          desktop: 22,
+                          mobile: 20,
+                          tablet: 22,
+                          desktop: 24,
                         ),
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary,
+                        letterSpacing: -0.3,
                       ),
                     ),
                   ),
@@ -431,8 +439,15 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
               ),
             ),
             // Search bar
-            SizedBox(
-              width: double.infinity,
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.border.withValues(alpha: 0.5),
+                  width: 1,
+                ),
+              ),
               child: AppSearchInput(
                 controller: _searchController,
                 placeholder: 'Search users...',
@@ -483,28 +498,6 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                 },
               ),
               const SizedBox(height: AppSpacing.sm),
-              // Create Group button (only show in Group tab)
-              Consumer<RealtimeChatProvider>(
-                builder: (context, provider, _) {
-                  if (provider.activeTab == ChatTab.explore) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: AppButton(
-                        onPressed: () => _showCreateGroupDialog(context, provider),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.group_add, size: 18),
-                            SizedBox(width: 4),
-                            Text('Create Group'),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
               // Conversations list
               Expanded(
                 child: Consumer<RealtimeChatProvider>(
@@ -574,7 +567,30 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                   },
                 ),
               ),
-              // Action buttons removed (\"New conversation\" / \"Create Group\") per design request
+              // Create Group button at bottom (only show in Group tab)
+              Consumer<RealtimeChatProvider>(
+                builder: (context, provider, _) {
+                  if (provider.activeTab == ChatTab.explore) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: AppSpacing.sm),
+                      child: AppButton(
+                        onPressed: () => _showCreateGroupDialog(context, provider),
+                        fullWidth: true,
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.group_add, size: 18),
+                            SizedBox(width: AppSpacing.xs),
+                            Text('Create Group'),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
             ],
           ],
         ),
@@ -708,12 +724,15 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
         if (selectedConversation == null) {
           return Container(
                     decoration: BoxDecoration(
-                      color: AppColors.surface,
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border),
+                      border: Border.all(
+                        color: AppColors.border.withValues(alpha: 0.3),
+                        width: 1,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
+                          color: Colors.black.withValues(alpha: 0.04),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -811,9 +830,12 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
         return Container(
                   height: double.infinity,
                   decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(
+                      color: AppColors.border.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -824,12 +846,16 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                             // Header bar with conversation info
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.md,
-                                vertical: AppSpacing.sm,
+                                horizontal: AppSpacing.lg,
+                                vertical: AppSpacing.md + 2,
                               ),
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
                                 border: Border(
-                                  bottom: BorderSide(color: AppColors.border),
+                                  bottom: BorderSide(
+                                    color: AppColors.border.withValues(alpha: 0.3),
+                                    width: 1,
+                                  ),
                                 ),
                               ),
                               child: Row(
@@ -905,7 +931,10 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                     ),
                                   ),
                                   // Silent / notifications toggle button
-                                  IconButton(
+                                  ShadIconButton.ghost(
+                                    onPressed: () {
+                                      _toggleMuteConversation(provider, selectedConversation.id);
+                                    },
                                     icon: Icon(
                                       _mutedConversations[selectedConversation.id] == true
                                           ? Icons.notifications_off_outlined
@@ -915,16 +944,11 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                           ? AppColors.textMuted
                                           : AppColors.textPrimary,
                                     ),
-                                    tooltip: _mutedConversations[selectedConversation.id] == true
-                                        ? 'Unmute notifications'
-                                        : 'Mute notifications',
-                                    onPressed: () {
-                                      _toggleMuteConversation(provider, selectedConversation.id);
-                                    },
                                   ),
+                                  const SizedBox(width: AppSpacing.xs),
                                   // Menu button
                                   PopupMenuButton<String>(
-                                    icon: const Icon(Icons.more_vert, size: 20, color: AppColors.textPrimary),
+                                    icon: const Icon(Icons.more_vert, size: 20, color: AppColors.textMuted),
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(),
                                     shape: RoundedRectangleBorder(
@@ -1095,25 +1119,25 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                   // Debug logging
                                   debugPrint('StreamBuilder state: connectionState=${snapshot.connectionState}, hasData=${snapshot.hasData}, hasError=${snapshot.hasError}, dataLength=${snapshot.data?.length ?? 0}');
 
-                                  // Show loading ONLY if we're actively waiting AND don't have data yet
-                                  // The stream emits empty list immediately, then updates with real data
+                                  // Show loading ONLY if we're actively waiting for the first data
+                                  // The onValue listener fires immediately with current data, so this should be brief
                                   if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-                                    // Still waiting for first data - show loading briefly
                                     return const Center(
                                       child: CircularProgressIndicator(),
                                     );
                                   }
                                   
                                   // If we have data (even if empty), proceed to show it
-                                  if (!snapshot.hasData && snapshot.connectionState != ConnectionState.done) {
-                                    // Still waiting
+                                  // The stream emits data immediately via onValue listener
+                                  if (!snapshot.hasData) {
+                                    // If no data after waiting, show empty state
                                     return const Center(
                                       child: CircularProgressIndicator(),
                                     );
                                   }
                                   
-                                  // At this point, we have data (even if empty) or are in active/done state
-                                  // Proceed to show the data
+                                  // At this point, we have data (even if empty)
+                                  // Proceed to show the messages
 
                                   if (snapshot.hasError) {
                                     debugPrint('StreamBuilder error: ${snapshot.error}');
@@ -1278,86 +1302,32 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                             ),
                             // Input area
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.md,
-                                vertical: AppSpacing.sm,
-                              ),
-                              decoration: const BoxDecoration(
+                              padding: const EdgeInsets.all(AppSpacing.md),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
                                 border: Border(
-                                  top: BorderSide(color: AppColors.border),
+                                  top: BorderSide(
+                                    color: AppColors.border.withValues(alpha: 0.3),
+                                    width: 1,
+                                  ),
                                 ),
                               ),
                               child: Row(
                                 children: [
                                   Expanded(
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: AppColors.surface,
-                                        borderRadius: BorderRadius.circular(24),
-                                        border: Border.all(
-                                          color: AppColors.border.withValues(alpha: 0.5),
-                                          width: 1,
-                                        ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(alpha: 0.02),
-                                            blurRadius: 4,
-                                            offset: const Offset(0, 1),
-                                          ),
-                                        ],
-                                      ),
-                                      child: TextField(
-                                        controller: _messageController,
-                                        decoration: const InputDecoration(
-                                          hintText: 'Type a message...',
-                                          border: InputBorder.none,
-                                          contentPadding: EdgeInsets.symmetric(
-                                            horizontal: 20,
-                                            vertical: 12,
-                                          ),
-                                          hintStyle: TextStyle(
-                                            color: AppColors.textMuted,
-                                            fontSize: 15,
-                                          ),
-                                        ),
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          color: AppColors.textPrimary,
-                                          height: 1.4,
-                                        ),
-                                        maxLines: null,
-                                        textInputAction: TextInputAction.send,
-                                        onSubmitted: (_) => _sendMessage(provider),
-                                      ),
+                                    child: ShadInput(
+                                      controller: _messageController,
+                                      placeholder: const Text('Type a message...'),
+                                      onSubmitted: (_) => _sendMessage(provider),
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary,
-                                      borderRadius: BorderRadius.circular(24),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: AppColors.primary.withValues(alpha: 0.3),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Material(
-                                      color: Colors.transparent,
-                                      child: InkWell(
-                                        onTap: () => _sendMessage(provider),
-                                        borderRadius: BorderRadius.circular(24),
-                                        child: Container(
-                                          padding: const EdgeInsets.all(12),
-                                          child: const Icon(
-                                            Icons.send_rounded,
-                                            size: 20,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  ShadButton(
+                                    onPressed: () => _sendMessage(provider),
+                                    child: const Icon(
+                                      Icons.send_rounded,
+                                      size: 18,
+                                      color: Colors.white,
                                     ),
                                   ),
                                 ],
@@ -1409,6 +1379,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
 
       showDialog(
         context: context,
+        barrierColor: Colors.black54,
         builder: (context) => CreateGroupDialog(
           users: _allUsers,
           provider: provider,
@@ -1815,34 +1786,41 @@ class RealtimeConversationTile extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm,
-            vertical: AppSpacing.xs,
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
           ),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primarySoft : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
+            color: isSelected ? const Color(0xFFF0F9FF) : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: isSelected
+                ? Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.2),
+                    width: 1,
+                  )
+                : null,
           ),
           child: Row(
             children: [
               CircleAvatar(
-                radius: 16,
-                backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+                radius: 20,
+                backgroundColor: AppColors.primarySoft,
                 child: Text(
                   displayName.isNotEmpty
                       ? displayName.substring(0, 2).toUpperCase()
                       : '--',
                   style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
                   ),
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1851,13 +1829,14 @@ class RealtimeConversationTile extends StatelessWidget {
                     Text(
                       displayName,
                       style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14,
+                        color: AppColors.textPrimary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     if (isTyping)
                       Row(
                         mainAxisSize: MainAxisSize.min,
@@ -1868,9 +1847,9 @@ class RealtimeConversationTile extends StatelessWidget {
                     else
                     Text(
                       conversation.lastMessage,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textMuted,
-                        fontSize: 11,
+                        fontSize: 13,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -2225,17 +2204,23 @@ class _TabButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(
-          horizontal: 8,
-          vertical: 6,
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm - 2,
         ),
         decoration: BoxDecoration(
           color: isActive
-              ? AppColors.primarySoft
+              ? const Color(0xFFF0F9FF)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(8),
+          border: isActive
+              ? Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.2),
+                  width: 1,
+                )
+              : null,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -2243,17 +2228,17 @@ class _TabButton extends StatelessWidget {
           children: [
             Icon(
               icon,
-              size: 14,
+              size: 16,
               color: isActive ? AppColors.primary : AppColors.textMuted,
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 6),
             Flexible(
               child: Text(
                 label,
                 style: TextStyle(
                   color: isActive ? AppColors.primary : AppColors.textMuted,
-                  fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                  fontSize: 12,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                  fontSize: 14,
                 ),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
-import '../../components/shadcn/shadcn.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/expense_model.dart';
@@ -79,9 +79,9 @@ class _ExpensesViewState extends State<ExpensesView> {
                         width: double.infinity,
                         child: AppButton(
                           onPressed: () => _openAddExpense(context),
-                          variant: ShadButtonVariant.default_,
-                          size: ShadButtonSize.md,
-                          icon: const Icon(Icons.add, size: 18),
+                          variant: AppButtonVariant.primary,
+                          size: AppButtonSize.medium,
+                          icon: Icons.add,
                           child: const Text('New Expense'),
                         ),
                       ),
@@ -97,9 +97,9 @@ class _ExpensesViewState extends State<ExpensesView> {
                       const SizedBox(width: AppSpacing.md),
                       AppButton(
                         onPressed: () => _openAddExpense(context),
-                        variant: ShadButtonVariant.default_,
-                        size: ShadButtonSize.md,
-                        icon: const Icon(Icons.add, size: 20),
+                        variant: AppButtonVariant.primary,
+                        size: AppButtonSize.medium,
+                        icon: Icons.add,
                         child: const Text('New Expense'),
                       ),
                     ],

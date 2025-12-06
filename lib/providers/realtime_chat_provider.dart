@@ -35,12 +35,9 @@ class RealtimeChatProvider extends ChangeNotifier {
   String? get selectedConversationId => _selectedConversationId;
   RealtimeChatConversation? get selectedConversation => _selectedConversation;
   Stream<List<RealtimeChatMessage>> get messagesStream {
-    if (_messagesStream == null) {
-      // Return a stream that emits empty list immediately
-      // This prevents StreamBuilder from being stuck in waiting state
-      return Stream<List<RealtimeChatMessage>>.value(const <RealtimeChatMessage>[]);
-    }
-    return _messagesStream!;
+    // Return the actual stream, or an empty stream if not set
+    // The Firebase listener will fire immediately when StreamBuilder subscribes
+    return _messagesStream ?? Stream<List<RealtimeChatMessage>>.value(const <RealtimeChatMessage>[]);
   }
 
   String get currentUserId => _controller.currentUserId;
@@ -305,8 +302,8 @@ class RealtimeChatProvider extends ChangeNotifier {
     // Cancel previous messages stream subscription if exists
     _messagesStreamSubscription?.cancel();
     
-    // Setup messages stream - create new stream for this conversation BEFORE setting to null
-    // This ensures smooth transition without waiting state
+    // Setup messages stream - create new stream for this conversation
+    // The stream will fire immediately with current data via onValue listener
     final newMessagesStream = _controller.getMessagesStream(conversationId);
     _messagesStream = newMessagesStream;
     
@@ -338,11 +335,6 @@ class RealtimeChatProvider extends ChangeNotifier {
     _controller.markAsRead(conversationId);
 
     notifyListeners();
-    
-    // Force a rebuild after a short delay to ensure stream is connected
-    Future.delayed(const Duration(milliseconds: 100), () {
-      notifyListeners();
-    });
   }
 
   // Set typing status

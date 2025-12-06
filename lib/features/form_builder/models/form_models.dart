@@ -108,6 +108,13 @@ class FormSectionModel {
   }
 }
 
+/// Form type enum to distinguish between different form categories
+enum FormType {
+  task,
+  expense,
+  general, // For backward compatibility
+}
+
 /// Root model representing a single dynamic form document.
 class FormModel {
   FormModel({
@@ -115,6 +122,7 @@ class FormModel {
     required this.name,
     required this.createdAt,
     required this.updatedAt,
+    this.formType = FormType.general,
     List<FormSectionModel>? sections,
   }) : sections = sections ?? <FormSectionModel>[];
 
@@ -122,11 +130,13 @@ class FormModel {
   String name;
   DateTime? createdAt;
   DateTime? updatedAt;
+  FormType formType;
   List<FormSectionModel> sections;
 
   Map<String, dynamic> toMapForFirestore() {
     return <String, dynamic>{
       'name': name,
+      'formType': formType.name,
       'createdAt': createdAt ?? FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
       'sections': sections.map((s) => s.toMap()).toList(),
@@ -135,11 +145,23 @@ class FormModel {
 
   factory FormModel.fromSnapshot(DocumentSnapshot<Map<String, dynamic>> snap) {
     final data = snap.data() ?? <String, dynamic>{};
+    final formTypeStr = data['formType'] as String? ?? 'general';
+    FormType formType;
+    try {
+      formType = FormType.values.firstWhere(
+        (e) => e.name == formTypeStr,
+        orElse: () => FormType.general,
+      );
+    } catch (_) {
+      formType = FormType.general;
+    }
+    
     return FormModel(
       id: snap.id,
       name: data['name'] as String? ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
+      formType: formType,
       sections: (data['sections'] as List<dynamic>? ?? <dynamic>[])
           .map((e) => FormSectionModel.fromMap(e as Map<String, dynamic>))
           .toList(),

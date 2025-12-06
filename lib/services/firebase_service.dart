@@ -11,6 +11,7 @@ import '../models/team_member.dart';
 import '../models/expense_model.dart';
 import '../models/expense_category.dart';
 import '../models/reimbursement_model.dart';
+import '../models/timesheet_entry.dart';
 
 class FirebaseService {
   FirebaseService({FirebaseFirestore? firestore})
@@ -35,6 +36,8 @@ class FirebaseService {
       _firestore!.collection('reimbursements');
   CollectionReference<Map<String, dynamic>> get _expenseCategoriesCol =>
       _firestore!.collection('expenseCategories');
+  CollectionReference<Map<String, dynamic>> get _timesheetEntriesCol =>
+      _firestore!.collection('timesheetEntries');
 
   Future<List<TaskModel>> fetchTasks() async {
     try {
@@ -70,6 +73,58 @@ class FirebaseService {
     } catch (e) {
       print('Error fetching tasks: $e');
       rethrow; // Re-throw so the provider can handle it
+    }
+  }
+
+  /// Real-time stream of tasks from Firestore
+  /// Automatically updates when tasks are added, updated, or deleted
+  Stream<List<TaskModel>> fetchTasksStream() {
+    try {
+      // Try with orderBy first, if it fails (e.g., missing index), use stream without ordering
+      try {
+        return _tasksCol
+            .orderBy('dueDate')
+            .snapshots()
+            .map((snapshot) {
+              print('Tasks stream update: ${snapshot.docs.length} documents');
+              final tasks = <TaskModel>[];
+              for (var doc in snapshot.docs) {
+                try {
+                  final task = TaskModel.fromSnapshot(doc);
+                  tasks.add(task);
+                } catch (e) {
+                  // Log error but don't crash - skip problematic documents
+                  print('Error parsing task document ${doc.id} in stream: $e');
+                }
+              }
+              print('Successfully parsed ${tasks.length} tasks from stream');
+              return tasks;
+            });
+      } catch (e) {
+        // If orderBy fails (e.g., missing index), use stream without ordering
+        print('Warning: OrderBy failed in stream, using stream without ordering: $e');
+        return _tasksCol
+            .snapshots()
+            .map((snapshot) {
+              print('Tasks stream update (no orderBy): ${snapshot.docs.length} documents');
+              final tasks = <TaskModel>[];
+              for (var doc in snapshot.docs) {
+                try {
+                  final task = TaskModel.fromSnapshot(doc);
+                  tasks.add(task);
+                } catch (e) {
+                  // Log error but don't crash - skip problematic documents
+                  print('Error parsing task document ${doc.id} in stream: $e');
+                }
+              }
+              print('Successfully parsed ${tasks.length} tasks from stream');
+              return tasks;
+            });
+      }
+    } catch (e) {
+      print('Error setting up tasks stream: $e');
+      // Return an empty stream on error
+      return Stream.value([]);
     }
   }
 
@@ -532,6 +587,81 @@ class FirebaseService {
     final reimbursementMap = reimbursement.toMap();
     reimbursementMap['updatedAt'] = FieldValue.serverTimestamp();
     await _reimbursementsCol.doc(reimbursement.id).update(reimbursementMap);
+  }
+
+  // Timesheet Entries
+  Future<List<TimesheetEntry>> fetchTimesheetEntries({
+    required String teamId,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? userId,
+  }) async {
+    try {
+      Query<Map<String, dynamic>> query = _timesheetEntriesCol
+          .where('teamId', isEqualTo: teamId);
+
+      if (userId != null) {
+        query = query.where('userId', isEqualTo: userId);
+      }
+
+      if (startDate != null && endDate != null) {
+        query = query
+            .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+            .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate));
+      }
+
+      final snapshot = await query.orderBy('date', descending: false).get();
+
+      return snapshot.docs
+          .map((doc) => TimesheetEntry.fromSnapshot(doc))
+          .toList();
+    } catch (e) {
+      print('Error fetching timesheet entries: $e');
+      rethrow;
+    }
+  }
+
+  Future<String> addTimesheetEntry(TimesheetEntry entry) async {
+    final entryMap = entry.toMap();
+    entryMap['createdAt'] = FieldValue.serverTimestamp();
+    entryMap['updatedAt'] = FieldValue.serverTimestamp();
+    final docRef = await _timesheetEntriesCol.add(entryMap);
+    return docRef.id;
+  }
+
+  Future<void> updateTimesheetEntry(TimesheetEntry entry) async {
+    final entryMap = entry.toMap();
+    entryMap['updatedAt'] = FieldValue.serverTimestamp();
+    await _timesheetEntriesCol.doc(entry.id).update(entryMap);
+  }
+
+  Future<void> deleteTimesheetEntry(String entryId) async {
+    await _timesheetEntriesCol.doc(entryId).delete();
+  }
+
+  Future<TimesheetEntry?> getTimesheetEntryByDate({
+    required String userId,
+    required String teamId,
+    required DateTime date,
+  }) async {
+    try {
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+
+      final snapshot = await _timesheetEntriesCol
+          .where('userId', isEqualTo: userId)
+          .where('teamId', isEqualTo: teamId)
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+          .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isEmpty) return null;
+      return TimesheetEntry.fromSnapshot(snapshot.docs.first);
+    } catch (e) {
+      print('Error fetching timesheet entry by date: $e');
+      return null;
+    }
   }
 }
 

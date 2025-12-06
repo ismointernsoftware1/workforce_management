@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/user_model.dart';
 import '../../utils/responsive_utils.dart';
+import '../../widgets/shadcn/app_button.dart';
+import '../../widgets/shadcn/app_select.dart';
 import '../../widgets/shadcn/shadcn_widgets.dart';
 
 class AddUserDialog extends StatefulWidget {
@@ -26,7 +29,6 @@ class _AddUserDialogState extends State<AddUserDialog> {
   final _emailController = TextEditingController();
   final _roleController = TextEditingController();
   final _passwordController = TextEditingController();
-  late DateTime _joinDate;
   late String _status;
   bool _isSaving = false;
   bool _obscurePassword = true;
@@ -40,7 +42,6 @@ class _AddUserDialogState extends State<AddUserDialog> {
     _nameController.text = user?.name ?? '';
     _emailController.text = user?.email ?? '';
     _roleController.text = user?.role ?? '';
-    _joinDate = user?.joinDate ?? DateTime.now();
     _status = user?.status ?? 'Active';
   }
 
@@ -75,10 +76,8 @@ class _AddUserDialogState extends State<AddUserDialog> {
       id: widget.initialUser?.id ?? '',
       name: _nameController.text.trim(),
       role: _roleController.text.trim(),
-      department: widget.initialUser?.department ?? 'General',
       email: _emailController.text.trim(),
       status: _status,
-      joinDate: _joinDate,
       manager: widget.initialUser?.manager,
       team: widget.initialUser?.team,
     );
@@ -117,262 +116,349 @@ class _AddUserDialogState extends State<AddUserDialog> {
   @override
   Widget build(BuildContext context) {
     final isMobile = ResponsiveUtils.isMobile(context);
-    final isDesktop = ResponsiveUtils.isDesktop(context);
-    final screenWidth = MediaQuery.of(context).size.width;
 
-    return Dialog(
-      insetPadding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 16 : (isDesktop ? 120 : 40),
-        vertical: isMobile ? 20 : 60,
-      ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      backgroundColor: const Color(0xFFF4F5FA),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: isDesktop ? 900 : screenWidth * 0.9,
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(isMobile ? 16 : 32),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _isEditing ? 'Edit User' : 'Add User',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close),
-                    ),
+    return ShadDialog(
+      title: Text(_isEditing ? 'Edit User' : 'Add User'),
+      child: Material(
+        color: Colors.transparent,
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+            // Form Fields Grid
+            if (isMobile)
+              Column(
+                children: [
+                  _buildShadInputField(
+                    controller: _nameController,
+                    label: 'Full name',
+                    validator: (value) =>
+                        value == null || value.trim().isEmpty
+                            ? 'Required'
+                            : null,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _buildShadInputField(
+                    controller: _roleController,
+                    label: 'Role',
+                    validator: (value) =>
+                        value == null || value.trim().isEmpty
+                            ? 'Required'
+                            : null,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _buildShadInputField(
+                    controller: _emailController,
+                    label: 'Email',
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Required';
+                      }
+                      if (!value.contains('@')) {
+                        return 'Invalid email';
+                      }
+                      return null;
+                    },
+                  ),
+                  if (!_isEditing) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    _buildPasswordField(),
                   ],
-                ),
-                const SizedBox(height: 24),
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 16,
-                  children: [
-                    SizedBox(
-                      width: isDesktop ? 400 : double.infinity,
-                      child: _buildTextField(
-                        controller: _nameController,
-                        label: 'Full name',
-                        validator: (value) =>
-                            value == null || value.trim().isEmpty
-                                ? 'Required'
-                                : null,
+                  const SizedBox(height: AppSpacing.md),
+                  _buildStatusSelect(),
+                ],
+              )
+            else
+              Column(
+                children: [
+                  // First Row: Full name & Role
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _buildShadInputField(
+                          controller: _nameController,
+                          label: 'Full name',
+                          validator: (value) =>
+                              value == null || value.trim().isEmpty
+                                  ? 'Required'
+                                  : null,
+                        ),
                       ),
-                    ),
-                    SizedBox(
-                      width: isDesktop ? 400 : double.infinity,
-                      child: _buildTextField(
-                        controller: _roleController,
-                        label: 'Role',
-                        validator: (value) =>
-                            value == null || value.trim().isEmpty
-                                ? 'Required'
-                                : null,
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: _buildShadInputField(
+                          controller: _roleController,
+                          label: 'Role',
+                          validator: (value) =>
+                              value == null || value.trim().isEmpty
+                                  ? 'Required'
+                                  : null,
+                        ),
                       ),
-                    ),
-                    SizedBox(
-                      width: isDesktop ? 400 : double.infinity,
-                      child: _buildTextField(
-                        controller: _emailController,
-                        label: 'Email',
-                        keyboardType: TextInputType.emailAddress,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Required';
-                          }
-                          if (!value.contains('@')) {
-                            return 'Invalid email';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    if (!_isEditing)
-                      SizedBox(
-                        width: isDesktop ? 400 : double.infinity,
-                        child: _buildTextField(
-                          controller: _passwordController,
-                          label: 'Password',
-                          obscureText: _obscurePassword,
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  // Second Row: Email & Password (if new user)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _buildShadInputField(
+                          controller: _emailController,
+                          label: 'Email',
+                          keyboardType: TextInputType.emailAddress,
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
                               return 'Required';
                             }
-                            if (value.length < 6) {
-                              return 'Password must be at least 6 characters';
+                            if (!value.contains('@')) {
+                              return 'Invalid email';
                             }
                             return null;
                           },
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined,
-                            ),
-                            onPressed: () {
-                              setState(
-                                  () => _obscurePassword = !_obscurePassword);
-                            },
-                          ),
                         ),
                       ),
-                    SizedBox(
-                      width: isDesktop ? 400 : double.infinity,
-                      child: AppSelect<String>(
-                        placeholder: 'Status',
-                        value: _status,
-                        options: SelectOption.fromStringList(['Active', 'On leave', 'Inactive']),
-                        selectedOptionBuilder: (context, value) => Text(value ?? 'Status'),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() => _status = value);
-                          }
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 32),
-                Builder(
-                  builder: (context) {
-                    final isMobile = ResponsiveUtils.isMobile(context);
-                    if (isMobile) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          ElevatedButton(
-                            onPressed: _isSaving ? null : _handleSave,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 14,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: _isSaving
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  )
-                                : Text(_isEditing ? 'Save Changes' : 'Add User'),
-                          ),
-                          const SizedBox(height: 12),
-                          TextButton(
-                            onPressed: _isSaving
-                                ? null
-                                : () => Navigator.of(context).pop(),
-                            child: const Text('Cancel'),
-                          ),
-                        ],
-                      );
-                    }
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Flexible(
-                          child: TextButton(
-                            onPressed: _isSaving
-                                ? null
-                                : () => Navigator.of(context).pop(),
-                            child: const Text('Cancel'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Flexible(
-                          child: ElevatedButton(
-                            onPressed: _isSaving ? null : _handleSave,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 14,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: _isSaving
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  )
-                                : FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(_isEditing ? 'Save Changes' : 'Add User'),
-                                  ),
-                          ),
+                      if (!_isEditing) ...[
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: _buildPasswordField(),
                         ),
                       ],
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  // Third Row: Status
+                  _buildStatusSelect(),
+                ],
+              ),
+          ],
+        ),
         ),
       ),
+      actions: [
+        AppButton(
+          variant: AppButtonVariant.outline,
+          onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        AppButton(
+          isLoading: _isSaving,
+          onPressed: _isSaving ? null : _handleSave,
+          child: Text(_isEditing ? 'Save Changes' : 'Add User'),
+        ),
+      ],
     );
   }
 
-  TextFormField _buildTextField({
+  Widget _buildShadInputField({
     required TextEditingController controller,
     required String label,
     String? Function(String?)? validator,
     TextInputType? keyboardType,
-    bool obscureText = false,
-    Widget? suffixIcon,
   }) {
-    return TextFormField(
-      controller: controller,
-      decoration: _inputDecoration(label, suffixIcon: suffixIcon),
-      validator: validator,
-      keyboardType: keyboardType,
-      obscureText: obscureText,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+        TextFormField(
+          controller: controller,
+          validator: validator,
+          keyboardType: keyboardType,
+          decoration: InputDecoration(
+            hintText: 'Enter $label',
+            hintStyle: TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 14,
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(
+                color: AppColors.border.withValues(alpha: 0.5),
+                width: 1,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(
+                color: AppColors.border.withValues(alpha: 0.5),
+                width: 1,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(
+                color: AppColors.primary,
+                width: 2,
+              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(
+                color: AppColors.danger,
+                width: 1,
+              ),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(
+                color: AppColors.danger,
+                width: 2,
+              ),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.md + 2,
+            ),
+          ),
+          style: const TextStyle(
+            fontSize: 14,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ],
     );
   }
 
-  InputDecoration _inputDecoration(String label, {Widget? suffixIcon}) {
-    return InputDecoration(
-      labelText: label,
-      filled: true,
-      fillColor: AppColors.surfaceAlt,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.border),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.border),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.primary, width: 1.4),
-      ),
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.lg,
-        vertical: AppSpacing.md,
-      ),
-      suffixIcon: suffixIcon,
+  Widget _buildPasswordField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+          child: Text(
+            'Password',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+        TextFormField(
+          controller: _passwordController,
+          obscureText: _obscurePassword,
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Required';
+            }
+            if (value.length < 6) {
+              return 'Password must be at least 6 characters';
+            }
+            return null;
+          },
+          decoration: InputDecoration(
+            hintText: 'Enter password',
+            hintStyle: TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 14,
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(
+                color: AppColors.border.withValues(alpha: 0.5),
+                width: 1,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(
+                color: AppColors.border.withValues(alpha: 0.5),
+                width: 1,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(
+                color: AppColors.primary,
+                width: 2,
+              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(
+                color: AppColors.danger,
+                width: 1,
+              ),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(
+                color: AppColors.danger,
+                width: 2,
+              ),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.md + 2,
+            ),
+            suffixIcon: ShadIconButton.ghost(
+              onPressed: () {
+                setState(() => _obscurePassword = !_obscurePassword);
+              },
+              icon: Icon(
+                _obscurePassword
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+                size: 18,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ),
+          style: const TextStyle(
+            fontSize: 14,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusSelect() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+          child: Text(
+            'Status',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+        AppSelect<String>(
+          placeholder: 'Select status',
+          value: _status,
+          options: SelectOption.fromStringList(['Active', 'On leave', 'Inactive']),
+          selectedOptionBuilder: (context, value) => Text(value ?? 'Select status'),
+          onChanged: (value) {
+            if (value != null) {
+              setState(() => _status = value);
+            }
+          },
+        ),
+      ],
     );
   }
 }
