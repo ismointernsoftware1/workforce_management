@@ -381,7 +381,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                           border: Border.all(
                             color: AppColors.border.withValues(alpha: 0.3),
                             width: 1,
-                          ),
+                        ),
                         ),
                         child: const Icon(
                           Icons.menu,
@@ -755,18 +755,18 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 48),
                             child: Text(
-                              isMobile
-                                  ? 'Tap the menu to view conversations'
+                            isMobile
+                                ? 'Tap the menu to view conversations'
                                   : 'Connect to sync messages. To reduce data usage, connect to Wi-Fi.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
                                 color: const Color(0xFF667781),
-                                fontSize: ResponsiveUtils.getFontSize(
-                                  context,
-                                  mobile: 14,
+                              fontSize: ResponsiveUtils.getFontSize(
+                                context,
+                                mobile: 14,
                                   tablet: 14.5,
                                   desktop: 14.5,
-                                ),
+                              ),
                                 height: 1.4,
                               ),
                             ),
@@ -783,18 +783,18 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                 child: InkWell(
                                   borderRadius: BorderRadius.circular(24),
                                   onTap: () {
-                                    setState(() {
-                                      _showConversationList = true;
-                                    });
-                                  },
+                                setState(() {
+                                  _showConversationList = true;
+                                });
+                              },
                                   child: const Padding(
                                     padding: EdgeInsets.symmetric(
                                       horizontal: 24,
                                       vertical: 12,
                                     ),
                                     child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
                                         Icon(Icons.message, size: 18, color: Colors.white),
                                         SizedBox(width: 8),
                                         Text(
@@ -805,7 +805,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
-                                      ],
+                                ],
                                     ),
                                   ),
                                 ),
@@ -874,13 +874,13 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                   CircleAvatar(
                                     radius: 20,
                                     backgroundColor: const Color(0xFFDBEAFE), // Light blue avatar
-                                    child: Text(
-                                      provider.selectedConversationTitle.isNotEmpty
-                                          ? provider.selectedConversationTitle
-                                              .substring(0, 1)
-                                              .toUpperCase()
-                                          : '?',
-                                      style: const TextStyle(
+                                      child: Text(
+                                        provider.selectedConversationTitle.isNotEmpty
+                                            ? provider.selectedConversationTitle
+                                                .substring(0, 1)
+                                                .toUpperCase()
+                                            : '?',
+                                        style: const TextStyle(
                                         color: const Color(0xFF2563EB), // Blue text
                                         fontWeight: FontWeight.w500,
                                         fontSize: 18,
@@ -1338,7 +1338,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                           contentPadding: const EdgeInsets.symmetric(
                                             horizontal: 16,
                                             vertical: 9,
-                                          ),
+                                        ),
                                         ),
                                         onSubmitted: (_) => _sendMessage(provider),
                                       ),
@@ -1368,10 +1368,10 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                       child: InkWell(
                                         borderRadius: BorderRadius.circular(20),
                                         onTap: () => _sendMessage(provider),
-                                        child: const Icon(
-                                          Icons.send_rounded,
-                                          size: 20,
-                                          color: Colors.white,
+                                          child: const Icon(
+                                            Icons.send_rounded,
+                                            size: 20,
+                                            color: Colors.white,
                                         ),
                                       ),
                                     ),
@@ -2003,7 +2003,7 @@ class RealtimeConversationTile extends StatelessWidget {
     final messageColor = const Color(0xFF64748B);
 
     return Material(
-      color: Colors.transparent,
+        color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         child: Container(
@@ -2038,15 +2038,15 @@ class RealtimeConversationTile extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            displayName,
+                      displayName,
                             style: TextStyle(
                               fontWeight: FontWeight.w500,
                               fontSize: 17,
                               color: nameColor,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                         ),
                         const SizedBox(width: 8),
                         Text(
@@ -2065,51 +2065,51 @@ class RealtimeConversationTile extends StatelessWidget {
                         Expanded(
                           child: isTyping
                               ? Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const _TypingDots(),
-                                  ],
-                                )
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const _TypingDots(),
+                        ],
+                      )
                               : Text(
-                                  conversation.lastMessage,
+                      conversation.lastMessage,
                                   style: TextStyle(
                                     color: messageColor,
                                     fontSize: 14,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                        ),
-                        Builder(
-                          builder: (context) {
-                            final unreadCount = currentUserId != null 
-                                ? conversation.getUnreadCountForUser(currentUserId!)
-                                : conversation.unreadCount;
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ),
+                  Builder(
+                    builder: (context) {
+                      final unreadCount = currentUserId != null 
+                          ? conversation.getUnreadCountForUser(currentUserId!)
+                          : conversation.unreadCount;
                             if (unreadCount > 0) {
                               return Container(
                                 margin: const EdgeInsets.only(left: 8),
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                decoration: BoxDecoration(
+                              decoration: BoxDecoration(
                                   color: unreadBg,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  unreadCount > 99 ? '99+' : unreadCount.toString(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                unreadCount > 99 ? '99+' : unreadCount.toString(),
+                                style: const TextStyle(
+                                  color: Colors.white,
                                     fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                  fontWeight: FontWeight.w600,
                                 ),
-                              );
+                              ),
+                      );
                             }
                             return const SizedBox.shrink();
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
               ),
             ],
           ),
@@ -2168,12 +2168,12 @@ class RealtimeMessageBubble extends StatelessWidget {
               bottomRight: Radius.circular(isMine ? 0 : 7.5),
             ),
             boxShadow: [
-              BoxShadow(
+                    BoxShadow(
                 color: Colors.black.withValues(alpha: 0.08),
                 blurRadius: 3,
-                offset: const Offset(0, 1),
-              ),
-            ],
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
           ),
           child: Column(
             crossAxisAlignment:
@@ -2193,15 +2193,15 @@ class RealtimeMessageBubble extends StatelessWidget {
                 const SizedBox(height: 2),
               ],
               if (message.text.isNotEmpty) ...[
-                Text(
-                  message.text,
-                  style: TextStyle(
+              Text(
+                message.text,
+                style: TextStyle(
                     color: isMine ? sentTextColor : receivedTextColor,
                     fontSize: 14.2,
-                    height: 1.3,
-                    letterSpacing: 0.1,
-                  ),
+                  height: 1.3,
+                  letterSpacing: 0.1,
                 ),
+              ),
                 if (message.attachmentUrl != null) const SizedBox(height: 6),
               ],
               if (message.attachmentUrl != null) ...[
@@ -2211,11 +2211,11 @@ class RealtimeMessageBubble extends StatelessWidget {
                     onTap: () => _showFullScreenImage(context, message.attachmentUrl!),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(4),
-                      child: Image.network(
-                        message.attachmentUrl!,
+                    child: Image.network(
+                      message.attachmentUrl!,
                         width: 250,
                         height: 250,
-                        fit: BoxFit.cover,
+                      fit: BoxFit.cover,
                         loadingBuilder: (context, child, loadingProgress) {
                           if (loadingProgress == null) return child;
                           return Container(
@@ -2300,8 +2300,8 @@ class RealtimeMessageBubble extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: isMine
-                          ? Colors.white.withValues(alpha: 0.3)
+                        color: isMine
+                            ? Colors.white.withValues(alpha: 0.3)
                           : const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(4),
                     ),
@@ -2344,14 +2344,14 @@ class RealtimeMessageBubble extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    formatter.format(time),
-                    style: TextStyle(
+              Text(
+                formatter.format(time),
+                style: TextStyle(
                       color: timestampColor,
                       fontSize: 11.5,
                       fontWeight: FontWeight.normal,
                       letterSpacing: 0.1,
-                    ),
+                ),
                   ),
                   if (isMine) ...[
                     const SizedBox(width: 3),

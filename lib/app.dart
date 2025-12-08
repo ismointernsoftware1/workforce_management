@@ -16,7 +16,9 @@ import 'services/auth_service.dart';
 import 'services/firebase_service.dart';
 import 'services/realtime_chat_service.dart';
 import 'utils/rbac_utils.dart';
+import 'utils/deep_link_handler.dart';
 import 'views/auth/login_view.dart';
+import 'views/auth/accept_invite_screen.dart';
 import 'views/dashboard_view.dart';
 
 class WorkforceApp extends StatelessWidget {
@@ -45,6 +47,14 @@ class WorkforceApp extends StatelessWidget {
               }
 
               final user = snapshot.data;
+              
+              // Check for invite token in URL
+              final inviteToken = DeepLinkHandler.getInviteTokenFromUrl();
+              if (inviteToken != null) {
+                DeepLinkHandler.clearInviteTokenFromUrl();
+                return _buildMaterialApp(AcceptInviteScreen(token: inviteToken));
+              }
+              
               if (user == null) {
                 // Clear RBAC cache on logout
                 RBACUtils.clearCache();
@@ -102,6 +112,15 @@ class WorkforceApp extends StatelessWidget {
         home: home,
         routes: {
           '/dashboard': (context) => const DashboardView(),
+          '/invite': (context) {
+            final token = ModalRoute.of(context)?.settings.arguments as String?;
+            if (token == null) {
+              return const Scaffold(
+                body: Center(child: Text('Invalid invitation link')),
+              );
+            }
+            return AcceptInviteScreen(token: token);
+          },
         },
       ),
     );
