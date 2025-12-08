@@ -9,6 +9,8 @@ import '../../models/task_model.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/shadcn/shadcn_widgets.dart';
+import '../../widgets/shadcn/app_calendar.dart';
+import '../../widgets/shadcn/app_button.dart';
 
 class EditTaskView extends StatefulWidget {
   const EditTaskView({super.key, required this.task});
@@ -64,21 +66,12 @@ class _EditTaskViewState extends State<EditTaskView> {
   }
 
   Future<void> _selectDueDate() async {
-    final DateTime? picked = await showDatePicker(
+    final DateTime? picked = await showDialog<DateTime>(
       context: context,
-      initialDate: _selectedDueDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now().add(const Duration(days: 3650)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary,
-            ),
-          ),
-          child: child!,
-        );
-      },
+      builder: (dialogContext) => _DatePickerDialog(
+        initialDate: _selectedDueDate,
+        title: 'Select Due Date',
+      ),
     );
     if (picked != null) {
       setState(() {
@@ -480,6 +473,80 @@ class _EditTaskViewState extends State<EditTaskView> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Date picker dialog for edit task view
+class _DatePickerDialog extends StatefulWidget {
+  const _DatePickerDialog({
+    required this.initialDate,
+    required this.title,
+  });
+
+  final DateTime? initialDate;
+  final String title;
+
+  @override
+  State<_DatePickerDialog> createState() => _DatePickerDialogState();
+}
+
+class _DatePickerDialogState extends State<_DatePickerDialog> {
+  DateTime? _selectedDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDate = widget.initialDate;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              widget.title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            AppCalendar(
+              selectedDate: _selectedDate,
+              onDateSelected: (date) {
+                setState(() {
+                  _selectedDate = date;
+                });
+              },
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                AppButton(
+                  variant: AppButtonVariant.outline,
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                AppButton(
+                  onPressed: _selectedDate != null
+                      ? () => Navigator.of(context).pop(_selectedDate)
+                      : null,
+                  child: const Text('Select'),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

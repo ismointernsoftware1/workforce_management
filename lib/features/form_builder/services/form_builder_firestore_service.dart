@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/form_models.dart';
 
@@ -15,17 +16,52 @@ class FormBuilderFirestoreService {
       _firestore.collection('forms');
 
   Future<List<FormModel>> getForms({FormType? formType}) async {
-    Query<Map<String, dynamic>> query;
-    
-    // Filter by form type if specified - must apply where before orderBy
-    if (formType != null) {
-      query = _formsCol.where('formType', isEqualTo: formType.name).orderBy('createdAt', descending: true);
-    } else {
-      query = _formsCol.orderBy('createdAt', descending: true);
+    try {
+      Query<Map<String, dynamic>> query;
+      
+      // Filter by form type if specified
+      // Note: When using where with orderBy, Firestore requires a composite index
+      // To avoid index requirement, we'll filter in memory if needed
+      if (formType != null) {
+        // Try with orderBy first, but fallback to just where if it fails
+        try {
+          query = _formsCol.where('formType', isEqualTo: formType.name).orderBy('createdAt', descending: true);
+          final snapshot = await query.get();
+          return snapshot.docs.map(FormModel.fromSnapshot).toList();
+        } catch (e) {
+          // If orderBy fails (no index), just use where and sort in memory
+          debugPrint('OrderBy failed, using where only: $e');
+          final snapshot = await _formsCol.where('formType', isEqualTo: formType.name).get();
+          final forms = snapshot.docs.map(FormModel.fromSnapshot).toList();
+          // Sort in memory by createdAt descending
+          forms.sort((a, b) {
+            final aTime = a.createdAt ?? DateTime(1970);
+            final bTime = b.createdAt ?? DateTime(1970);
+            return bTime.compareTo(aTime);
+          });
+          return forms;
+        }
+      } else {
+        query = _formsCol.orderBy('createdAt', descending: true);
+        final snapshot = await query.get();
+        return snapshot.docs.map(FormModel.fromSnapshot).toList();
+      }
+    } catch (e) {
+      debugPrint('Error loading forms: $e');
+      // Fallback: get all forms and filter in memory
+      final snapshot = await _formsCol.get();
+      var forms = snapshot.docs.map(FormModel.fromSnapshot).toList();
+      if (formType != null) {
+        forms = forms.where((f) => f.formType == formType).toList();
+      }
+      // Sort by createdAt descending
+      forms.sort((a, b) {
+        final aTime = a.createdAt ?? DateTime(1970);
+        final bTime = b.createdAt ?? DateTime(1970);
+        return bTime.compareTo(aTime);
+      });
+      return forms;
     }
-    
-    final snapshot = await query.get();
-    return snapshot.docs.map(FormModel.fromSnapshot).toList();
   }
 
   Future<FormModel?> getForm(String formId) async {
