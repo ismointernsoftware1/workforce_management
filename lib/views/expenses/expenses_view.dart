@@ -8,7 +8,9 @@ import '../../constants/app_spacing.dart';
 import '../../models/expense_model.dart';
 import '../../providers/expense_provider.dart';
 import '../../utils/responsive_utils.dart';
+import '../../utils/rbac_utils.dart';
 import '../../widgets/shadcn/shadcn_widgets.dart';
+import '../../widgets/permission_wrapper.dart';
 import '../widgets/stat_card.dart';
 import 'add_expense_view.dart';
 import 'edit_expense_view.dart';
@@ -23,6 +25,14 @@ class ExpensesView extends StatefulWidget {
 class _ExpensesViewState extends State<ExpensesView> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+
+  Future<Map<String, bool>> _getExpensePermissions() async {
+    return {
+      'create': await RBACUtils.canCreate('expenses'),
+      'update': await RBACUtils.canUpdate('expenses'),
+      'delete': await RBACUtils.canDelete('expenses'),
+    };
+  }
 
   @override
   void initState() {
@@ -75,14 +85,18 @@ class _ExpensesViewState extends State<ExpensesView> {
                     children: [
                       _buildHeaderTitle(context),
                       const SizedBox(height: AppSpacing.sm),
-                      SizedBox(
-                        width: double.infinity,
-                        child: AppButton(
-                          onPressed: () => _openAddExpense(context),
-                          variant: AppButtonVariant.primary,
-                          size: AppButtonSize.medium,
-                          icon: Icons.add,
-                          child: const Text('New Expense'),
+                      PermissionWrapper(
+                        permission: 'create',
+                        resource: 'expenses',
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: AppButton(
+                            onPressed: () => _openAddExpense(context),
+                            variant: AppButtonVariant.primary,
+                            size: AppButtonSize.medium,
+                            icon: Icons.add,
+                            child: const Text('New Expense'),
+                          ),
                         ),
                       ),
                     ],
@@ -95,12 +109,16 @@ class _ExpensesViewState extends State<ExpensesView> {
                         child: _buildHeaderTitle(context),
                       ),
                       const SizedBox(width: AppSpacing.md),
-                      AppButton(
-                        onPressed: () => _openAddExpense(context),
-                        variant: AppButtonVariant.primary,
-                        size: AppButtonSize.medium,
-                        icon: Icons.add,
-                        child: const Text('New Expense'),
+                      PermissionWrapper(
+                        permission: 'create',
+                        resource: 'expenses',
+                        child: AppButton(
+                          onPressed: () => _openAddExpense(context),
+                          variant: AppButtonVariant.primary,
+                          size: AppButtonSize.medium,
+                          icon: Icons.add,
+                          child: const Text('New Expense'),
+                        ),
                       ),
                     ],
                   ),
@@ -897,31 +915,49 @@ class _ExpenseTableRow extends StatelessWidget {
                 ),
                   ],
                 // Edit button
-                ShadTooltip(
-                  builder: (context) => const Text('Edit Expense'),
-                  child: AppButton(
-                    variant: AppButtonVariant.outline,
-                    onPressed: () => viewState?._handleEdit(context, expense),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.edit_outlined, size: 16),
-                        SizedBox(width: 4),
-                        Text(
-                          'Edit',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                FutureBuilder<Map<String, bool>>(
+                  future: viewState?._getExpensePermissions(),
+                  builder: (context, snapshot) {
+                    final canUpdate = snapshot.data?['update'] ?? false;
+                    if (canUpdate) {
+                      return ShadTooltip(
+                        builder: (context) => const Text('Edit Expense'),
+                        child: AppButton(
+                          variant: AppButtonVariant.outline,
+                          onPressed: () => viewState?._handleEdit(context, expense),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.edit_outlined, size: 16),
+                              SizedBox(width: 4),
+                              Text(
+                                'Edit',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
-                  ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
                 ),
                 // Delete button
-                ShadTooltip(
-                  builder: (context) => const Text('Delete Expense'),
-                  child: ShadIconButton(
-                    onPressed: () => viewState?._showDeleteConfirmation(context, expense),
-                    icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
-                  ),
+                FutureBuilder<Map<String, bool>>(
+                  future: viewState?._getExpensePermissions(),
+                  builder: (context, snapshot) {
+                    final canDelete = snapshot.data?['delete'] ?? false;
+                    if (canDelete) {
+                      return ShadTooltip(
+                        builder: (context) => const Text('Delete Expense'),
+                        child: ShadIconButton(
+                          onPressed: () => viewState?._showDeleteConfirmation(context, expense),
+                          icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
                 ),
               ],
             ),
@@ -1095,21 +1131,37 @@ class _ExpenseMobileCard extends StatelessWidget {
                     ),
                   ),
                 ],
-              AppButton(
-                variant: AppButtonVariant.outline,
-                onPressed: () => viewState?._handleEdit(context, expense),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.edit_outlined, size: 16),
-                    SizedBox(width: 4),
-                    Text('Edit'),
-                  ],
-                ),
-              ),
-              ShadIconButton(
-                onPressed: () => viewState?._showDeleteConfirmation(context, expense),
-                icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
+              FutureBuilder<Map<String, bool>>(
+                future: viewState?._getExpensePermissions(),
+                builder: (context, snapshot) {
+                  final canUpdate = snapshot.data?['update'] ?? false;
+                  final canDelete = snapshot.data?['delete'] ?? false;
+                  
+                  return Wrap(
+                    spacing: AppSpacing.xs,
+                    runSpacing: AppSpacing.xs,
+                    children: [
+                      if (canUpdate)
+                        AppButton(
+                          variant: AppButtonVariant.outline,
+                          onPressed: () => viewState?._handleEdit(context, expense),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.edit_outlined, size: 16),
+                              SizedBox(width: 4),
+                              Text('Edit'),
+                            ],
+                          ),
+                        ),
+                      if (canDelete)
+                        ShadIconButton(
+                          onPressed: () => viewState?._showDeleteConfirmation(context, expense),
+                          icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
+                        ),
+                    ],
+                  );
+                },
               ),
             ],
           ),

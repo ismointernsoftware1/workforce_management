@@ -19,7 +19,9 @@ import 'utils/rbac_utils.dart';
 import 'utils/deep_link_handler.dart';
 import 'views/auth/login_view.dart';
 import 'views/auth/accept_invite_screen.dart';
+import 'views/invitation/invite_accept_signup_page.dart';
 import 'views/dashboard_view.dart';
+import 'views/roles/role_list_page.dart';
 
 class WorkforceApp extends StatelessWidget {
   WorkforceApp({
@@ -52,7 +54,13 @@ class WorkforceApp extends StatelessWidget {
               final inviteToken = DeepLinkHandler.getInviteTokenFromUrl();
               if (inviteToken != null) {
                 DeepLinkHandler.clearInviteTokenFromUrl();
-                return _buildMaterialApp(AcceptInviteScreen(token: inviteToken));
+                // If user is logged in, use AcceptInviteScreen
+                // If not logged in, use InviteAcceptSignupPage
+                if (user != null) {
+                  return _buildMaterialApp(AcceptInviteScreen(token: inviteToken));
+                } else {
+                  return _buildMaterialApp(InviteAcceptSignupPage(token: inviteToken));
+                }
               }
               
               if (user == null) {
@@ -112,14 +120,37 @@ class WorkforceApp extends StatelessWidget {
         home: home,
         routes: {
           '/dashboard': (context) => const DashboardView(),
+          '/roles': (context) => const RoleListPage(),
           '/invite': (context) {
-            final token = ModalRoute.of(context)?.settings.arguments as String?;
+            final args = ModalRoute.of(context)?.settings.arguments;
+            String? token;
+            
+            // Try to get token from arguments
+            if (args is String) {
+              token = args;
+            } else if (args is Map) {
+              token = args['token'] as String?;
+            }
+            
+            // Try to get token from URL query parameters
+            if (token == null) {
+              final uri = Uri.base;
+              token = uri.queryParameters['token'];
+            }
+            
             if (token == null) {
               return const Scaffold(
                 body: Center(child: Text('Invalid invitation link')),
               );
             }
-            return AcceptInviteScreen(token: token);
+            
+            // Check if user is logged in
+            final currentUser = FirebaseAuth.instance.currentUser;
+            if (currentUser != null) {
+              return AcceptInviteScreen(token: token);
+            } else {
+              return InviteAcceptSignupPage(token: token);
+            }
           },
         },
       ),

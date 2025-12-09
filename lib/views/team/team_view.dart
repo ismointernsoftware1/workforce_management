@@ -8,7 +8,9 @@ import '../../providers/dashboard_provider.dart';
 import '../../models/user_model.dart';
 import '../../models/team_model.dart';
 import '../../utils/responsive_utils.dart';
+import '../../utils/rbac_utils.dart';
 import '../../widgets/shadcn/shadcn_widgets.dart';
+import '../../widgets/permission_wrapper.dart';
 import '../widgets/add_user_dialog.dart';
 import '../widgets/add_team_dialog.dart';
 import '../widgets/invite_user_dialog.dart';
@@ -30,6 +32,14 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
   bool _isGridView = true; // Grid view by default (ClickUp style)
   String _createdFilter = 'All';
   String _sortBy = 'Default';
+
+  Future<Map<String, bool>> _getTeamPermissions() async {
+    return {
+      'create': await RBACUtils.canCreate('team'),
+      'update': await RBACUtils.canUpdate('team'),
+      'delete': await RBACUtils.canDelete('team'),
+    };
+  }
 
   @override
   void initState() {
@@ -222,31 +232,79 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
   }
 
   Widget _buildPeopleHeaderSection(BuildContext context, DashboardProvider provider, {required bool isMobile}) {
+    if (isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: _buildPeopleHeaderTexts(context)),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          FutureBuilder<bool>(
+            future: RBACUtils.isAdmin(),
+            builder: (context, snapshot) {
+              if (snapshot.data == true) {
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: AppButton(
+                    onPressed: () => _showInviteUserDialog(context),
+                    variant: AppButtonVariant.primary,
+                    fullWidth: true,
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.send, size: 18, color: Colors.white),
+                        SizedBox(width: 6),
+                        Text('Invite User', style: TextStyle(color: Colors.white)),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+        ],
+      );
+    }
+    
     return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: _buildPeopleHeaderTexts(context)),
+        const SizedBox(width: AppSpacing.md),
+        FutureBuilder<bool>(
+          future: RBACUtils.isAdmin(),
+          builder: (context, snapshot) {
+            if (snapshot.data == true) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: AppButton(
+                  onPressed: () => _showInviteUserDialog(context),
+                  variant: AppButtonVariant.primary,
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Expanded(child: _buildPeopleHeaderTexts(context)),
-        if (!isMobile) ...[
-                      const SizedBox(width: AppSpacing.md),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: AppButton(
-              onPressed: () => _showInviteUserDialog(context),
-              variant: AppButtonVariant.primary,
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                  Icon(Icons.send, size: 18, color: Colors.white),
-                  SizedBox(width: 6),
-                  Text('Invite User', style: TextStyle(color: Colors.white)),
-                          ],
-              ),
-                        ),
-                      ),
+                      Icon(Icons.send, size: 18, color: Colors.white),
+                      SizedBox(width: 6),
+                      Text('Invite User', style: TextStyle(color: Colors.white)),
                     ],
+                  ),
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        ),
       ],
     );
   }
@@ -459,24 +517,32 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
                             ),
                           ),
                           const SizedBox(height: AppSpacing.xl),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.black,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: AppButton(
-                onPressed: () => _showInviteUserDialog(context),
-                variant: AppButtonVariant.primary,
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                    Icon(Icons.send, size: 18, color: Colors.white),
-                    SizedBox(width: 6),
-                    Text('Invite User', style: TextStyle(color: Colors.white)),
-                              ],
-                            ),
-                          ),
-                        ),
+            FutureBuilder<bool>(
+              future: RBACUtils.isAdmin(),
+              builder: (context, snapshot) {
+                if (snapshot.data == true) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: AppButton(
+                      onPressed: () => _showInviteUserDialog(context),
+                      variant: AppButtonVariant.primary,
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.send, size: 18, color: Colors.white),
+                          SizedBox(width: 6),
+                          Text('Invite User', style: TextStyle(color: Colors.white)),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
                       ],
                     ),
       ),
@@ -516,16 +582,20 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
               Expanded(child: _buildTeamHeaderTexts(isMobile)),
               if (!isMobile) ...[
                 const SizedBox(width: AppSpacing.md),
-                AppButton(
-                  variant: AppButtonVariant.outline,
-                  onPressed: () => _showAddTeamDialog(context, provider),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.group_add, size: 18),
-                      SizedBox(width: 8),
-                      Text('Create Team'),
-                    ],
+                PermissionWrapper(
+                  permission: 'create',
+                  resource: 'team',
+                  child: AppButton(
+                    variant: AppButtonVariant.outline,
+                    onPressed: () => _showAddTeamDialog(context, provider),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.group_add, size: 18),
+                        SizedBox(width: 8),
+                        Text('Create Team'),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -533,18 +603,22 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
           ),
           if (isMobile) ...[
             const SizedBox(height: AppSpacing.sm),
-                AppButton(
-                  variant: AppButtonVariant.outline,
-                  onPressed: () => _showAddTeamDialog(context, provider),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.group_add, size: 18),
-                      SizedBox(width: 8),
-                      Text('Create Team'),
-                    ],
-                  ),
+            PermissionWrapper(
+              permission: 'create',
+              resource: 'team',
+              child: AppButton(
+                variant: AppButtonVariant.outline,
+                onPressed: () => _showAddTeamDialog(context, provider),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.group_add, size: 18),
+                    SizedBox(width: 8),
+                    Text('Create Team'),
+                  ],
                 ),
+              ),
+            ),
           ],
           const SizedBox(height: AppSpacing.md),
           // Search bar
@@ -971,56 +1045,79 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
               ],
             ),
           ),
-          PopupMenuButton<String>(
-            icon: Icon(
-              Icons.more_vert,
-              size: 18,
-              color: AppColors.textMuted,
-            ),
-            color: AppColors.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'add',
-                child: Row(
-                  children: [
-                    const Icon(Icons.person_add_alt_1, size: 16),
-                    const SizedBox(width: AppSpacing.xs),
-                    const Text('Add Members', style: TextStyle(fontSize: 13)),
-                  ],
+          FutureBuilder<Map<String, bool>>(
+            future: _getTeamPermissions(),
+            builder: (context, snapshot) {
+              final canUpdate = snapshot.data?['update'] ?? false;
+              final canDelete = snapshot.data?['delete'] ?? false;
+              
+              return PopupMenuButton<String>(
+                icon: Icon(
+                  Icons.more_vert,
+                  size: 18,
+                  color: AppColors.textMuted,
                 ),
-              ),
-              PopupMenuItem(
-                value: 'edit',
-                child: Row(
-                  children: [
-                    const Icon(Icons.edit_outlined, size: 16),
-                    const SizedBox(width: AppSpacing.xs),
-                    const Text('Edit', style: TextStyle(fontSize: 13)),
-                  ],
+                color: AppColors.surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ),
-              PopupMenuItem(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
-                    const SizedBox(width: AppSpacing.xs),
-                    Text('Delete', style: TextStyle(color: AppColors.danger, fontSize: 13)),
-                  ],
-                ),
-              ),
-            ],
-            onSelected: (value) {
-              if (value == 'add') {
-                _showTeamMembersDialog(context, provider, team);
-              } else if (value == 'edit') {
-                _showEditTeamDialog(context, provider, team);
-              } else if (value == 'delete') {
-                _confirmDeleteTeam(context, provider, team);
-              }
+                itemBuilder: (context) {
+                  final items = <PopupMenuEntry<String>>[];
+                  
+                  if (canUpdate) {
+                    items.add(
+                      PopupMenuItem(
+                        value: 'add',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.person_add_alt_1, size: 16),
+                            const SizedBox(width: AppSpacing.xs),
+                            const Text('Add Members', style: TextStyle(fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                    );
+                    items.add(
+                      PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.edit_outlined, size: 16),
+                            const SizedBox(width: AppSpacing.xs),
+                            const Text('Edit', style: TextStyle(fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                  
+                  if (canDelete) {
+                    items.add(
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
+                            const SizedBox(width: AppSpacing.xs),
+                            Text('Delete', style: TextStyle(color: AppColors.danger, fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                  
+                  return items;
+                },
+                onSelected: (value) {
+                  if (value == 'add') {
+                    _showTeamMembersDialog(context, provider, team);
+                  } else if (value == 'edit') {
+                    _showEditTeamDialog(context, provider, team);
+                  } else if (value == 'delete') {
+                    _confirmDeleteTeam(context, provider, team);
+                  }
+                },
+              );
             },
           ),
         ],
@@ -1457,56 +1554,79 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
                         ),
                       ),
                     ),
-                    PopupMenuButton<String>(
-                icon: Icon(
-                        Icons.more_vert,
-                        size: 18,
-                  color: AppColors.textMuted,
-                      ),
-                      color: AppColors.surface,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      itemBuilder: (context) => [
-                        PopupMenuItem(
-                          value: 'add',
-                          child: Row(
-                            children: [
-                              const Icon(Icons.person_add_alt_1, size: 16),
-                              const SizedBox(width: AppSpacing.xs),
-                              const Text('Add Members', style: TextStyle(fontSize: 13)),
-                            ],
+                    FutureBuilder<Map<String, bool>>(
+                      future: _getTeamPermissions(),
+                      builder: (context, snapshot) {
+                        final canUpdate = snapshot.data?['update'] ?? false;
+                        final canDelete = snapshot.data?['delete'] ?? false;
+                        
+                        return PopupMenuButton<String>(
+                          icon: Icon(
+                            Icons.more_vert,
+                            size: 18,
+                            color: AppColors.textMuted,
                           ),
-                        ),
-                        PopupMenuItem(
-                          value: 'edit',
-                          child: Row(
-                            children: [
-                              const Icon(Icons.edit_outlined, size: 16),
-                              const SizedBox(width: AppSpacing.xs),
-                              const Text('Edit', style: TextStyle(fontSize: 13)),
-                            ],
+                          color: AppColors.surface,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                        ),
-                        PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
-                              const SizedBox(width: AppSpacing.xs),
-                              Text('Delete', style: TextStyle(color: AppColors.danger, fontSize: 13)),
-                            ],
-                          ),
-                        ),
-                      ],
-                      onSelected: (value) {
-                        if (value == 'add') {
-                          _showTeamMembersDialog(context, provider, team);
-                        } else if (value == 'edit') {
-                          _showEditTeamDialog(context, provider, team);
-                        } else if (value == 'delete') {
-                          _confirmDeleteTeam(context, provider, team);
-                        }
+                          itemBuilder: (context) {
+                            final items = <PopupMenuEntry<String>>[];
+                            
+                            if (canUpdate) {
+                              items.add(
+                                PopupMenuItem(
+                                  value: 'add',
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.person_add_alt_1, size: 16),
+                                      const SizedBox(width: AppSpacing.xs),
+                                      const Text('Add Members', style: TextStyle(fontSize: 13)),
+                                    ],
+                                  ),
+                                ),
+                              );
+                              items.add(
+                                PopupMenuItem(
+                                  value: 'edit',
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.edit_outlined, size: 16),
+                                      const SizedBox(width: AppSpacing.xs),
+                                      const Text('Edit', style: TextStyle(fontSize: 13)),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+                            
+                            if (canDelete) {
+                              items.add(
+                                PopupMenuItem(
+                                  value: 'delete',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
+                                      const SizedBox(width: AppSpacing.xs),
+                                      Text('Delete', style: TextStyle(color: AppColors.danger, fontSize: 13)),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+                            
+                            return items;
+                          },
+                          onSelected: (value) {
+                            if (value == 'add') {
+                              _showTeamMembersDialog(context, provider, team);
+                            } else if (value == 'edit') {
+                              _showEditTeamDialog(context, provider, team);
+                            } else if (value == 'delete') {
+                              _confirmDeleteTeam(context, provider, team);
+                            }
+                          },
+                        );
                       },
                     ),
                   ],

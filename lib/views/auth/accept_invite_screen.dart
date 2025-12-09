@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
+import '../../models/invite_model.dart';
 import '../../services/invite_service.dart';
 import '../../widgets/shadcn/app_button.dart';
 
@@ -22,7 +23,7 @@ class _AcceptInviteScreenState extends State<AcceptInviteScreen> {
   final _inviteService = InviteService();
   bool _isLoading = true;
   bool _isProcessing = false;
-  Map<String, dynamic>? _inviteData;
+  InviteModel? _invite;
   String? _errorMessage;
 
   @override
@@ -33,11 +34,11 @@ class _AcceptInviteScreenState extends State<AcceptInviteScreen> {
 
   Future<void> _verifyToken() async {
     try {
-      final inviteData = await _inviteService.verifyInviteToken(widget.token);
+      final invite = await _inviteService.validateInviteToken(widget.token);
       
       if (!mounted) return;
 
-      if (inviteData == null) {
+      if (invite == null) {
         setState(() {
           _isLoading = false;
           _errorMessage = 'Invalid or expired invitation';
@@ -45,7 +46,7 @@ class _AcceptInviteScreenState extends State<AcceptInviteScreen> {
       } else {
         setState(() {
           _isLoading = false;
-          _inviteData = inviteData;
+          _invite = invite;
         });
       }
     } catch (e) {
@@ -70,8 +71,8 @@ class _AcceptInviteScreenState extends State<AcceptInviteScreen> {
     setState(() => _isProcessing = true);
 
     try {
-      final success = await _inviteService.acceptInvite(
-        _inviteData!['id'] as String,
+      final success = await _inviteService.markInviteUsed(
+        _invite!.inviteId,
         user.uid,
       );
 
@@ -160,7 +161,7 @@ class _AcceptInviteScreenState extends State<AcceptInviteScreen> {
   }
 
   Widget _buildInviteAcceptState() {
-    final email = _inviteData!['email'] as String;
+    final email = _invite!.email;
     final user = FirebaseAuth.instance.currentUser;
 
     return Column(

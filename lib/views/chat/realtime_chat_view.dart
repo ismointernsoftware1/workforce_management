@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:shadcn_ui/shadcn_ui.dart';
 
@@ -14,9 +15,16 @@ import '../../widgets/shadcn/shadcn_widgets.dart';
 import '../../models/realtime_chat_models.dart';
 import '../../models/user_model.dart';
 import '../../providers/realtime_chat_provider.dart';
-import '../../providers/dashboard_provider.dart';
 import '../../utils/responsive_utils.dart';
-import '../widgets/sidebar.dart';
+import '../../utils/rbac_utils.dart';
+import '../../services/auth_service.dart';
+import '../../widgets/chat/chat_search_bar.dart';
+import '../../widgets/chat/chat_tabs.dart';
+import '../../widgets/chat/chat_list_item.dart';
+import '../../widgets/chat/message_bubble.dart';
+import '../../widgets/chat/message_input_field.dart';
+import '../../widgets/chat/date_separator.dart';
+import '../../widgets/chat/typing_indicator.dart';
 import 'create_group_dialog.dart';
 
 class RealtimeChatView extends StatefulWidget {
@@ -261,33 +269,179 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
     }
   }
 
-  void _showMobileSidebar(BuildContext context) {
-    final dashboardProvider = context.read<DashboardProvider>();
-    final isMobile = ResponsiveUtils.isMobile(context);
+  Widget _buildProfileMenu(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
     
-    // Show sidebar dialog - responsive width
-    final dialogWidth = isMobile 
-        ? MediaQuery.of(context).size.width * 0.85
-        : (ResponsiveUtils.isTablet(context) ? 300.0 : 280.0);
-    
-    showDialog(
-      context: context,
-      builder: (dialogContext) => Dialog(
-        alignment: Alignment.centerLeft,
-        insetPadding: EdgeInsets.zero,
-        backgroundColor: Colors.transparent,
-        child: SizedBox(
-          width: dialogWidth,
-          child: Sidebar(
-            activeTab: dashboardProvider.activeTab,
-            onTabChanged: (tab) {
-              dashboardProvider.changeTab(tab);
-              Navigator.of(dialogContext).pop();
-            },
+    if (user == null) {
+      return const SizedBox.shrink();
+    }
+
+    final displayName = user.displayName ?? user.email?.split('@')[0] ?? 'User';
+    final initials = _getInitials(user.displayName, user.email);
+
+    return PopupMenuButton<String>(
+      offset: const Offset(0, 50),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      elevation: 8,
+      color: Colors.white,
+      padding: EdgeInsets.zero,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceAlt,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: AppColors.border.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: CircleAvatar(
+          radius: 16,
+          backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+          child: Text(
+            initials,
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
           ),
         ),
       ),
+      itemBuilder: (context) => [
+        // User info header
+        PopupMenuItem<String>(
+          enabled: false,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.md,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                displayName,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                user.email ?? '',
+                style: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 12,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+        // Divider
+        const PopupMenuDivider(
+          height: 1,
+        ),
+        // Logout option
+        PopupMenuItem<String>(
+          value: 'logout',
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.logout_rounded,
+                size: 18,
+                color: AppColors.textPrimary,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              const Text(
+                'Sign Out',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+      onSelected: (value) {
+        if (value == 'logout') {
+          _handleLogout(context);
+        }
+      },
     );
+  }
+
+  String _getInitials(String? name, String? email) {
+    if (name != null && name.isNotEmpty) {
+      final parts = name.trim().split(' ');
+      if (parts.length >= 2) {
+        return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+      }
+      return name[0].toUpperCase();
+    }
+    if (email != null && email.isNotEmpty) {
+      return email[0].toUpperCase();
+    }
+    return 'U';
+  }
+
+  Future<void> _handleLogout(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => ShadDialog(
+        title: const Text('Sign Out'),
+        child: const Text(
+          'Are you sure you want to sign out?',
+          style: TextStyle(
+            fontSize: 14,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        actions: [
+          AppButton(
+            variant: AppButtonVariant.outline,
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          AppButton(
+            variant: AppButtonVariant.destructive,
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Sign Out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && context.mounted) {
+      try {
+        // Clear RBAC cache before logout
+        RBACUtils.clearCache();
+        
+        final authService = Provider.of<AuthService>(context, listen: false);
+        await authService.signOut();
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error signing out: ${e.toString()}'),
+              backgroundColor: AppColors.danger,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    }
   }
 
   @override
@@ -295,52 +449,57 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
     final isMobile = ResponsiveUtils.isMobile(context);
     final isTablet = ResponsiveUtils.isTablet(context);
     
+    // Build the main content
+    Widget content;
+    
     // On mobile, show either conversation list OR chat view, not both
     if (isMobile) {
       if (_showConversationList) {
-        return Container(
+        content = Container(
           color: Colors.white,
           child: _buildConversationList(context),
         );
       } else {
-        return Container(
+        content = Container(
           color: const Color(0xFFF5F6FA), // Modern light background
           child: _buildChatView(context, isMobile),
         );
       }
-    }
-    
-    // Desktop/Tablet: Show both side by side - Modern chat layout
-    return Container(
-      color: const Color(0xFFF8FAFC), // Modern sidebar background
-      child: Row(
-        children: [
-          // Left sidebar with conversations - Modern chat width
-          Container(
-            width: ResponsiveUtils.isDesktop(context) 
-                ? 400.0 
-                : (isTablet ? 350.0 : 320.0),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(
-                right: BorderSide(
-                  color: const Color(0xFFE4E7EC),
-                  width: 0.5,
+    } else {
+      // Desktop/Tablet: Show both side by side - Modern chat layout
+      content = Container(
+        color: const Color(0xFFF8FAFC), // Modern sidebar background
+        child: Row(
+          children: [
+            // Left sidebar with conversations - Modern chat width
+            Container(
+              width: ResponsiveUtils.isDesktop(context) 
+                  ? 400.0 
+                  : (isTablet ? 350.0 : 320.0),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(
+                  right: BorderSide(
+                    color: const Color(0xFFE4E7EC),
+                    width: 0.5,
+                  ),
                 ),
               ),
+              child: _buildConversationList(context),
             ),
-            child: _buildConversationList(context),
-          ),
-          // Main chat area - Modern style
-          Expanded(
-            child: Container(
-              color: const Color(0xFFF5F6FA), // Modern light background
-              child: _buildChatView(context, isMobile),
+            // Main chat area - Modern style
+            Expanded(
+              child: Container(
+                color: const Color(0xFFF5F6FA), // Modern light background
+                child: _buildChatView(context, isMobile),
+              ),
             ),
-          ),
-        ],
-      ),
-    );
+          ],
+        ),
+      );
+    }
+    
+    return content;
   }
 
   Widget _buildConversationList(BuildContext context) {
@@ -358,7 +517,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.max,
           children: [
-            // Chat header inside sidebar with hamburger menu
+            // Chat header with profile icon
             Padding(
               padding: const EdgeInsets.only(
                 left: AppSpacing.xs,
@@ -367,31 +526,6 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
               ),
               child: Row(
                 children: [
-                  // Hamburger menu button - visible on all screen sizes
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => _showMobileSidebar(context),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF9FAFB),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: AppColors.border.withValues(alpha: 0.3),
-                            width: 1,
-                        ),
-                        ),
-                        child: const Icon(
-                          Icons.menu,
-                          size: 20,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
                   // Chat title
                   Expanded(
                     child: Text(
@@ -409,45 +543,22 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                       ),
                     ),
                   ),
+                  // Profile menu button
+                  if (isMobile) ...[
+                    const SizedBox(width: AppSpacing.md),
+                    _buildProfileMenu(context),
+                  ],
                 ],
               ),
             ),
-            // Search bar - Modern style
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0F2F5),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: TextField(
-                controller: _searchController,
-                style: const TextStyle(
-                  fontSize: 15,
-                  color: Color(0xFF111B21),
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Search or start new chat',
-                  hintStyle: TextStyle(
-                    color: const Color(0xFF667781).withValues(alpha: 0.7),
-                    fontSize: 14.5,
-                  ),
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    size: 20,
-                    color: const Color(0xFF64748B), // Muted text
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                ),
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                  });
-                },
-              ),
+            // Search bar - Using ChatSearchBar widget
+            ChatSearchBar(
+              controller: _searchController,
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
             ),
             // Show search results if there's a query
             if (_searchQuery.isNotEmpty) ...[
@@ -457,34 +568,12 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
               ),
             ] else ...[
               const SizedBox(height: AppSpacing.sm),
-              // Tabs
+              // Tabs - Using ChatTabs widget
               Consumer<RealtimeChatProvider>(
                 builder: (context, provider, _) {
-                  final isInbox = provider.activeTab == ChatTab.inbox;
-                  return Row(
-                    children: [
-                      Expanded(
-                        child: _TabButton(
-                          icon: Icons.message,
-                          label: 'Messages',
-                          isActive: isInbox,
-                          onTap: () {
-                            provider.setActiveTab(ChatTab.inbox);
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: _TabButton(
-                          icon: Icons.group,
-                          label: 'Group',
-                          isActive: !isInbox,
-                          onTap: () {
-                            provider.setActiveTab(ChatTab.explore);
-                          },
-                        ),
-                      ),
-                    ],
+                  return ChatTabs(
+                    activeTab: provider.activeTab,
+                    onTabChanged: (tab) => provider.setActiveTab(tab),
                   );
                 },
               ),
@@ -537,7 +626,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                             provider.conversationTitle(conversation);
                         final typingUsers = provider.getTypingUsersForConversation(conversation.id);
                         final isTyping = typingUsers.isNotEmpty;
-                        return RealtimeConversationTile(
+                        return ChatListItem(
                           conversation: conversation,
                           displayName: displayName,
                           isSelected: isSelected,
@@ -1220,15 +1309,20 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                             final item = groupedMessages[index];
                                             if (item is String) {
                                               // Date separator
-                                              return _DateSeparator(dateLabel: item);
+                                              return DateSeparator(dateLabel: item);
                                             } else {
                                               // Message
                                               final message = item as RealtimeChatMessage;
                                             final isMine = message.senderId ==
                                                 provider.currentUserId;
-                                            return RealtimeMessageBubble(
+                                            return MessageBubble(
                                               message: message,
                                               isMine: isMine,
+                                              onImageTap: () => _showFullScreenImage(context, message.attachmentUrl!),
+                                              onVideoTap: () => _showVideoPlayer(context, message.attachmentUrl!),
+                                              onFileTap: () {
+                                                // Handle file tap
+                                              },
                                             );
                                             }
                                           },
@@ -1272,7 +1366,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                                     ),
                                                   ],
                                                 ),
-                                                child: const _TypingDots(),
+                                                child: const TypingIndicator(),
                                               ),
                                             ),
                                           );
@@ -1283,101 +1377,14 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                                 },
                               ),
                             ),
-                            // Input area - Modern style
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF8FAFC), // Light background
-                                border: Border(
-                                  top: BorderSide(
-                                    color: const Color(0xFFE4E7EC).withValues(alpha: 0.5),
-                                    width: 1,
-                                  ),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.emoji_emotions_outlined,
-                                      size: 24,
-                                      color: const Color(0xFF2563EB), // Blue text
-                                    ),
-                                    onPressed: () {
-                                      // Emoji picker - placeholder
-                                    },
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Container(
-                                      constraints: const BoxConstraints(maxHeight: 100),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(21),
-                                      ),
-                                      child: TextField(
-                                        controller: _messageController,
-                                        maxLines: null,
-                                        textInputAction: TextInputAction.newline,
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          color: const Color(0xFF0F172A), // Dark text
-                                        ),
-                                        decoration: InputDecoration(
-                                          hintText: 'Type a message',
-                                          hintStyle: TextStyle(
-                                            color: const Color(0xFF667781).withValues(alpha: 0.7),
-                                            fontSize: 15,
-                                          ),
-                                          border: InputBorder.none,
-                                          contentPadding: const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 9,
-                                        ),
-                                        ),
-                                        onSubmitted: (_) => _sendMessage(provider),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.attach_file,
-                                      size: 24,
-                                      color: const Color(0xFF2563EB), // Blue text
-                                    ),
-                                    onPressed: () => _showAttachmentOptions(context, provider),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: const BoxDecoration(
-                                      color: const Color(0xFF2563EB), // Blue send button
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Material(
-                                      color: Colors.transparent,
-                                      child: InkWell(
-                                        borderRadius: BorderRadius.circular(20),
-                                        onTap: () => _sendMessage(provider),
-                                          child: const Icon(
-                                            Icons.send_rounded,
-                                            size: 20,
-                                            color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            // Input area - Using MessageInputField widget
+                            MessageInputField(
+                              controller: _messageController,
+                              onSend: () => _sendMessage(provider),
+                              onAttachmentTap: () => _showAttachmentOptions(context, provider),
+                              onEmojiTap: () {
+                                // Emoji picker - placeholder
+                              },
                             ),
                           ],
                         ),
@@ -1859,6 +1866,77 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
       );
   }
 
+  void _showFullScreenImage(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.black,
+        child: Stack(
+          children: [
+            Center(
+              child: InteractiveViewer(
+                child: Image.network(imageUrl),
+              ),
+            ),
+            Positioned(
+              top: 40,
+              right: 20,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showVideoPlayer(BuildContext context, String videoUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.black,
+        child: Stack(
+          children: [
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.play_circle_filled, size: 64, color: Colors.white),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Video playback',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () {
+                      // Open video URL in browser/player
+                      // You can use url_launcher here
+                    },
+                    child: const Text(
+                      'Open Video',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              top: 40,
+              right: 20,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 }
 
 class _MembersPanel extends StatelessWidget {
@@ -2067,7 +2145,7 @@ class RealtimeConversationTile extends StatelessWidget {
                               ? Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const _TypingDots(),
+                          const TypingIndicator(),
                         ],
                       )
                               : Text(
@@ -2208,7 +2286,9 @@ class RealtimeMessageBubble extends StatelessWidget {
                 if (message.text.isEmpty) const SizedBox(height: 0) else const SizedBox(height: 6),
                 if (message.type == MessageType.image)
                   GestureDetector(
-                    onTap: () => _showFullScreenImage(context, message.attachmentUrl!),
+                    onTap: () {
+                      // Image tap handler - handled by parent widget
+                    },
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(4),
                     child: Image.network(
@@ -2256,7 +2336,9 @@ class RealtimeMessageBubble extends StatelessWidget {
                   )
                 else if (message.type == MessageType.video)
                   GestureDetector(
-                    onTap: () => _showVideoPlayer(context, message.attachmentUrl!),
+                    onTap: () {
+                      // Video tap handler - handled by parent widget
+                    },
                     child: Container(
                       width: 200,
                       height: 150,
@@ -2421,77 +2503,6 @@ class RealtimeMessageBubble extends StatelessWidget {
       );
     }
   }
-
-  void _showFullScreenImage(BuildContext context, String imageUrl) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.black,
-        child: Stack(
-          children: [
-            Center(
-              child: InteractiveViewer(
-                child: Image.network(imageUrl),
-              ),
-            ),
-            Positioned(
-              top: 40,
-              right: 20,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showVideoPlayer(BuildContext context, String videoUrl) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.black,
-        child: Stack(
-          children: [
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.play_circle_filled, size: 64, color: Colors.white),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Video playback',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: () {
-                      // Open video URL in browser/player
-                      // You can use url_launcher here
-                    },
-                    child: const Text(
-                      'Open Video',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Positioned(
-              top: 40,
-              right: 20,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 // Attachment option widget
@@ -2543,146 +2554,3 @@ class _AttachmentOption extends StatelessWidget {
     );
   }
 }
-
-// Date separator widget - Modern style
-class _DateSeparator extends StatelessWidget {
-  const _DateSeparator({required this.dateLabel});
-
-  final String dateLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: Divider(
-              color: const Color(0xFFE4E7EC).withValues(alpha: 0.5),
-              thickness: 0.5,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 4,
-              ),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(7),
-              ),
-              child: Text(
-                dateLabel,
-                style: const TextStyle(
-                  fontSize: 12.5,
-                  color: Color(0xFF64748B),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Divider(
-              color: const Color(0xFFE4E7EC).withValues(alpha: 0.5),
-              thickness: 0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Static typing dots (no animation) - Modern style
-class _TypingDots extends StatelessWidget {
-  const _TypingDots();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(3, (index) {
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 2.5),
-          width: 7,
-          height: 7,
-          decoration: BoxDecoration(
-            color: const Color(0xFF667781),
-            shape: BoxShape.circle,
-          ),
-        );
-      }),
-    );
-  }
-}
-
-class _TabButton extends StatelessWidget {
-  const _TabButton({
-    required this.icon,
-    required this.label,
-    required this.isActive,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool isActive;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm - 2,
-        ),
-        decoration: BoxDecoration(
-          color: isActive
-              ? const Color(0xFFF0F9FF)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          border: isActive
-              ? Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.2),
-                  width: 1,
-                )
-              : null,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: isActive ? AppColors.primary : AppColors.textMuted,
-            ),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: isActive ? AppColors.primary : AppColors.textMuted,
-                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                  fontSize: 14,
-                ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
-            ),
-          ],
-        ),
-        ),
-      ),
-    );
-  }
-}
-

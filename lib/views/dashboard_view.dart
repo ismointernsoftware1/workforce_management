@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../constants/app_colors.dart';
 import '../constants/app_spacing.dart';
@@ -9,11 +10,15 @@ import '../providers/expense_provider.dart';
 import '../models/search_result.dart';
 import '../models/expense_model.dart';
 import '../utils/responsive_utils.dart';
+import '../utils/rbac_utils.dart';
 import '../widgets/shadcn/shadcn_widgets.dart';
+import '../widgets/mobile_bottom_nav.dart';
+import '../services/auth_service.dart';
 import 'chat/realtime_chat_view.dart';
 import 'expenses/expenses_view.dart';
 import 'tasks/tasks_view.dart';
 import 'team/team_view.dart';
+import 'roles/role_list_page.dart';
 import 'widgets/sidebar.dart';
 import '../features/form_builder/screens/form_builder_screen.dart';
 import '../features/form_builder/screens/task_form_builder_screen.dart';
@@ -39,55 +44,60 @@ bool _sidebarOpen = true; // Sidebar open by default on web
         // On desktop, sidebar can be toggled
         final showSidebar = isMobile ? false : _sidebarOpen;
         
-        return Scaffold(
-          backgroundColor: AppColors.background,
-          body: SafeArea(
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Row(
+        return FutureBuilder<Map<String, bool>>(
+          future: _getAvailableTabs(context),
+          builder: (context, snapshot) {
+            final availableTabs = snapshot.data ?? {};
+            final tabsList = _getTabsList(availableTabs, provider.isSuperAdmin ?? false);
+            
+            return Scaffold(
+              backgroundColor: AppColors.background,
+              body: SafeArea(
+                child: Stack(
+                  clipBehavior: Clip.none,
                   children: [
-                    // Sidebar - show on desktop when open, or use drawer on mobile
-                    if (showSidebar)
-                      Sidebar(
-                        activeTab: provider.activeTab,
-                        onTabChanged: provider.changeTab,
-                        isSuperAdmin: provider.isSuperAdmin,
-                      ),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          _TopBar(
+                    Row(
+                      children: [
+                        // Sidebar - show on desktop when open
+                        if (showSidebar)
+                          Sidebar(
                             activeTab: provider.activeTab,
-                            onMenuTap: () {
-                              if (isMobile) {
-                                _showMobileSidebar(context, provider);
-                              } else {
-                                // Toggle sidebar on web
-                                setState(() {
-                                  _sidebarOpen = !_sidebarOpen;
-                                });
-                              }
-                            },
+                            onTabChanged: provider.changeTab,
+                            isSuperAdmin: provider.isSuperAdmin,
                           ),
-                          const SizedBox(height: AppSpacing.sm),
-                          if (provider.isLoading)
-                            const Expanded(
-                              child: Center(
-                                child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-                                ),
+                        Expanded(
+                          child: Column(
+                            children: [
+                              _TopBar(
+                                activeTab: provider.activeTab,
+                                onMenuTap: () {
+                                  if (!isMobile) {
+                                    // Toggle sidebar on web
+                                    setState(() {
+                                      _sidebarOpen = !_sidebarOpen;
+                                    });
+                                  }
+                                },
+                                showMenuButton: !isMobile,
                               ),
-                            )
-                          else
-                            Expanded(
-                              child: _buildTab(provider),
-                            ),
-                        ],
-                      ),
+                              const SizedBox(height: AppSpacing.sm),
+                              if (provider.isLoading)
+                                const Expanded(
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                                    ),
+                                  ),
+                                )
+                              else
+                                Expanded(
+                                  child: _buildTab(provider),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
                 // Search results overlay - positioned above all content
                 // This must be a direct child of Stack for Positioned to work
                 Consumer<DashboardProvider>(
@@ -121,121 +131,59 @@ bool _sidebarOpen = true; // Sidebar open by default on web
               ],
             ),
           ),
+          bottomNavigationBar: isMobile && tabsList.isNotEmpty
+              ? MobileBottomNav(
+                  currentTab: provider.activeTab,
+                  onTabChanged: provider.changeTab,
+                  availableTabs: tabsList,
+                )
+              : null,
+        );
+          },
         );
       },
     );
   }
 
-  void _showMobileSidebar(BuildContext context, DashboardProvider provider) {
-    final isMobile = ResponsiveUtils.isMobile(context);
-    final dialogWidth = isMobile 
-        ? MediaQuery.of(context).size.width * 0.85
-        : (ResponsiveUtils.isTablet(context) ? 300.0 : 280.0);
-    
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        alignment: Alignment.centerLeft,
-        insetPadding: EdgeInsets.zero,
-        backgroundColor: Colors.transparent,
-        child: SizedBox(
-          width: dialogWidth,
-          child: Sidebar(
-            activeTab: provider.activeTab,
-            onTabChanged: (tab) {
-              provider.changeTab(tab);
-              Navigator.of(context).pop();
-            },
-            isSuperAdmin: provider.isSuperAdmin,
-          ),
-        ),
-      ),
-    );
+  Future<Map<String, bool>> _getAvailableTabs(BuildContext context) async {
+    final permissions = <String, bool>{};
+    permissions['team'] = await RBACUtils.canRead('team');
+    permissions['chat'] = await RBACUtils.canRead('chat');
+    permissions['tasks'] = await RBACUtils.canRead('task');
+    permissions['expenses'] = await RBACUtils.canRead('expense');
+    permissions['admin'] = await RBACUtils.isAdmin();
+    return permissions;
   }
 
-  Widget _buildTab(DashboardProvider provider) {
-    // Use cached isSuperAdmin value from provider
-    final isSuperAdmin = provider.isSuperAdmin ?? false;
+  List<DashboardTab> _getTabsList(Map<String, bool> permissions, bool isSuperAdmin) {
+    if (isSuperAdmin) {
+      return [
+        DashboardTab.tasks,
+        DashboardTab.team,
+        DashboardTab.chat,
+        DashboardTab.expenses,
+        DashboardTab.roles,
+      ];
+    }
     
+    final tabs = <DashboardTab>[];
+    if (permissions['tasks'] == true) tabs.add(DashboardTab.tasks);
+    if (permissions['team'] == true) tabs.add(DashboardTab.team);
+    if (permissions['chat'] == true) tabs.add(DashboardTab.chat);
+    if (permissions['expenses'] == true) tabs.add(DashboardTab.expenses);
+    if (permissions['admin'] == true) tabs.add(DashboardTab.roles);
+    
+    return tabs;
+  }
+
+
+  Widget _buildTab(DashboardProvider provider) {
     // Show loading if RBAC status not yet determined
     if (provider.isSuperAdmin == null) {
       return const Center(child: CircularProgressIndicator());
     }
     
-    // Super Admin: Only allow Form Builders
-    if (isSuperAdmin && 
-        provider.activeTab != DashboardTab.taskFormBuilder && 
-        provider.activeTab != DashboardTab.expenseFormBuilder) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.lock_outline,
-              size: 64,
-              color: AppColors.textMuted,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              'Access Restricted',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'Super Administrators can only access Form Builders.',
-              style: TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 16,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
-    }
-    
-    // Non-Super Admin: Don't allow Form Builders
-    if (!isSuperAdmin && 
-        (provider.activeTab == DashboardTab.formBuilder ||
-         provider.activeTab == DashboardTab.taskFormBuilder ||
-         provider.activeTab == DashboardTab.expenseFormBuilder)) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.lock_outline,
-              size: 64,
-              color: AppColors.textMuted,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              'Access Denied',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'This page is only accessible to Super Administrators.',
-              style: TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 16,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
-    }
-    
-    // Render the appropriate view
+    // Render the appropriate view (tabs are already filtered in sidebar)
     switch (provider.activeTab) {
       case DashboardTab.tasks:
         return TasksView(key: ValueKey('tasks-${provider.activeTab}'));
@@ -245,6 +193,8 @@ bool _sidebarOpen = true; // Sidebar open by default on web
         return const RealtimeChatView(key: ValueKey('chat'));
       case DashboardTab.expenses:
         return ExpensesView(key: ValueKey('expenses-${provider.activeTab}'));
+      case DashboardTab.roles:
+        return const RoleListPage(key: ValueKey('roles'));
       case DashboardTab.formBuilder:
         return const FormBuilderScreen(key: ValueKey('form_builder'));
       case DashboardTab.taskFormBuilder:
@@ -483,10 +433,12 @@ class _TopBar extends StatefulWidget {
   const _TopBar({
     required this.activeTab,
     required this.onMenuTap,
+    this.showMenuButton = true,
   });
 
   final DashboardTab activeTab;
   final VoidCallback onMenuTap;
+  final bool showMenuButton;
 
   @override
   State<_TopBar> createState() => _TopBarState();
@@ -605,33 +557,35 @@ class _TopBarState extends State<_TopBar> {
         ),
         child: Row(
           children: [
-            // Always show hamburger menu
-            ShadTooltip(
-              builder: (context) => const Text('Menu'),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: widget.onMenuTap,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceAlt,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: AppColors.border.withValues(alpha: 0.3),
-                        width: 1,
+            // Show hamburger menu only if showMenuButton is true
+            if (widget.showMenuButton)
+              ShadTooltip(
+                builder: (context) => const Text('Menu'),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: widget.onMenuTap,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceAlt,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppColors.border.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
                       ),
-                    ),
-                    child: const Icon(
-                      Icons.menu,
-                      size: 24,
-                      color: AppColors.textPrimary,
+                      child: const Icon(
+                        Icons.menu,
+                        size: 24,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
+            if (widget.showMenuButton) const SizedBox(width: AppSpacing.md),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: isChat
@@ -646,9 +600,189 @@ class _TopBarState extends State<_TopBar> {
                       },
                     ),
             ),
+            // Profile menu button for mobile view
+            if (isMobile && !isChat) ...[
+              const SizedBox(width: AppSpacing.md),
+              _buildProfileMenu(context),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildProfileMenu(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    
+    if (user == null) {
+      return const SizedBox.shrink();
+    }
+
+    final displayName = user.displayName ?? user.email?.split('@')[0] ?? 'User';
+    final initials = _getInitials(user.displayName, user.email);
+
+    return PopupMenuButton<String>(
+      offset: const Offset(0, 50),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      elevation: 8,
+      color: Colors.white,
+      padding: EdgeInsets.zero,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceAlt,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: AppColors.border.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: CircleAvatar(
+          radius: 16,
+          backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+          child: Text(
+            initials,
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+        ),
+      ),
+      itemBuilder: (context) => [
+        // User info header
+        PopupMenuItem<String>(
+          enabled: false,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.md,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                displayName,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                user.email ?? '',
+                style: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 12,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+        // Divider
+        const PopupMenuDivider(
+          height: 1,
+        ),
+        // Logout option
+        PopupMenuItem<String>(
+          value: 'logout',
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.logout_rounded,
+                size: 18,
+                color: AppColors.textPrimary,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              const Text(
+                'Sign Out',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+      onSelected: (value) {
+        if (value == 'logout') {
+          _handleLogout(context);
+        }
+      },
+    );
+  }
+
+  String _getInitials(String? name, String? email) {
+    if (name != null && name.isNotEmpty) {
+      final parts = name.trim().split(' ');
+      if (parts.length >= 2) {
+        return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+      }
+      return name[0].toUpperCase();
+    }
+    if (email != null && email.isNotEmpty) {
+      return email[0].toUpperCase();
+    }
+    return 'U';
+  }
+
+  Future<void> _handleLogout(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => ShadDialog(
+        title: const Text('Sign Out'),
+        child: const Text(
+          'Are you sure you want to sign out?',
+          style: TextStyle(
+            fontSize: 14,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        actions: [
+          AppButton(
+            variant: AppButtonVariant.outline,
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          AppButton(
+            variant: AppButtonVariant.destructive,
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Sign Out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && context.mounted) {
+      try {
+        // Clear RBAC cache before logout
+        RBACUtils.clearCache();
+        
+        final authService = Provider.of<AuthService>(context, listen: false);
+        await authService.signOut();
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error signing out: ${e.toString()}'),
+              backgroundColor: AppColors.danger,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    }
   }
 }

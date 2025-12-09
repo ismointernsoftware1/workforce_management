@@ -15,7 +15,7 @@ import '../models/search_result.dart';
 import '../models/expense_model.dart';
 import '../utils/rbac_utils.dart';
 
-enum DashboardTab { tasks, team, chat, expenses, formBuilder, taskFormBuilder, expenseFormBuilder }
+enum DashboardTab { tasks, team, chat, expenses, roles, formBuilder, taskFormBuilder, expenseFormBuilder }
 
 class DashboardProvider extends ChangeNotifier {
   DashboardProvider({
@@ -61,18 +61,38 @@ class DashboardProvider extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
 
-    // Set initial tab based on user role
+    // Set initial tab based on user role and permissions
     print('DashboardProvider: Initializing and checking RBAC...');
     _isSuperAdmin = await RBACUtils.isSuperAdmin();
     print('DashboardProvider: isSuperAdmin = $_isSuperAdmin');
     
-    // Set initial tab based on user role
+    // Set initial tab based on user role and permissions
     if (_isSuperAdmin == true) {
       print('DashboardProvider: Setting activeTab to taskFormBuilder');
       activeTab = DashboardTab.taskFormBuilder;
     } else {
-      print('DashboardProvider: Setting activeTab to tasks');
-      activeTab = DashboardTab.tasks;
+      // Find first available tab based on permissions
+      final canReadTasks = await RBACUtils.canRead('tasks');
+      final canReadTeam = await RBACUtils.canRead('team');
+      final canReadChat = await RBACUtils.canRead('chat');
+      final canReadExpenses = await RBACUtils.canRead('expenses');
+      final isAdminValue = await RBACUtils.isAdmin();
+      
+      if (canReadTasks) {
+        activeTab = DashboardTab.tasks;
+      } else if (canReadTeam) {
+        activeTab = DashboardTab.team;
+      } else if (canReadChat) {
+        activeTab = DashboardTab.chat;
+      } else if (canReadExpenses) {
+        activeTab = DashboardTab.expenses;
+      } else if (isAdminValue) {
+        activeTab = DashboardTab.roles;
+      } else {
+        // Fallback to tasks if no permissions found
+        activeTab = DashboardTab.tasks;
+      }
+      print('DashboardProvider: Setting activeTab to ${activeTab}');
     }
     
     notifyListeners(); // Notify after setting tab
