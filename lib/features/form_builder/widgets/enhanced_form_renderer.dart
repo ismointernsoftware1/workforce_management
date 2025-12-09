@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../../constants/app_colors.dart';
@@ -70,45 +69,47 @@ class _EnhancedFormRendererState extends State<EnhancedFormRenderer> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: widget.form.sections.map((section) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.xl),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                section.title,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.3,
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: widget.form.sections
+            .where((section) => section.title != 'Subtasks') // Hide Subtasks section
+            .map((section) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  section.title,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.3,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Group fields related to ${section.title.toLowerCase()}.',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textMuted,
-                  height: 1.4,
+                const SizedBox(height: 4),
+                Text(
+                  'Group fields related to ${section.title.toLowerCase()}.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textMuted,
+                    height: 1.4,
+                  ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              ...section.fields.map((field) {
-                final value = _values[field.id];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-                  child: _buildField(field, value, (v) => _update(field.id, v)),
-                );
-              }),
-            ],
-          ),
-        );
-      }).toList(),
-    );
+                const SizedBox(height: AppSpacing.lg),
+                ...section.fields.map((field) {
+                  final value = _values[field.id];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+                    child: _buildField(field, value, (v) => _update(field.id, v)),
+                  );
+                }),
+              ],
+            ),
+          );
+        }).toList(),
+      );
   }
 
   Widget _buildField(
@@ -356,41 +357,17 @@ class _EnhancedFormRendererState extends State<EnhancedFormRenderer> {
           ],
         );
       case FormFieldType.date:
-        return GestureDetector(
-          onTap: () async {
-            final picked = await showDatePicker(
-              context: context,
-              initialDate: value as DateTime? ?? DateTime.now(),
-              firstDate: DateTime(2000),
-              lastDate: DateTime(2100),
-              builder: (context, child) {
-                return Theme(
-                  data: Theme.of(context).copyWith(
-                    colorScheme: const ColorScheme.light(
-                      primary: AppColors.primary,
-                    ),
-                  ),
-                  child: child!,
-                );
-              },
-            );
-            if (picked != null) onChanged(picked);
-          },
-          child: ShadInput(
-            placeholder: Text(value == null
-                ? field.placeholder
-                : DateFormat('MM/dd/yyyy').format(value as DateTime)),
-            leading: const Icon(Icons.calendar_today, color: AppColors.primary),
-            trailing: const Icon(Icons.arrow_drop_down, color: AppColors.textMuted),
-            readOnly: true,
-          ),
+        return AppDatePicker(
+          selectedDate: value as DateTime?,
+          onDateSelected: (date) => onChanged(date),
+          placeholder: field.placeholder,
+          label: field.label,
+          required: field.required,
         );
       case FormFieldType.fileUpload:
-        return ShadInput(
-          placeholder: const Text('File upload not implemented'),
-          leading: const Icon(Icons.upload_file, color: AppColors.primary),
-          enabled: false,
-        );
+        // Hide file upload fields in the form renderer
+        // File attachments are handled separately in add_task_view.dart
+        return const SizedBox.shrink();
       case FormFieldType.sectionTitle:
         return Text(
           field.label.isEmpty ? 'Section' : field.label,
@@ -405,4 +382,5 @@ class _EnhancedFormRendererState extends State<EnhancedFormRenderer> {
     }
   }
 }
+
 

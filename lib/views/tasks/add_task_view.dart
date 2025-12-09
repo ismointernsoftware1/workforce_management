@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import 'package:shadcn_ui/shadcn_ui.dart';
+
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/task_attachment.dart';
@@ -446,105 +446,105 @@ class _AddTaskViewState extends State<AddTaskView> {
                           ),
                         ],
 
-              // Task Details Section
-              _buildSection(
-                title: 'Task Details',
-                subtitle: 'Essential attachment information.',
-                children: [
-                  AttachmentPicker(
-                    attachments: _attachments,
-                    onAttachmentsChanged: (attachments) {
-                      setState(() {
-                        _attachments = attachments;
-                      });
-                    },
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: AppSpacing.xl),
-
-              // Subtasks Section
-              _buildSection(
-                title: 'Subtasks',
-                subtitle: 'Break down your task into smaller steps.',
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      AppButton(
-                        variant: AppButtonVariant.outline,
-                        onPressed: _addSubTaskField,
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
+                        // Subtasks Section
+                        _buildSection(
+                          title: 'Subtasks',
+                          subtitle: 'Break down your task into smaller steps.',
                           children: [
-                            Icon(Icons.add, size: 18),
-                            SizedBox(width: 4),
-                            Text('Add Subtask'),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                AppButton(
+                                  variant: AppButtonVariant.outline,
+                                  onPressed: _addSubTaskField,
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.add, size: 18),
+                                      SizedBox(width: 4),
+                                      Text('Add Subtask'),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            // Subtask Fields
+                            ...List.generate(_subTaskControllers.length, (index) {
+                              final isDone = index < _subTaskDoneStates.length 
+                                  ? _subTaskDoneStates[index] 
+                                  : false;
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                                child: Row(
+                                  children: [
+                                    InkWell(
+                                      onTap: () => _toggleSubTaskDone(index),
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          border: isDone
+                                              ? Border.all(color: AppColors.primary, width: 2)
+                                              : Border.all(color: AppColors.border, width: 1),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Icon(
+                                          isDone ? Icons.check_box : Icons.check_box_outline_blank,
+                                          size: 20,
+                                          color: isDone ? AppColors.primary : AppColors.textMuted,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppSpacing.xs),
+                                    Expanded(
+                                      child: ShadInput(
+                                        controller: _subTaskControllers[index],
+                                        placeholder: Text('Enter subtask ${index + 1}'),
+                                        enabled: !isDone,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppSpacing.sm),
+                                    ShadIconButton(
+                                      onPressed: () => _removeSubTaskField(index),
+                                      icon: const Icon(Icons.delete_outline, color: AppColors.danger, size: 20),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                            if (_subTaskControllers.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                                child: Text(
+                                  'No subtasks added yet. Click "Add Subtask" to create one.',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.textMuted,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  // Subtask Fields
-                  ...List.generate(_subTaskControllers.length, (index) {
-                    final isDone = index < _subTaskDoneStates.length 
-                        ? _subTaskDoneStates[index] 
-                        : false;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                      child: Row(
-                        children: [
-                          InkWell(
-                            onTap: () => _toggleSubTaskDone(index),
-                            borderRadius: BorderRadius.circular(4),
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                border: isDone
-                                    ? Border.all(color: AppColors.primary, width: 2)
-                                    : Border.all(color: AppColors.border, width: 1),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Icon(
-                                isDone ? Icons.check_box : Icons.check_box_outline_blank,
-                                size: 20,
-                                color: isDone ? AppColors.primary : AppColors.textMuted,
-                              ),
+
+                        const SizedBox(height: AppSpacing.xl),
+
+                        // Task Details Section
+                        _buildSection(
+                          title: 'Task Details',
+                          subtitle: 'Essential attachment information.',
+                          children: [
+                            AttachmentPicker(
+                              attachments: _attachments,
+                              onAttachmentsChanged: (attachments) {
+                                setState(() {
+                                  _attachments = attachments;
+                                });
+                              },
                             ),
-                          ),
-                          const SizedBox(width: AppSpacing.xs),
-                          Expanded(
-                            child: ShadInput(
-                              controller: _subTaskControllers[index],
-                              placeholder: Text('Enter subtask ${index + 1}'),
-                              enabled: !isDone,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          ShadIconButton(
-                            onPressed: () => _removeSubTaskField(index),
-                            icon: const Icon(Icons.delete_outline, color: AppColors.danger, size: 20),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-                  if (_subTaskControllers.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-                      child: Text(
-                        'No subtasks added yet. Click "Add Subtask" to create one.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textMuted,
-                          fontStyle: FontStyle.italic,
+                          ],
                         ),
-                      ),
-                    ),
-                ],
-              ),
 
               const SizedBox(height: AppSpacing.xl),
 

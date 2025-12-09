@@ -54,12 +54,38 @@ class FormBuilderController extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
     try {
+      debugPrint('FormBuilderController: Loading form with id: $id');
       final form = await _service.getForm(id);
-      activeForm = form;
-      selectedSection = null;
-      selectedField = null;
+      debugPrint('FormBuilderController: getForm returned: ${form != null ? "form found" : "null"}');
+      if (form != null) {
+        debugPrint('FormBuilderController: Setting activeForm to form "${form.name}"');
+        activeForm = form;
+        selectedSection = null;
+        selectedField = null;
+        debugPrint('FormBuilderController: Loaded form "${form.name}" with ${form.sections.length} sections');
+        for (var section in form.sections) {
+          debugPrint('  - Section "${section.title}" with ${section.fields.length} fields');
+        }
+        // Force notify after setting activeForm
+        debugPrint('FormBuilderController: Notifying listeners after setting activeForm');
+        notifyListeners();
+        // Double-check activeForm is set
+        if (activeForm == null) {
+          debugPrint('FormBuilderController: WARNING - activeForm is null after setting!');
+        } else {
+          debugPrint('FormBuilderController: activeForm confirmed set: "${activeForm!.name}"');
+        }
+      } else {
+        debugPrint('FormBuilderController: Form with id $id not found in Firestore');
+        activeForm = null;
+      }
+    } catch (e, stackTrace) {
+      debugPrint('FormBuilderController: Error loading form $id: $e');
+      debugPrint('Stack trace: $stackTrace');
+      activeForm = null;
     } finally {
       isLoading = false;
+      debugPrint('FormBuilderController: Setting isLoading=false, activeForm=${activeForm?.name ?? "null"}');
       notifyListeners();
     }
   }

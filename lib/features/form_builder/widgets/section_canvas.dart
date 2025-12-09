@@ -20,44 +20,98 @@ class SectionCanvas extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final form = controller.activeForm;
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _Header(
-            controller: controller,
-          ),
-          const Divider(height: 1),
-          Expanded(
-            child: Container(
-              color: const Color(0xFFF9FAFB), // Soft grey background
-              child: ListView(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                children: [
-                  Wrap(
-                    spacing: AppSpacing.md,
-                    runSpacing: AppSpacing.md,
-                    children: [
-                      ...form?.sections.map((section) {
-                            return _SectionCard(
-                              key: ValueKey(section.id), // Force rebuild when section changes
-                              section: section,
-                              controller: controller,
-                              onAddFieldFromType: (type) =>
-                                  onAddFieldFromType(type, section.id),
-                            );
-                          }).toList() ??
-                          <Widget>[],
-                      _AddSectionCard(onTap: controller.addSection),
-                    ],
-                  ),
-                ],
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _Header(
+          controller: controller,
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: Container(
+            color: const Color(0xFFF9FAFB), // Soft grey background
+            child: ListenableBuilder(
+              listenable: controller,
+              builder: (context, _) {
+                final form = controller.activeForm;
+                // Debug output
+                debugPrint('SectionCanvas rebuild: form=${form?.name}, sections=${form?.sections.length ?? 0}, isLoading=${controller.isLoading}');
+                
+                // Show loading indicator if form is loading
+                if (controller.isLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                
+                // Show empty state if no form
+                if (form == null) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.xl),
+                      child: Text(
+                        'No form loaded. Please select or create a form.',
+                        style: TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                
+                // Show empty state if form has no sections
+                if (form.sections.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.xl),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.inbox_outlined,
+                            size: 48,
+                            color: AppColors.textMuted,
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Text(
+                            'No sections yet. Add a section to get started.',
+                            style: TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                
+                return ListView(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  children: [
+                    Wrap(
+                      spacing: AppSpacing.md,
+                      runSpacing: AppSpacing.md,
+                      children: [
+                        ...form.sections.map((section) {
+                              debugPrint('Rendering section: ${section.title} with ${section.fields.length} fields');
+                              return _SectionCard(
+                                key: ValueKey(section.id), // Force rebuild when section changes
+                                section: section,
+                                controller: controller,
+                                onAddFieldFromType: (type) =>
+                                    onAddFieldFromType(type, section.id),
+                              );
+                            }),
+                        _AddSectionCard(onTap: controller.addSection),
+                      ],
+                    ),
+                  ],
+                );
+              },
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -230,6 +284,7 @@ class _HeaderState extends State<_Header> {
             AppButton(
               variant: AppButtonVariant.ghost,
               icon: Icons.delete_outline,
+              label: 'Delete',
               onPressed: () => _deleteForm(context),
             ),
           const SizedBox(width: AppSpacing.sm),
@@ -361,6 +416,7 @@ class _SectionCardState extends State<_SectionCard> {
                   AppButton(
                     variant: AppButtonVariant.ghost,
                     icon: Icons.delete_outline,
+                    label: 'Delete',
                     onPressed: () => widget.controller.deleteSection(widget.section.id),
                   ),
                 ],

@@ -39,22 +39,82 @@ class _ExpenseFormBuilderScreenState extends State<ExpenseFormBuilderScreen> {
     try {
       // Initialize default expense forms first
       final initializer = DefaultFormsInitializer(FormBuilderFirestoreService());
-      await initializer.initializeDefaultForms();
-      // Then load expense forms only
-      await _controller.loadForms();
-      // Create a new empty form for editing
-      _controller.loadFormById(null);
-      debugPrint('Expense forms initialized. Total forms: ${_controller.availableForms.length}');
-      for (var form in _controller.availableForms) {
-        debugPrint('  - ${form.name} (${form.id})');
+      final formIds = await initializer.initializeDefaultForms();
+      debugPrint('Initialized default forms: $formIds');
+      
+      // Get the expense form ID directly from initialization result
+      String? defaultFormId = formIds['expense'];
+      debugPrint('Default expense form ID from initializer: $defaultFormId');
+      
+      // Try to load forms list (may fail due to index, but that's OK)
+      try {
+        await _controller.loadForms();
+        debugPrint('Expense forms loaded. Total forms: ${_controller.availableForms.length}');
+        for (var form in _controller.availableForms) {
+          debugPrint('  - ${form.name} (${form.id}) with ${form.sections.length} sections');
+        }
+      } catch (e) {
+        debugPrint('Warning: Could not load forms list (index may be missing): $e');
+        // Continue anyway - we'll use the form ID from initializer
       }
-    } catch (e) {
+      
+      // Fallback: try to find it in availableForms if we have them
+      if ((defaultFormId == null || defaultFormId.isEmpty) && _controller.availableForms.isNotEmpty) {
+        try {
+          final foundForm = _controller.availableForms.firstWhere(
+            (f) => f.name == 'Add Expense Form',
+          );
+          defaultFormId = foundForm.id;
+          debugPrint('Found form in availableForms: ${foundForm.name} (${foundForm.id}) with ${foundForm.sections.length} sections');
+        } catch (_) {
+          // Form not found in availableForms
+          debugPrint('Form "Add Expense Form" not found in availableForms');
+        }
+      }
+      
+      if (defaultFormId != null && defaultFormId.isNotEmpty) {
+        debugPrint('Loading default "Add Expense Form" with ID: $defaultFormId');
+        await _controller.loadFormById(defaultFormId);
+        // Wait a moment for the form to load
+        await Future.delayed(const Duration(milliseconds: 300));
+        if (_controller.activeForm != null) {
+          debugPrint('✓ Form loaded successfully: "${_controller.activeForm!.name}"');
+          debugPrint('  - Sections: ${_controller.activeForm!.sections.length}');
+          for (var section in _controller.activeForm!.sections) {
+            debugPrint('    - Section "${section.title}": ${section.fields.length} fields');
+          }
+        } else {
+          debugPrint('✗ Form loaded but activeForm is null!');
+          debugPrint('  - Trying to reload form...');
+          // Try reloading
+          await _controller.loadFormById(defaultFormId);
+          await Future.delayed(const Duration(milliseconds: 200));
+          if (_controller.activeForm != null) {
+            debugPrint('✓ Form loaded on retry: "${_controller.activeForm!.name}"');
+          }
+        }
+        // Force UI update
+        if (mounted) {
+          setState(() {});
+        }
+      } else {
+        // Fallback: create a new empty form if default doesn't exist
+        debugPrint('Default "Add Expense Form" not found, creating new empty form');
+        _controller.loadFormById(null);
+      }
+    } catch (e, stackTrace) {
       debugPrint('Error initializing expense forms: $e');
+      debugPrint('Stack trace: $stackTrace');
     } finally {
       if (mounted) {
         setState(() {
           _isInitializing = false;
         });
+        // Force one more update after initialization
+        await Future.delayed(const Duration(milliseconds: 100));
+        if (mounted) {
+          setState(() {});
+        }
       }
     }
   }
@@ -111,7 +171,7 @@ class _ExpenseFormBuilderScreenState extends State<ExpenseFormBuilderScreen> {
               ? const Scaffold(
                   body: Center(child: CircularProgressIndicator()),
                 )
-              : const _ExpenseFormBuilderBody(),
+              : _ExpenseFormBuilderBody(controller: _controller),
         );
       },
     );
@@ -119,11 +179,14 @@ class _ExpenseFormBuilderScreenState extends State<ExpenseFormBuilderScreen> {
 }
 
 class _ExpenseFormBuilderBody extends StatelessWidget {
-  const _ExpenseFormBuilderBody();
+  const _ExpenseFormBuilderBody({required this.controller});
+  
+  final FormBuilderController controller;
 
   @override
   Widget build(BuildContext context) {
-    final controller = context.watch<FormBuilderController>();
+    // Watch the controller for changes
+    context.watch<FormBuilderController>();
     final isMobile = ResponsiveUtils.isMobile(context);
     final isTablet = ResponsiveUtils.isTablet(context);
     

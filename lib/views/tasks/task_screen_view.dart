@@ -302,99 +302,63 @@ class _TaskScreenViewState extends State<TaskScreenView> {
               ),
             ),
           ),
-          child: isMobile
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Due Date Filter
-                    _buildFilterDropdown(
-                      label: _getDueDateLabel(controller),
-                      items: ['This Week', 'This Month', 'Custom'],
-                      onSelected: (value) {
-                        if (value == 'Custom') {
-                          _showDateRangePicker(context, controller);
-                        } else {
-                          controller.setDueDateFilter(value);
-                        }
-                      },
-                      isMobile: true,
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    // Assignee Filter
-                    AppSelect<String>(
-                      placeholder: 'All',
-                      value: controller.selectedAssigneeFilter ?? 'All',
-                      options: [
-                        const SelectOption(value: 'All', label: 'All'),
-                        ...provider.members.map((m) => SelectOption<String>(
-                          value: m.name,
-                          label: m.name,
-                        )),
-                      ],
-                      selectedOptionBuilder: (context, value) {
-                        return Text(value ?? 'All');
-                      },
-                      onChanged: (value) {
-                        controller.setAssigneeFilter(value == 'All' ? null : value);
-                      },
-                      width: isMobile ? double.infinity : null,
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    // Priority Filter
-                    _buildFilterDropdown(
-                      label: controller.selectedPriorityFilter ?? 'All',
-                      items: ['All', 'High', 'Medium', 'Low'],
-                      onSelected: (value) {
-                        controller.setPriorityFilter(value == 'All' ? null : value);
-                      },
-                      isMobile: true,
-                    ),
-                  ],
-                )
-              : Row(
-                  children: [
-                    // Due Date Filter
-                    _buildFilterDropdown(
-                      label: _getDueDateLabel(controller),
-                      items: ['This Week', 'This Month', 'Custom'],
-                      onSelected: (value) {
-                        if (value == 'Custom') {
-                          _showDateRangePicker(context, controller);
-                        } else {
-                          controller.setDueDateFilter(value);
-                        }
-                      },
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    // Assignee Filter
-                    AppSelect<String>(
-                      placeholder: 'All',
-                      value: controller.selectedAssigneeFilter ?? 'All',
-                      options: [
-                        const SelectOption(value: 'All', label: 'All'),
-                        ...provider.members.map((m) => SelectOption<String>(
-                          value: m.name,
-                          label: m.name,
-                        )),
-                      ],
-                      selectedOptionBuilder: (context, value) {
-                        return Text(value ?? 'All');
-                      },
-                      onChanged: (value) {
-                        controller.setAssigneeFilter(value == 'All' ? null : value);
-                      },
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    // Priority Filter
-                    _buildFilterDropdown(
-                      label: controller.selectedPriorityFilter ?? 'All',
-                      items: ['All', 'High', 'Medium', 'Low'],
-                      onSelected: (value) {
-                        controller.setPriorityFilter(value == 'All' ? null : value);
-                      },
-                    ),
-                  ],
+          child: Row(
+            mainAxisSize: MainAxisSize.max,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Due Date Filter
+              Expanded(
+                flex: 1,
+                child: _buildFilterDropdown(
+                  label: _getDueDateLabel(controller),
+                  items: ['This Week', 'This Month', 'Custom'],
+                  onSelected: (value) {
+                    if (value == 'Custom') {
+                      _showDateRangePicker(context, controller);
+                    } else {
+                      controller.setDueDateFilter(value);
+                    }
+                  },
+                  isMobile: isMobile,
                 ),
+              ),
+              SizedBox(width: isMobile ? AppSpacing.sm : AppSpacing.md),
+              // Assignee Filter
+              Expanded(
+                flex: 1,
+                child: AppSelect<String>(
+                  placeholder: 'All',
+                  value: controller.selectedAssigneeFilter ?? 'All',
+                  options: [
+                    const SelectOption(value: 'All', label: 'All'),
+                    ...provider.members.map((m) => SelectOption<String>(
+                      value: m.name,
+                      label: m.name,
+                    )),
+                  ],
+                  selectedOptionBuilder: (context, value) {
+                    return Text(value ?? 'All');
+                  },
+                  onChanged: (value) {
+                    controller.setAssigneeFilter(value == 'All' ? null : value);
+                  },
+                ),
+              ),
+              SizedBox(width: isMobile ? AppSpacing.sm : AppSpacing.md),
+              // Priority Filter
+              Expanded(
+                flex: 1,
+                child: _buildFilterDropdown(
+                  label: controller.selectedPriorityFilter ?? 'All',
+                  items: ['All', 'High', 'Medium', 'Low'],
+                  onSelected: (value) {
+                    controller.setPriorityFilter(value == 'All' ? null : value);
+                  },
+                  isMobile: isMobile,
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -438,7 +402,6 @@ class _TaskScreenViewState extends State<TaskScreenView> {
       onChanged: (value) {
         onSelected(value);
       },
-      width: isMobile ? double.infinity : null,
     );
   }
 
@@ -446,16 +409,28 @@ class _TaskScreenViewState extends State<TaskScreenView> {
     BuildContext context,
     TaskScreenController controller,
   ) async {
-    final DateTimeRange? picked = await showDateRangePicker(
+    // Show start date picker
+    final startDate = await showDialog<DateTime>(
       context: context,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      initialDateRange: controller.startDate != null && controller.endDate != null
-          ? DateTimeRange(start: controller.startDate!, end: controller.endDate!)
-          : null,
+      builder: (dialogContext) => _DateRangePickerDialog(
+        initialDate: controller.startDate,
+        title: 'Select Start Date',
+      ),
     );
-    if (picked != null) {
-      controller.setDateRange(picked.start, picked.end);
+
+    if (startDate == null) return;
+
+    // Show end date picker
+    final endDate = await showDialog<DateTime>(
+      context: context,
+      builder: (dialogContext) => _DateRangePickerDialog(
+        initialDate: controller.endDate ?? startDate,
+        title: 'Select End Date',
+      ),
+    );
+
+    if (endDate != null) {
+      controller.setDateRange(startDate, endDate);
     }
   }
 
@@ -3344,6 +3319,80 @@ class _BoardTaskCard extends StatelessWidget {
         }
       }
     }
+  }
+}
+
+/// Date range picker dialog for task screen
+class _DateRangePickerDialog extends StatefulWidget {
+  const _DateRangePickerDialog({
+    required this.initialDate,
+    required this.title,
+  });
+
+  final DateTime? initialDate;
+  final String title;
+
+  @override
+  State<_DateRangePickerDialog> createState() => _DateRangePickerDialogState();
+}
+
+class _DateRangePickerDialogState extends State<_DateRangePickerDialog> {
+  DateTime? _selectedDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDate = widget.initialDate;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              widget.title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            AppCalendar(
+              selectedDate: _selectedDate,
+              onDateSelected: (date) {
+                setState(() {
+                  _selectedDate = date;
+                });
+              },
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                AppButton(
+                  variant: AppButtonVariant.outline,
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                AppButton(
+                  onPressed: _selectedDate != null
+                      ? () => Navigator.of(context).pop(_selectedDate)
+                      : null,
+                  child: const Text('Select'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

@@ -32,6 +32,15 @@ class DefaultFormsInitializer {
       final taskFormId = await _createDefaultTaskForm();
       result['task'] = taskFormId;
     } else {
+      // Check if form needs to be updated (remove file upload fields and subtasks)
+      final hasFileUpload = taskForm.sections.any((s) => 
+        s.fields.any((f) => f.type == FormFieldType.fileUpload));
+      final hasSubtasks = taskForm.sections.any((s) => s.title == 'Subtasks');
+      
+      if (hasFileUpload || hasSubtasks) {
+        // Update the form (remove file upload fields and subtasks)
+        await _updateTaskFormWithMissingFields(taskForm);
+      }
       result['task'] = taskForm.id;
     }
 
@@ -55,6 +64,44 @@ class DefaultFormsInitializer {
     }
 
     return result;
+  }
+
+  /// Update existing task form with missing subtask fields
+  Future<void> _updateTaskFormWithMissingFields(FormModel existingForm) async {
+    bool updated = false;
+    
+    // Remove file upload fields from Task Details section if they exist
+    try {
+      final taskDetailsSection = existingForm.sections.firstWhere(
+        (s) => s.title == 'Task Details',
+      );
+      
+      final fileUploadFields = taskDetailsSection.fields.where(
+        (f) => f.type == FormFieldType.fileUpload).toList();
+      
+      if (fileUploadFields.isNotEmpty) {
+        for (var field in fileUploadFields) {
+          taskDetailsSection.fields.remove(field);
+        }
+        updated = true;
+      }
+    } catch (_) {
+      // Task Details section doesn't exist, nothing to do
+    }
+    
+    // Remove Subtasks section if it exists
+    final subtasksSection = existingForm.sections.where((s) => s.title == 'Subtasks').toList();
+    if (subtasksSection.isNotEmpty) {
+      for (var section in subtasksSection) {
+        existingForm.sections.remove(section);
+      }
+      updated = true;
+    }
+    
+    if (updated) {
+      existingForm.updatedAt = DateTime.now();
+      await _service.updateForm(existingForm);
+    }
   }
 
   Future<String> _createDefaultTaskForm() async {

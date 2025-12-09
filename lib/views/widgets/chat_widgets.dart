@@ -25,8 +25,7 @@ class ConversationTile extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+        child: Container(
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
             color: isSelected ? AppColors.primarySoft : AppColors.surface,
