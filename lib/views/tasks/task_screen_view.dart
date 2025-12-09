@@ -11,6 +11,8 @@ import '../../providers/dashboard_provider.dart';
 import '../../controllers/task_screen_controller.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/shadcn/shadcn_widgets.dart';
+import '../../widgets/permission_wrapper.dart';
+import '../../utils/rbac_utils.dart';
 import 'add_task_view.dart';
 import 'edit_task_view.dart';
 import 'task_detail_view.dart';
@@ -77,6 +79,15 @@ List<TeamMember> _findAllAssigneesFromTask(DashboardProvider provider, TaskModel
   return assignees;
 }
 
+// Helper function to get task permissions
+Future<Map<String, bool>> _getTaskPermissions() async {
+  return {
+    'create': await RBACUtils.canCreate('tasks'),
+    'update': await RBACUtils.canUpdate('tasks'),
+    'delete': await RBACUtils.canDelete('tasks'),
+  };
+}
+
 class TaskScreenView extends StatefulWidget {
   const TaskScreenView({super.key});
 
@@ -130,10 +141,14 @@ class _TaskScreenViewState extends State<TaskScreenView> {
       child: Scaffold(
         backgroundColor: AppColors.background,
         floatingActionButton: isMobile
-            ? FloatingActionButton(
-                onPressed: () => _openAddTask(context),
-                backgroundColor: AppColors.primary,
-                child: const Icon(Icons.add, color: Colors.white),
+            ? PermissionWrapper(
+                permission: 'create',
+                resource: 'tasks',
+                child: FloatingActionButton(
+                  onPressed: () => _openAddTask(context),
+                  backgroundColor: AppColors.primary,
+                  child: const Icon(Icons.add, color: Colors.white),
+                ),
               )
             : null,
         body: Column(
@@ -220,14 +235,18 @@ class _TaskScreenViewState extends State<TaskScreenView> {
                   ),
                 ),
               ),
-              if (!isMobile) Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                child: AppButton(
-                  onPressed: () => _openAddTask(context),
-                  variant: AppButtonVariant.primary,
-                  size: AppButtonSize.medium,
-                  icon: Icons.add,
-                  child: const Text('Add New'),
+              if (!isMobile) PermissionWrapper(
+                permission: 'create',
+                resource: 'tasks',
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: AppButton(
+                    onPressed: () => _openAddTask(context),
+                    variant: AppButtonVariant.primary,
+                    size: AppButtonSize.medium,
+                    icon: Icons.add,
+                    child: const Text('Add New'),
+                  ),
                 ),
               ),
             ],
@@ -704,12 +723,16 @@ class _TaskScreenViewState extends State<TaskScreenView> {
                       ),
                     ),
                     SizedBox(width: isMobile ? AppSpacing.xs : AppSpacing.sm),
-                    IconButton(
-                      icon: Icon(Icons.add, size: isMobile ? 16 : 18, color: AppColors.textMuted),
-                      onPressed: () => _openAddTask(builderContext),
-                      tooltip: 'Add Task',
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
+                    PermissionWrapper(
+                      permission: 'create',
+                      resource: 'tasks',
+                      child: IconButton(
+                        icon: Icon(Icons.add, size: isMobile ? 16 : 18, color: AppColors.textMuted),
+                        onPressed: () => _openAddTask(builderContext),
+                        tooltip: 'Add Task',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
                     ),
                   ],
                 ),
@@ -1364,17 +1387,21 @@ class _TaskScreenViewState extends State<TaskScreenView> {
             ),
           ),
           const SizedBox(height: AppSpacing.md),
-          ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 0),
-            child: AppButton(
-              onPressed: () => _openAddTask(context),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.add, size: isMobile ? 16 : 18),
-                  const SizedBox(width: 4),
-                  const Text('Add New Task'),
-                ],
+          PermissionWrapper(
+            permission: 'create',
+            resource: 'tasks',
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 0),
+              child: AppButton(
+                onPressed: () => _openAddTask(context),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.add, size: isMobile ? 16 : 18),
+                    const SizedBox(width: 4),
+                    const Text('Add New Task'),
+                  ],
+                ),
               ),
             ),
           ),
@@ -2488,136 +2515,169 @@ class _ListTaskRow extends StatelessWidget {
             ),
             SizedBox(
               width: 40,
-              child: PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, size: 16, color: AppColors.textMuted),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Row(
-                        children: [
-                          Icon(Icons.edit_outlined, size: 16, color: AppColors.textPrimary),
-                          SizedBox(width: AppSpacing.sm),
-                          Text('Edit Task'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuDivider(),
-                    const PopupMenuItem(
-                      value: 'view',
-                      child: Row(
-                        children: [
-                          Icon(Icons.visibility_outlined, size: 16, color: AppColors.textPrimary),
-                          SizedBox(width: AppSpacing.sm),
-                          Text('View Details'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuDivider(),
-                    PopupMenuItem(
-                      value: 'status_pending',
-                      enabled: task.status != TaskStatus.pending,
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: Colors.grey,
-                              shape: BoxShape.circle,
+              child: FutureBuilder<Map<String, bool>>(
+                future: _getTaskPermissions(),
+                builder: (context, snapshot) {
+                  final canUpdate = snapshot.data?['update'] ?? false;
+                  final canDelete = snapshot.data?['delete'] ?? false;
+                  
+                  return PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, size: 16, color: AppColors.textMuted),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    itemBuilder: (context) {
+                      final items = <PopupMenuEntry<String>>[];
+                      
+                      if (canUpdate) {
+                        items.add(
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit_outlined, size: 16, color: AppColors.textPrimary),
+                                SizedBox(width: AppSpacing.sm),
+                                Text('Edit Task'),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: AppSpacing.sm),
-                          const Text('Set to Pending'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'status_inProgress',
-                      enabled: task.status != TaskStatus.inProgress,
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: AppColors.warning,
-                              shape: BoxShape.circle,
-                            ),
+                        );
+                        items.add(PopupMenuDivider());
+                      }
+                      
+                      items.add(
+                        const PopupMenuItem(
+                          value: 'view',
+                          child: Row(
+                            children: [
+                              Icon(Icons.visibility_outlined, size: 16, color: AppColors.textPrimary),
+                              SizedBox(width: AppSpacing.sm),
+                              Text('View Details'),
+                            ],
                           ),
-                          const SizedBox(width: AppSpacing.sm),
-                          const Text('Set to In Progress'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'status_completed',
-                      enabled: task.status != TaskStatus.completed,
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: AppColors.success,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          const Text('Set to Completed'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuDivider(),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
-                          SizedBox(width: AppSpacing.sm),
-                          Text('Delete Task', style: TextStyle(color: AppColors.danger)),
-                        ],
-                      ),
-                    ),
-                  ],
-                  onSelected: (value) async {
-                    if (value == 'edit') {
-                      await Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => EditTaskView(task: task),
                         ),
                       );
-                      if (context.mounted) {
-                        final provider = context.read<DashboardProvider>();
-                        await provider.refreshTasks();
+                      
+                      if (canUpdate) {
+                        items.add(PopupMenuDivider());
+                        items.add(
+                          PopupMenuItem(
+                            value: 'status_pending',
+                            enabled: task.status != TaskStatus.pending,
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.grey,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                const Text('Set to Pending'),
+                              ],
+                            ),
+                          ),
+                        );
+                        items.add(
+                          PopupMenuItem(
+                            value: 'status_inProgress',
+                            enabled: task.status != TaskStatus.inProgress,
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.warning,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                const Text('Set to In Progress'),
+                              ],
+                            ),
+                          ),
+                        );
+                        items.add(
+                          PopupMenuItem(
+                            value: 'status_completed',
+                            enabled: task.status != TaskStatus.completed,
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.success,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                const Text('Set to Completed'),
+                              ],
+                            ),
+                          ),
+                        );
                       }
-                    } else if (value == 'view') {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => TaskDetailView(task: task),
-                        ),
-                      );
-                    } else if (value == 'delete') {
-                      await _confirmDeleteTask(context, task, provider);
-                    } else if (value.startsWith('status_')) {
-                      TaskStatus newStatus;
-                      switch (value) {
-                        case 'status_pending':
-                          newStatus = TaskStatus.pending;
-                          break;
-                        case 'status_inProgress':
-                          newStatus = TaskStatus.inProgress;
-                          break;
-                        case 'status_completed':
-                          newStatus = TaskStatus.completed;
-                          break;
-                        default:
-                          return;
+                      
+                      if (canDelete) {
+                        items.add(PopupMenuDivider());
+                        items.add(
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
+                                SizedBox(width: AppSpacing.sm),
+                                Text('Delete Task', style: TextStyle(color: AppColors.danger)),
+                              ],
+                            ),
+                          ),
+                        );
                       }
-                      await _updateTaskStatus(context, task, newStatus);
-                    }
-                  },
+                      
+                      return items;
+                    },
+                    onSelected: (value) async {
+                      if (value == 'edit') {
+                        await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => EditTaskView(task: task),
+                          ),
+                        );
+                        if (context.mounted) {
+                          final provider = context.read<DashboardProvider>();
+                          await provider.refreshTasks();
+                        }
+                      } else if (value == 'view') {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => TaskDetailView(task: task),
+                          ),
+                        );
+                      } else if (value == 'delete') {
+                        await _confirmDeleteTask(context, task, provider);
+                      } else if (value.startsWith('status_')) {
+                        TaskStatus newStatus;
+                        switch (value) {
+                          case 'status_pending':
+                            newStatus = TaskStatus.pending;
+                            break;
+                          case 'status_inProgress':
+                            newStatus = TaskStatus.inProgress;
+                            break;
+                          case 'status_completed':
+                            newStatus = TaskStatus.completed;
+                            break;
+                          default:
+                            return;
+                        }
+                        await _updateTaskStatus(context, task, newStatus);
+                      }
+                    },
+                  );
+                },
               ),
             ),
           ],
@@ -3007,134 +3067,167 @@ class _BoardTaskCard extends StatelessWidget {
                 _buildPriorityText(task.priority),
                 const SizedBox(width: AppSpacing.xs),
                 // More options
-                PopupMenuButton<String>(
-                  icon: Icon(Icons.more_vert, size: isMobile ? 14 : 16, color: AppColors.textMuted),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Row(
-                        children: [
-                          Icon(Icons.edit_outlined, size: 16, color: AppColors.textPrimary),
-                          SizedBox(width: AppSpacing.sm),
-                          Text('Edit Task'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuDivider(),
-                    const PopupMenuItem(
-                      value: 'view',
-                      child: Row(
-                        children: [
-                          Icon(Icons.visibility_outlined, size: 16, color: AppColors.textPrimary),
-                          SizedBox(width: AppSpacing.sm),
-                          Text('View Details'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuDivider(),
-                    PopupMenuItem(
-                      value: 'status_pending',
-                      enabled: task.status != TaskStatus.pending,
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: Colors.grey,
-                              shape: BoxShape.circle,
+                FutureBuilder<Map<String, bool>>(
+                  future: _getTaskPermissions(),
+                  builder: (context, snapshot) {
+                    final canUpdate = snapshot.data?['update'] ?? false;
+                    final canDelete = snapshot.data?['delete'] ?? false;
+                    
+                    return PopupMenuButton<String>(
+                      icon: Icon(Icons.more_vert, size: isMobile ? 14 : 16, color: AppColors.textMuted),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      itemBuilder: (context) {
+                        final items = <PopupMenuEntry<String>>[];
+                        
+                        if (canUpdate) {
+                          items.add(
+                            const PopupMenuItem(
+                              value: 'edit',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.edit_outlined, size: 16, color: AppColors.textPrimary),
+                                  SizedBox(width: AppSpacing.sm),
+                                  Text('Edit Task'),
+                                ],
+                              ),
+                            ),
+                          );
+                          items.add(PopupMenuDivider());
+                        }
+                        
+                        items.add(
+                          const PopupMenuItem(
+                            value: 'view',
+                            child: Row(
+                              children: [
+                                Icon(Icons.visibility_outlined, size: 16, color: AppColors.textPrimary),
+                                SizedBox(width: AppSpacing.sm),
+                                Text('View Details'),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: AppSpacing.sm),
-                          const Text('Set to Pending'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'status_inProgress',
-                      enabled: task.status != TaskStatus.inProgress,
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: AppColors.warning,
-                              shape: BoxShape.circle,
+                        );
+                        
+                        if (canUpdate) {
+                          items.add(PopupMenuDivider());
+                          items.add(
+                            PopupMenuItem(
+                              value: 'status_pending',
+                              enabled: task.status != TaskStatus.pending,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.grey,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  const Text('Set to Pending'),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          const Text('Set to In Progress'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'status_completed',
-                      enabled: task.status != TaskStatus.completed,
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: AppColors.success,
-                              shape: BoxShape.circle,
+                          );
+                          items.add(
+                            PopupMenuItem(
+                              value: 'status_inProgress',
+                              enabled: task.status != TaskStatus.inProgress,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.warning,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  const Text('Set to In Progress'),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          const Text('Set to Completed'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuDivider(),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
-                          SizedBox(width: AppSpacing.sm),
-                          Text('Delete Task', style: TextStyle(color: AppColors.danger)),
-                        ],
-                      ),
-                    ),
-                  ],
-                  onSelected: (value) async {
-                    if (value == 'edit') {
-                      await Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => EditTaskView(task: task),
-                        ),
-                      );
-                      if (context.mounted) {
-                        await provider.refreshTasks();
-                      }
-                    } else if (value == 'view') {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => TaskDetailView(task: task),
-                        ),
-                      );
-                    } else if (value == 'delete') {
-                      await _confirmDeleteTask(context, task, provider);
-                    } else if (value.startsWith('status_')) {
-                      TaskStatus newStatus;
-                      switch (value) {
-                        case 'status_pending':
-                          newStatus = TaskStatus.pending;
-                          break;
-                        case 'status_inProgress':
-                          newStatus = TaskStatus.inProgress;
-                          break;
-                        case 'status_completed':
-                          newStatus = TaskStatus.completed;
-                          break;
-                        default:
-                          return;
-                      }
-                      await _updateTaskStatus(context, task, newStatus);
-                    }
+                          );
+                          items.add(
+                            PopupMenuItem(
+                              value: 'status_completed',
+                              enabled: task.status != TaskStatus.completed,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.success,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  const Text('Set to Completed'),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+                        
+                        if (canDelete) {
+                          items.add(PopupMenuDivider());
+                          items.add(
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
+                                  SizedBox(width: AppSpacing.sm),
+                                  Text('Delete Task', style: TextStyle(color: AppColors.danger)),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+                        
+                        return items;
+                      },
+                      onSelected: (value) async {
+                        if (value == 'edit') {
+                          await Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => EditTaskView(task: task),
+                            ),
+                          );
+                          if (context.mounted) {
+                            await provider.refreshTasks();
+                          }
+                        } else if (value == 'view') {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => TaskDetailView(task: task),
+                            ),
+                          );
+                        } else if (value == 'delete') {
+                          await _confirmDeleteTask(context, task, provider);
+                        } else if (value.startsWith('status_')) {
+                          TaskStatus newStatus;
+                          switch (value) {
+                            case 'status_pending':
+                              newStatus = TaskStatus.pending;
+                              break;
+                            case 'status_inProgress':
+                              newStatus = TaskStatus.inProgress;
+                              break;
+                            case 'status_completed':
+                              newStatus = TaskStatus.completed;
+                              break;
+                            default:
+                              return;
+                          }
+                          await _updateTaskStatus(context, task, newStatus);
+                        }
+                      },
+                    );
                   },
                 ),
               ],

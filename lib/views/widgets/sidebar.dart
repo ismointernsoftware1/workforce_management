@@ -45,10 +45,10 @@ class Sidebar extends StatelessWidget {
             _SidebarHeader(onTabChanged: onTabChanged),
             const SizedBox(height: AppSpacing.xl),
             Expanded(
-              child: Builder(
-                builder: (context) {
-                  // Use provided isSuperAdmin value or show loading
-                  if (isSuperAdmin == null) {
+              child: FutureBuilder<Map<String, bool>>(
+                future: _getPermissions(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
                     return const Center(
                       child: Padding(
                         padding: EdgeInsets.all(AppSpacing.lg),
@@ -58,18 +58,34 @@ class Sidebar extends StatelessWidget {
                       ),
                     );
                   }
+
+                  final permissions = snapshot.data!;
+                  final isSuperAdminValue = isSuperAdmin ?? false;
                   
-                  // Filter tabs based on user role
+                  // Filter tabs based on permissions
                   final availableTabs = DashboardTab.values.where((tab) {
-                    if (isSuperAdmin == true) {
-                      // Super Admin: Show ONLY Task Form Builder and Expense Form Builder
+                    // Super Admin: Show ONLY Task Form Builder and Expense Form Builder
+                    if (isSuperAdminValue) {
                       return tab == DashboardTab.taskFormBuilder || 
                              tab == DashboardTab.expenseFormBuilder;
-                    } else {
-                      // Non-Super Admin: Show all tabs EXCEPT form builders
-                      return tab != DashboardTab.formBuilder &&
-                             tab != DashboardTab.taskFormBuilder &&
-                             tab != DashboardTab.expenseFormBuilder;
+                    }
+                    
+                    // Non-Super Admin: Filter based on read permissions
+                    switch (tab) {
+                      case DashboardTab.team:
+                        return permissions['team'] ?? false;
+                      case DashboardTab.chat:
+                        return permissions['chat'] ?? false;
+                      case DashboardTab.tasks:
+                        return permissions['tasks'] ?? false;
+                      case DashboardTab.expenses:
+                        return permissions['expenses'] ?? false;
+                      case DashboardTab.roles:
+                        return permissions['admin'] ?? false;
+                      case DashboardTab.formBuilder:
+                      case DashboardTab.taskFormBuilder:
+                      case DashboardTab.expenseFormBuilder:
+                        return false; // Form builders only for Super Admin
                     }
                   }).toList();
                   
@@ -121,6 +137,8 @@ class Sidebar extends StatelessWidget {
         return Icons.chat_bubble_rounded;
       case DashboardTab.expenses:
         return Icons.receipt_long;
+      case DashboardTab.roles:
+        return Icons.shield_outlined;
       case DashboardTab.formBuilder:
         return Icons.view_quilt_rounded;
       case DashboardTab.taskFormBuilder:
@@ -140,6 +158,8 @@ class Sidebar extends StatelessWidget {
         return 'Chat';
       case DashboardTab.expenses:
         return 'Expenses';
+      case DashboardTab.roles:
+        return 'Role Management';
       case DashboardTab.formBuilder:
         return 'Form Builder';
       case DashboardTab.taskFormBuilder:
@@ -147,6 +167,48 @@ class Sidebar extends StatelessWidget {
       case DashboardTab.expenseFormBuilder:
         return 'Expense Form Builder';
     }
+  }
+
+  // Get permissions for current user
+  static Future<Map<String, bool>> _getPermissions() async {
+    final isSuperAdminValue = await RBACUtils.isSuperAdmin();
+    final isAdminValue = await RBACUtils.isAdmin();
+    
+    // Super Admin has access to everything (but only sees form builders)
+    if (isSuperAdminValue) {
+      return {
+        'team': true,
+        'chat': true,
+        'tasks': true,
+        'expenses': true,
+        'admin': true,
+      };
+    }
+
+    // Admin users have access to all modules (bypass granular permissions)
+    if (isAdminValue) {
+      return {
+        'team': true,
+        'chat': true,
+        'tasks': true,
+        'expenses': true,
+        'admin': true,
+      };
+    }
+
+    // Regular users: Check granular permissions
+    final canReadTeam = await RBACUtils.canRead('team');
+    final canReadChat = await RBACUtils.canRead('chat');
+    final canReadTasks = await RBACUtils.canRead('tasks');
+    final canReadExpenses = await RBACUtils.canRead('expenses');
+
+    return {
+      'team': canReadTeam,
+      'chat': canReadChat,
+      'tasks': canReadTasks,
+      'expenses': canReadExpenses,
+      'admin': false, // Role Management only for admins
+    };
   }
 }
 

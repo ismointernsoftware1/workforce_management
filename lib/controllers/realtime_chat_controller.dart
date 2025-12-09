@@ -103,6 +103,8 @@ class RealtimeChatController {
       MessageType messageType = MessageType.file;
       if (['jpg', 'jpeg', 'png', 'gif', 'webp'].contains(fileExtension)) {
         messageType = MessageType.image;
+      } else if (['mp4', 'mov', 'avi', 'mkv', 'webm'].contains(fileExtension)) {
+        messageType = MessageType.video;
       }
 
       // Send message with attachment
@@ -137,9 +139,13 @@ class RealtimeChatController {
   ) =>
       _service.getConversationStream(conversationId, currentUserId: _currentUserId);
 
-  // Mark as read
+  // Mark as read (also marks messages as seen)
   Future<void> markAsRead(String conversationId) =>
       _service.markAsRead(conversationId, _currentUserId);
+  
+  // Mark messages as seen
+  Future<void> markMessagesAsSeen(String conversationId) =>
+      _service.markMessagesAsSeen(conversationId, _currentUserId);
 
   // Update group members
   Future<void> updateGroupMembers(

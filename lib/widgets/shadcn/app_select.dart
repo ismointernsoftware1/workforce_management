@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
-import '../../../constants/app_colors.dart';
-import '../../../constants/app_spacing.dart';
+import '../../constants/app_colors.dart';
+import '../../constants/app_spacing.dart';
 
 /// Generic select option model
 class SelectOption<T> {

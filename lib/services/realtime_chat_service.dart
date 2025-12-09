@@ -587,36 +587,36 @@ class RealtimeChatService {
           // Set up live listener for real-time updates
           // onValue fires immediately with current data when listener is set up, then continues listening for updates
           print('Setting up Firebase listener for conversation: $conversationId');
-          subscription = messagesRef
-              .orderByChild('timestamp')
-              .onValue
-              .listen(
-                (event) {
+      subscription = messagesRef
+          .orderByChild('timestamp')
+          .onValue
+          .listen(
+            (event) {
                   // This fires immediately with current data when listener is set up, then on every update
-                  print('Stream listener received event for conversation: $conversationId');
-                  final messages = _parseSnapshot(event.snapshot);
-                  
-                  if (!controller.isClosed) {
+              print('Stream listener received event for conversation: $conversationId');
+              final messages = _parseSnapshot(event.snapshot);
+              
+              if (!controller.isClosed) {
                     print('Emitting ${messages.length} messages from stream listener');
-                    controller.add(messages);
-                  } else {
-                    print('Controller is closed, not emitting messages');
-                  }
-                },
-                onError: (error, stackTrace) {
-                  print('Error in messages stream for conversation $conversationId: $error');
-                  print('Error stack trace: $stackTrace');
+                controller.add(messages);
+              } else {
+                print('Controller is closed, not emitting messages');
+              }
+            },
+            onError: (error, stackTrace) {
+              print('Error in messages stream for conversation $conversationId: $error');
+              print('Error stack trace: $stackTrace');
                   // Emit empty list on error to prevent StreamBuilder from waiting indefinitely
                   if (!controller.isClosed) {
-                    controller.add(<RealtimeChatMessage>[]);
-                  }
-                },
-                cancelOnError: false,
-              );
+                controller.add(<RealtimeChatMessage>[]);
+              }
+            },
+            cancelOnError: false,
+          );
         },
         onCancel: () {
-          print('Cancelling messages stream for conversation: $conversationId');
-          subscription?.cancel();
+        print('Cancelling messages stream for conversation: $conversationId');
+        subscription?.cancel();
           subscription = null;
         },
       );
@@ -683,7 +683,7 @@ class RealtimeChatService {
     }
   }
 
-  // Mark conversation as read
+  // Mark conversation as read and mark all messages as seen
   Future<void> markAsRead(String conversationId, String userId) async {
     try {
       // Reset unread count for this specific user when they open the conversation
@@ -705,9 +705,63 @@ class RealtimeChatService {
           'unreadCounts': unreadCounts,
         });
         print('Marked conversation $conversationId as read for user $userId');
+        
+        // Mark all messages sent to this user as "seen"
+        await markMessagesAsSeen(conversationId, userId);
       }
     } catch (e) {
       print('Error marking as read: $e');
+    }
+  }
+
+  // Mark all messages in a conversation as "seen" for the current user
+  Future<void> markMessagesAsSeen(String conversationId, String userId) async {
+    try {
+      final messagesRef = _database
+          .child('conversations')
+          .child(conversationId)
+          .child('messages');
+      
+      final messagesSnapshot = await messagesRef.get();
+      
+      if (messagesSnapshot.exists && messagesSnapshot.value is Map) {
+        final messages = messagesSnapshot.value as Map<dynamic, dynamic>;
+        final updates = <String, dynamic>{};
+        
+        // Update all messages that are not from this user to "seen"
+        messages.forEach((messageId, messageData) {
+          if (messageData is Map) {
+            final senderId = messageData['senderId']?.toString() ?? '';
+            final currentStatus = messageData['status']?.toString() ?? 'sent';
+            
+            // Only update messages sent by others (not by current user)
+            if (senderId != userId && currentStatus != 'seen') {
+              updates['$messageId/status'] = 'seen';
+            }
+          }
+        });
+        
+        if (updates.isNotEmpty) {
+          await messagesRef.update(updates);
+          print('Marked ${updates.length} messages as seen in conversation $conversationId');
+        }
+      }
+    } catch (e) {
+      print('Error marking messages as seen: $e');
+    }
+  }
+
+  // Update message status to "delivered" when message is received
+  Future<void> markMessageAsDelivered(String conversationId, String messageId) async {
+    try {
+      await _database
+          .child('conversations')
+          .child(conversationId)
+          .child('messages')
+          .child(messageId)
+          .update({'status': 'delivered'});
+    } catch (e) {
+      print('Error marking message as delivered: $e');
     }
   }
 

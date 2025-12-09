@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
-import '../../../constants/app_spacing.dart';
+import '../../constants/app_spacing.dart';
 
 /// Button variant types
 enum AppButtonVariant {

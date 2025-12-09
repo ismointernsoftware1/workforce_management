@@ -20,8 +20,6 @@ import '../widgets/team_members_dialog.dart';
 enum TeamTab {
   overview,
   team,
-  workload,
-  timesheet,
 }
 
 class TeamDetailPage extends StatefulWidget {
@@ -241,7 +239,7 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                   itemBuilder: (context) => [
                     const PopupMenuItem(
                       value: 'add_member',
-                      child: Row(
+      child: Row(
                         children: [
                           Icon(Icons.person_add_alt_1, size: 18),
                           SizedBox(width: 8),
@@ -276,89 +274,89 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
           } else {
             // Desktop/Tablet: Full horizontal layout
             return Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-                  onPressed: () => Navigator.of(context).pop(),
+        children: [
+              IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          // Team avatar/icon
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: const Color(0xFF7C3AED),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                team.name.isNotEmpty ? team.name[0].toUpperCase() : 'T',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
-                const SizedBox(width: AppSpacing.md),
-                // Team avatar/icon
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF7C3AED),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      team.name.isNotEmpty ? team.name[0].toUpperCase() : 'T',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
                 // Team name - flexible to prevent overflow
                 Flexible(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        team.name,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                team.name,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
-                      ),
-                      Text(
-                        '@${team.name.toLowerCase().replaceAll(' ', '')}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textMuted,
-                        ),
+              ),
+              Text(
+                '@${team.name.toLowerCase().replaceAll(' ', '')}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textMuted,
+                ),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
-                      ),
-                    ],
+              ),
+            ],
                   ),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.edit, size: 20, color: AppColors.textPrimary),
-                  onPressed: () => _showEditDialog(context, provider, team),
-                  tooltip: 'Edit team',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, size: 20, color: AppColors.textPrimary),
-                  onPressed: () => _confirmDelete(context, provider, team),
-                  tooltip: 'Delete team',
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                AppButton(
-                  variant: AppButtonVariant.outline,
-                  onPressed: () => _showMembersDialog(context, provider, team),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.person_add_alt_1, size: 16),
-                      SizedBox(width: 4),
-                      Text('Add member'),
-                    ],
-                  ),
-                ),
+          ),
+          const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.edit, size: 20, color: AppColors.textPrimary),
+            onPressed: () => _showEditDialog(context, provider, team),
+                tooltip: 'Edit team',
+              ),
+              IconButton(
+            icon: const Icon(Icons.delete_outline, size: 20, color: AppColors.textPrimary),
+            onPressed: () => _confirmDelete(context, provider, team),
+                tooltip: 'Delete team',
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          AppButton(
+            variant: AppButtonVariant.outline,
+            onPressed: () => _showMembersDialog(context, provider, team),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.person_add_alt_1, size: 16),
+                SizedBox(width: 4),
+                Text('Add member'),
               ],
+            ),
+          ),
+            ],
             );
           }
         },
-      ),
+          ),
     );
   }
 
@@ -384,8 +382,6 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                 children: [
                   _buildTabButton(TeamTab.overview, Icons.info_outline, 'Overview'),
                   _buildTabButton(TeamTab.team, Icons.people, 'Team'),
-                  _buildTabButton(TeamTab.workload, Icons.grid_view, 'Workload'),
-                  _buildTabButton(TeamTab.timesheet, Icons.access_time, 'Timesheet'),
                 ],
               ),
             ),
@@ -400,9 +396,6 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
     return GestureDetector(
       onTap: () {
         setState(() => _activeTab = tab);
-        if (tab == TeamTab.timesheet) {
-          _loadTimesheetEntries();
-        }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(
@@ -591,10 +584,6 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
         return _buildTeamTab(context, team, provider, members);
       case TeamTab.overview:
         return _buildOverviewTab(context, team);
-      case TeamTab.workload:
-        return _buildWorkloadTab(context);
-      case TeamTab.timesheet:
-        return _buildTimesheetTab(context);
     }
   }
 
@@ -700,15 +689,15 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      decoration: BoxDecoration(
+        decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
+          border: Border.all(
           color: AppColors.border.withValues(alpha: 0.3),
           width: 1,
+          ),
         ),
-      ),
-      child: isGrid
+        child: isGrid
             ? Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
@@ -830,7 +819,7 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                     ),
                   ),
                 ],
-              ),
+      ),
     );
   }
 
@@ -931,8 +920,8 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                         SizedBox(width: isTablet ? AppSpacing.md : AppSpacing.xl),
                         Expanded(
                           flex: isTablet ? 2 : 1,
-                          child: Column(
-                            children: [
+      child: Column(
+        children: [
                               _buildTeamHealthSummary(teamTasks, timesheetEntries, members),
                               SizedBox(height: AppSpacing.xl),
                               _buildQuickNavigation(context),
@@ -969,10 +958,10 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
   Widget _buildOverviewHeader(BuildContext context, Team team, DashboardProvider provider) {
     return Row(
       children: [
-        Container(
+          Container(
           width: 56,
           height: 56,
-          decoration: BoxDecoration(
+            decoration: BoxDecoration(
             color: AppColors.primarySoft,
             shape: BoxShape.circle,
           ),
@@ -988,18 +977,18 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
           ),
         ),
         const SizedBox(width: AppSpacing.md),
-        Expanded(
+                Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                 team.name,
-                      style: const TextStyle(
+                    style: const TextStyle(
                   fontSize: 24,
-                        fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
               const SizedBox(height: 4),
               Text(
                 'Team workspace',
@@ -1010,8 +999,8 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
               ),
             ],
           ),
-        ),
-        IconButton(
+                ),
+                IconButton(
           icon: const Icon(Icons.edit_outlined, size: 20),
           onPressed: () => _showEditDialog(context, provider, team),
           tooltip: 'Edit team',
@@ -1025,9 +1014,9 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
               Icon(Icons.person_add, size: 16),
               SizedBox(width: 4),
               Text('Add member'),
-            ],
+              ],
+            ),
           ),
-        ),
       ],
     );
   }
@@ -1039,9 +1028,9 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
         
         if (isMobile) {
           return Column(
-            children: [
-              Row(
                 children: [
+                  Row(
+                    children: [
                   Expanded(
                     child: _buildStatCard(
                       icon: Icons.people_outline,
@@ -1057,13 +1046,13 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                       value: projects.toString(),
                       label: 'Active projects',
                       color: const Color(0xFF7C3AED),
-                    ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    children: [
                   Expanded(
                     child: _buildStatCard(
                       icon: Icons.task_outlined,
@@ -1079,15 +1068,15 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                       value: '$completionRate%',
                       label: 'Completion rate',
                       color: const Color(0xFF059669),
-                    ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
             ],
           );
         } else {
           return Row(
-            children: [
+                    children: [
               Expanded(
                 child: _buildStatCard(
                   icon: Icons.people_outline,
@@ -1096,7 +1085,7 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                   color: AppColors.primary,
                 ),
               ),
-              const SizedBox(width: AppSpacing.md),
+                      const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: _buildStatCard(
                   icon: Icons.folder_outlined,
@@ -1105,7 +1094,7 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                   color: const Color(0xFF7C3AED),
                 ),
               ),
-              const SizedBox(width: AppSpacing.md),
+                      const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: _buildStatCard(
                   icon: Icons.task_outlined,
@@ -1114,7 +1103,7 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                   color: const Color(0xFFDC2626),
                 ),
               ),
-              const SizedBox(width: AppSpacing.md),
+                      const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: _buildStatCard(
                   icon: Icons.check_circle_outline,
@@ -1178,8 +1167,8 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
+                    children: [
+                          const Text(
             'Team Description',
             style: TextStyle(
               fontSize: 16,
@@ -1192,8 +1181,8 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                   team.description.isEmpty
                 ? 'Add team description, information, and wiki'
                       : team.description,
-                  style: TextStyle(
-              fontSize: 14,
+                            style: TextStyle(
+                              fontSize: 14,
                     color: team.description.isEmpty
                         ? AppColors.textMuted
                         : AppColors.textPrimary,
@@ -1216,8 +1205,8 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
             'Current Work Summary',
             style: TextStyle(
               fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -1241,10 +1230,10 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                       style: TextStyle(
                         fontSize: 13,
                         color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
               ),
               Expanded(
                 child: Column(
@@ -1268,9 +1257,9 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                     ),
                   ],
                 ),
+                  ),
+                ],
               ),
-            ],
-                ),
                 const SizedBox(height: AppSpacing.md),
           Container(
             height: 120,
@@ -1322,13 +1311,13 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Center(
-                  child: Text(
+        child: Text(
                     'No recent activity',
-                    style: TextStyle(
+          style: TextStyle(
                       fontSize: 14,
                       color: AppColors.textMuted,
-                    ),
-            ),
+          ),
+        ),
           ),
         ],
       ),
@@ -1340,7 +1329,7 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
           padding: const EdgeInsets.all(AppSpacing.lg),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      children: [
               const Text(
                 'Recent Activity',
                 style: TextStyle(
@@ -1381,9 +1370,9 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                             shape: BoxShape.circle,
                           ),
                           child: Center(
-                            child: Text(
+          child: Text(
                               userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
-                              style: const TextStyle(
+            style: const TextStyle(
                                 color: AppColors.primary,
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
@@ -1400,9 +1389,9 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                                 '$userName $description',
           style: const TextStyle(
             fontSize: 14,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
+              color: AppColors.textPrimary,
+            ),
+          ),
                               const SizedBox(height: 2),
                               Text(
                                 timeAgo,
@@ -1484,12 +1473,12 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+                  children: [
           const Text(
             'Team Members',
             style: TextStyle(
               fontSize: 16,
-              fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
           ),
@@ -1515,34 +1504,34 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                   Container(
                     width: 40,
                     height: 40,
-                    decoration: BoxDecoration(
+                decoration: BoxDecoration(
                       color: AppColors.primarySoft,
                       shape: BoxShape.circle,
-                    ),
+                ),
                     child: Center(
-                      child: Text(
+                child: Text(
                         member.name.isNotEmpty ? member.name[0].toUpperCase() : 'U',
                         style: const TextStyle(
                           color: AppColors.primary,
-                          fontSize: 14,
+                    fontSize: 14,
                           fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
                   ),
+                ),
+              ),
+            ),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-        Text(
+          Text(
                           member.name,
-          style: const TextStyle(
+            style: const TextStyle(
             fontSize: 14,
-                            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-          ),
-        ),
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+                ),
                         const SizedBox(height: 2),
                         ShadBadge(
                           child: Text(
@@ -1616,9 +1605,9 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
     return AppCard(
       borderRadius: BorderRadius.circular(16),
       padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
           const Text(
             'Team Health Summary',
             style: TextStyle(
@@ -1654,24 +1643,24 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
+      children: [
+        Text(
+          label,
                   style: TextStyle(
                     fontSize: 12,
-                    color: AppColors.textMuted,
-                  ),
-                ),
+            color: AppColors.textMuted,
+          ),
+        ),
                 const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: const TextStyle(
+        Text(
+          value,
+          style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ],
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ],
             ),
           ),
         ],
@@ -1700,20 +1689,6 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
             'View Tasks',
             Icons.task_outlined,
             () => setState(() => _activeTab = TeamTab.team),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _buildNavCard(
-            context,
-            'Workload',
-            Icons.grid_view,
-            () => setState(() => _activeTab = TeamTab.workload),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _buildNavCard(
-            context,
-            'Timesheet',
-            Icons.access_time,
-            () => setState(() => _activeTab = TeamTab.timesheet),
           ),
         ],
       ),
@@ -1832,33 +1807,33 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
               );
             } else {
               // Desktop/Tablet: Side by side
-              return Row(
-                children: [
-                  // Main workload area
-                  Expanded(
+        return Row(
+          children: [
+            // Main workload area
+                Expanded(
                     flex: isTablet ? 2 : 3,
-                    child: Column(
-                      children: [
-                        // Top controls
-                        _buildWorkloadControls(context),
-                        // Search bar (if visible)
-                        if (_workloadShowSearch)
-                          _buildWorkloadSearchBar(context),
-                        // Date navigation
-                        _buildWorkloadDateNavigation(context, dates),
-                        // Calendar grid
-                        Expanded(
-                          child: _buildWorkloadGrid(context, members, dates, teamTasks, provider),
-                        ),
-                      ],
-                    ),
+              child: Column(
+                children: [
+                  // Top controls
+                  _buildWorkloadControls(context),
+                  // Search bar (if visible)
+                  if (_workloadShowSearch)
+                    _buildWorkloadSearchBar(context),
+                  // Date navigation
+                  _buildWorkloadDateNavigation(context, dates),
+                  // Calendar grid
+                  Expanded(
+                    child: _buildWorkloadGrid(context, members, dates, teamTasks, provider),
                   ),
-                  // Right sidebar for tasks
+                ],
+              ),
+            ),
+            // Right sidebar for tasks
                   SizedBox(
                     width: isTablet ? 280 : 320,
                     child: _buildWorkloadTaskSidebar(context, teamTasks, isMobile: false),
                   ),
-                ],
+          ],
               );
             }
           },
@@ -1904,7 +1879,7 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                 AppButton(
                   variant: AppButtonVariant.outline,
                   onPressed: () => _showWorkloadFilterDialog(context),
-                  child: Row(
+      child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(Icons.filter_list, size: 16),
@@ -1983,112 +1958,112 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
               ],
             )
           : Row(
+        children: [
+          _buildWorkloadDropdown('Today', _workloadView, ['Today', '7 days', '14 days', '30 days'], (value) {
+            setState(() => _workloadView = value);
+          }),
+          const SizedBox(width: AppSpacing.sm),
+          _buildWorkloadDropdown('Time Estimates', _workloadTimeEstimate, ['Time Estimates', 'Hours', 'Days'], (value) {
+            setState(() => _workloadTimeEstimate = value);
+          }),
+          const SizedBox(width: AppSpacing.sm),
+          _buildWorkloadDropdown('14 days', _workloadView, ['7 days', '14 days', '30 days'], (value) {
+            setState(() => _workloadView = value);
+          }),
+          const SizedBox(width: AppSpacing.sm),
+          _buildWorkloadDropdown('Daily Scheduled', _workloadScheduleType, ['Daily Scheduled', 'Weekly', 'Monthly'], (value) {
+            setState(() => _workloadScheduleType = value);
+          }),
+          const Spacer(),
+          _buildWorkloadDropdown('Group: Assignee', _workloadGroupBy, ['Assignee', 'Project', 'Status'], (value) {
+            setState(() => _workloadGroupBy = value);
+          }),
+          const SizedBox(width: AppSpacing.sm),
+          AppButton(
+            variant: AppButtonVariant.outline,
+            onPressed: () => _showWorkloadFilterDialog(context),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                _buildWorkloadDropdown('Today', _workloadView, ['Today', '7 days', '14 days', '30 days'], (value) {
-                  setState(() => _workloadView = value);
-                }),
-                const SizedBox(width: AppSpacing.sm),
-                _buildWorkloadDropdown('Time Estimates', _workloadTimeEstimate, ['Time Estimates', 'Hours', 'Days'], (value) {
-                  setState(() => _workloadTimeEstimate = value);
-                }),
-                const SizedBox(width: AppSpacing.sm),
-                _buildWorkloadDropdown('14 days', _workloadView, ['7 days', '14 days', '30 days'], (value) {
-                  setState(() => _workloadView = value);
-                }),
-                const SizedBox(width: AppSpacing.sm),
-                _buildWorkloadDropdown('Daily Scheduled', _workloadScheduleType, ['Daily Scheduled', 'Weekly', 'Monthly'], (value) {
-                  setState(() => _workloadScheduleType = value);
-                }),
-                const Spacer(),
-                _buildWorkloadDropdown('Group: Assignee', _workloadGroupBy, ['Assignee', 'Project', 'Status'], (value) {
-                  setState(() => _workloadGroupBy = value);
-                }),
-                const SizedBox(width: AppSpacing.sm),
-                AppButton(
-                  variant: AppButtonVariant.outline,
-                  onPressed: () => _showWorkloadFilterDialog(context),
+                const Icon(Icons.filter_list, size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  'Filter${_workloadPriorityFilter != null || _workloadStatusFilter != null || _workloadProjectFilter != null ? ' (${[_workloadPriorityFilter, _workloadStatusFilter, _workloadProjectFilter].where((f) => f != null).length})' : ''}',
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          _workloadShowClosed
+              ? AppButton(
+                  onPressed: () {
+                    setState(() => _workloadShowClosed = !_workloadShowClosed);
+                  },
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.filter_list, size: 16),
+                      Icon(
+                        Icons.check_circle,
+                        size: 16,
+                        color: Colors.white,
+                      ),
                       const SizedBox(width: 4),
                       Text(
-                        'Filter${_workloadPriorityFilter != null || _workloadStatusFilter != null || _workloadProjectFilter != null ? ' (${[_workloadPriorityFilter, _workloadStatusFilter, _workloadProjectFilter].where((f) => f != null).length})' : ''}',
+                        'Closed',
+                        style: TextStyle(
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : AppButton(
+                  variant: AppButtonVariant.outline,
+                  onPressed: () {
+                    setState(() => _workloadShowClosed = !_workloadShowClosed);
+                  },
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Closed',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                _workloadShowClosed
-                    ? AppButton(
-                        onPressed: () {
-                          setState(() => _workloadShowClosed = !_workloadShowClosed);
-                        },
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.check_circle,
-                              size: 16,
-                              color: Colors.white,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Closed',
-                              style: TextStyle(
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : AppButton(
-                        variant: AppButtonVariant.outline,
-                        onPressed: () {
-                          setState(() => _workloadShowClosed = !_workloadShowClosed);
-                        },
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.check_circle,
-                              size: 16,
-                              color: AppColors.primary,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Closed',
-                              style: TextStyle(
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                const SizedBox(width: AppSpacing.sm),
-                IconButton(
-                  icon: Icon(Icons.search, size: 20, color: _workloadShowSearch ? AppColors.primary : AppColors.textMuted),
-                  onPressed: () {
-                    setState(() => _workloadShowSearch = !_workloadShowSearch);
-                  },
-                  tooltip: 'Search',
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                IconButton(
-                  icon: const Icon(Icons.settings, size: 20),
-                  onPressed: () => _showWorkloadSettingsDialog(context),
-                  tooltip: 'Customize',
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                IconButton(
-                  icon: Icon(Icons.book, size: 20, color: _showBacklog ? AppColors.primary : AppColors.textMuted),
-                  onPressed: () {
-                    setState(() => _showBacklog = !_showBacklog);
-                  },
-                  tooltip: 'Backlog',
-                ),
-              ],
-            ),
+          const SizedBox(width: AppSpacing.sm),
+          IconButton(
+            icon: Icon(Icons.search, size: 20, color: _workloadShowSearch ? AppColors.primary : AppColors.textMuted),
+            onPressed: () {
+              setState(() => _workloadShowSearch = !_workloadShowSearch);
+            },
+            tooltip: 'Search',
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          IconButton(
+            icon: const Icon(Icons.settings, size: 20),
+            onPressed: () => _showWorkloadSettingsDialog(context),
+            tooltip: 'Customize',
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          IconButton(
+            icon: Icon(Icons.book, size: 20, color: _showBacklog ? AppColors.primary : AppColors.textMuted),
+            onPressed: () {
+              setState(() => _showBacklog = !_showBacklog);
+            },
+            tooltip: 'Backlog',
+          ),
+        ],
+      ),
     );
   }
 
@@ -2102,11 +2077,11 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
         final displayText = selectedValue ?? label;
         return Text(
           displayText,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: AppColors.textPrimary,
-          ),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
         );
       },
       onChanged: (selectedValue) {

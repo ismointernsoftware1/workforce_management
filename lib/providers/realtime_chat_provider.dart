@@ -254,6 +254,9 @@ class RealtimeChatProvider extends ChangeNotifier {
     _selectedConversationId = conversationId;
     _conversationSubscription?.cancel();
     _typingUsers = {}; // Clear typing users when switching conversations
+    
+    // Mark conversation as read and messages as seen
+    _controller.markAsRead(conversationId);
 
     // Listen to conversation updates
     _conversationSubscription = _controller

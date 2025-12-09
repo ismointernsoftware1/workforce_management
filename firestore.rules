@@ -1,10 +1,86 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow all read and write operations for all documents and collections
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to get user's role
+    function getUserRole() {
+      return get(/databases/$(database)/documents/app_users/$(request.auth.uid)).data.roleId;
+    }
+    
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/app_users/$(request.auth.uid)) &&
+             getUserRole() == 'admin';
+    }
+    
+    // Helper function to check if user owns the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Roles collection - only admins can create/update/delete
+    match /roles/{roleId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // App Users collection
+    match /app_users/{userId} {
+      // Users can read their own profile
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      // Only admins can create/update users (or Cloud Functions)
+      allow create, update: if isAdmin() || request.auth == null; // Cloud Functions have null auth
+      // Only admins can delete users
+      allow delete: if isAdmin();
+    }
+    
+    // Invites collection
+    match /invites/{inviteId} {
+      // Admins can read all invites
+      allow read: if isAdmin();
+      // Only admins can create invites
+      allow create: if isAdmin();
+      // Only Cloud Functions can update invite.used field
+      allow update: if isAdmin() || 
+                     (request.auth == null && 
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used', 'usedAt', 'usedBy']));
+      // Only admins can delete invites
+      allow delete: if isAdmin();
+    }
+    
+    // Mail collection - only Cloud Functions can write
+    match /mail/{mailId} {
+      allow read, write: if request.auth == null; // Only Cloud Functions
+    }
+    
+    // Users collection (legacy) - maintain existing rules
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow create, update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+    
+    // Workspaces collection
+    match /workspaces/{workspaceId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+      
+      // Workspace members subcollection
+      match /members/{memberId} {
+        allow read: if isAuthenticated();
+        allow write: if isAdmin();
+      }
+    }
+    
+    // Default: deny all other access
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }
-
