@@ -252,10 +252,8 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
 
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
-      _scrollController.animateTo(
+      _scrollController.jumpTo(
         _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
       );
     }
   }
@@ -1337,9 +1335,7 @@ class _RealtimeChatViewState extends State<RealtimeChatView> {
                         ),
                       ),
                       if (!isMobile)
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          curve: Curves.easeInOut,
+                        Container(
                           width: showMembersPanel ? 260 : 0,
                           child: showMembersPanel
                               ? _MembersPanel(
@@ -1788,8 +1784,7 @@ class RealtimeConversationTile extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+        child: Container(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
             vertical: AppSpacing.sm,
