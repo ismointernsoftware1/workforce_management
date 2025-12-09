@@ -2160,9 +2160,9 @@ class RealtimeConversationTile extends StatelessWidget {
                 ),
                   Builder(
                     builder: (context) {
-                      final unreadCount = currentUserId != null 
-                          ? conversation.getUnreadCountForUser(currentUserId!)
-                          : conversation.unreadCount;
+                            final unreadCount = currentUserId != null
+                                ? conversation.getUnreadCountForUser(currentUserId!)
+                                : conversation.unreadCount;
                             if (unreadCount > 0) {
                               return Container(
                                 margin: const EdgeInsets.only(left: 8),

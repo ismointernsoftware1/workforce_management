@@ -1559,7 +1559,7 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
                       builder: (context, snapshot) {
                         final canUpdate = snapshot.data?['update'] ?? false;
                         final canDelete = snapshot.data?['delete'] ?? false;
-                        
+
                         return PopupMenuButton<String>(
                           icon: Icon(
                             Icons.more_vert,
@@ -1572,7 +1572,7 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
                           ),
                           itemBuilder: (context) {
                             final items = <PopupMenuEntry<String>>[];
-                            
+
                             if (canUpdate) {
                               items.add(
                                 PopupMenuItem(
@@ -1599,7 +1599,7 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
                                 ),
                               );
                             }
-                            
+
                             if (canDelete) {
                               items.add(
                                 PopupMenuItem(
@@ -1614,7 +1614,7 @@ class _TeamViewState extends State<TeamView> with SingleTickerProviderStateMixin
                                 ),
                               );
                             }
-                            
+
                             return items;
                           },
                           onSelected: (value) {

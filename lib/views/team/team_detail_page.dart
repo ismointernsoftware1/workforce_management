@@ -20,6 +20,8 @@ import '../widgets/team_members_dialog.dart';
 enum TeamTab {
   overview,
   team,
+  workload,
+  timesheet,
 }
 
 class TeamDetailPage extends StatefulWidget {
@@ -382,6 +384,8 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
                 children: [
                   _buildTabButton(TeamTab.overview, Icons.info_outline, 'Overview'),
                   _buildTabButton(TeamTab.team, Icons.people, 'Team'),
+                  _buildTabButton(TeamTab.workload, Icons.grid_view, 'Workload'),
+                  _buildTabButton(TeamTab.timesheet, Icons.access_time, 'Timesheet'),
                 ],
               ),
             ),
@@ -396,6 +400,9 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
     return GestureDetector(
       onTap: () {
         setState(() => _activeTab = tab);
+        if (tab == TeamTab.timesheet) {
+          _loadTimesheetEntries();
+        }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(
@@ -584,6 +591,10 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
         return _buildTeamTab(context, team, provider, members);
       case TeamTab.overview:
         return _buildOverviewTab(context, team);
+      case TeamTab.workload:
+        return _buildWorkloadTab(context);
+      case TeamTab.timesheet:
+        return _buildTimesheetTab(context);
     }
   }
 
@@ -1689,6 +1700,20 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
             'View Tasks',
             Icons.task_outlined,
             () => setState(() => _activeTab = TeamTab.team),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _buildNavCard(
+            context,
+            'Workload',
+            Icons.grid_view,
+            () => setState(() => _activeTab = TeamTab.workload),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _buildNavCard(
+            context,
+            'Timesheet',
+            Icons.access_time,
+            () => setState(() => _activeTab = TeamTab.timesheet),
           ),
         ],
       ),

@@ -587,36 +587,36 @@ class RealtimeChatService {
           // Set up live listener for real-time updates
           // onValue fires immediately with current data when listener is set up, then continues listening for updates
           print('Setting up Firebase listener for conversation: $conversationId');
-      subscription = messagesRef
-          .orderByChild('timestamp')
-          .onValue
-          .listen(
-            (event) {
+          subscription = messagesRef
+              .orderByChild('timestamp')
+              .onValue
+              .listen(
+                (event) {
                   // This fires immediately with current data when listener is set up, then on every update
-              print('Stream listener received event for conversation: $conversationId');
-              final messages = _parseSnapshot(event.snapshot);
-              
-              if (!controller.isClosed) {
+                  print('Stream listener received event for conversation: $conversationId');
+                  final messages = _parseSnapshot(event.snapshot);
+                  
+                  if (!controller.isClosed) {
                     print('Emitting ${messages.length} messages from stream listener');
-                controller.add(messages);
-              } else {
-                print('Controller is closed, not emitting messages');
-              }
-            },
-            onError: (error, stackTrace) {
-              print('Error in messages stream for conversation $conversationId: $error');
-              print('Error stack trace: $stackTrace');
+                    controller.add(messages);
+                  } else {
+                    print('Controller is closed, not emitting messages');
+                  }
+                },
+                onError: (error, stackTrace) {
+                  print('Error in messages stream for conversation $conversationId: $error');
+                  print('Error stack trace: $stackTrace');
                   // Emit empty list on error to prevent StreamBuilder from waiting indefinitely
                   if (!controller.isClosed) {
-                controller.add(<RealtimeChatMessage>[]);
-              }
-            },
-            cancelOnError: false,
-          );
+                    controller.add(<RealtimeChatMessage>[]);
+                  }
+                },
+                cancelOnError: false,
+              );
         },
         onCancel: () {
-        print('Cancelling messages stream for conversation: $conversationId');
-        subscription?.cancel();
+          print('Cancelling messages stream for conversation: $conversationId');
+          subscription?.cancel();
           subscription = null;
         },
       );
