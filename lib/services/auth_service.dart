@@ -1,7 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/user_model.dart';
+import '../models/app_user.dart';
+import 'user_service.dart';
+import 'role_service.dart';
 
 class AuthService {
   AuthService({
@@ -47,6 +51,7 @@ class AuthService {
     required String password,
     required String name,
     String? role,
+    String? roleId,
   }) async {
     try {
       final credential = await _auth.createUserWithEmailAndPassword(
@@ -57,12 +62,43 @@ class AuthService {
       // Update display name
       await credential.user?.updateDisplayName(name);
 
+      // Determine roleId if role name is provided but roleId is not
+      String? finalRoleId = roleId;
+      if (finalRoleId == null && role != null && role.isNotEmpty) {
+        try {
+          final roleService = RoleService();
+          finalRoleId = await roleService.getRoleIdByName(role);
+          debugPrint('Found roleId $finalRoleId for role name: $role');
+        } catch (e) {
+          debugPrint('Warning: Could not find roleId for role name "$role": $e');
+          // Continue without roleId - user will have no permissions until admin assigns role
+        }
+      }
+
       // Create user profile in Firestore
       await _createUserProfile(
         credential.user!,
         name: name,
         role: role ?? 'Employee',
       );
+
+      // Create AppUser document for RBAC system if roleId is available
+      if (finalRoleId != null && finalRoleId.isNotEmpty) {
+        try {
+          final userService = UserService();
+          await userService.createAppUser(AppUser(
+            uid: credential.user!.uid,
+            email: email.trim(),
+            roleId: finalRoleId,
+          ));
+          debugPrint('AppUser created for $email with roleId: $finalRoleId');
+        } catch (e) {
+          debugPrint('Warning: Failed to create AppUser: $e');
+          // Don't throw - user is created, just AppUser failed
+        }
+      } else {
+        debugPrint('Warning: No roleId provided for user $email - AppUser not created');
+      }
 
       return credential;
     } on FirebaseAuthException catch (e) {

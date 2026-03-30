@@ -72,6 +72,8 @@ class Sidebar extends StatelessWidget {
                     
                     // Non-Super Admin: Filter based on read permissions
                     switch (tab) {
+                      case DashboardTab.users:
+                        return permissions['users'] ?? false;
                       case DashboardTab.team:
                         return permissions['team'] ?? false;
                       case DashboardTab.chat:
@@ -131,8 +133,10 @@ class Sidebar extends StatelessWidget {
     switch (tab) {
       case DashboardTab.tasks:
         return Icons.dashboard_customize_rounded;
+      case DashboardTab.users:
+        return Icons.person_outline;
       case DashboardTab.team:
-        return Icons.people_alt_rounded;
+        return Icons.groups;
       case DashboardTab.chat:
         return Icons.chat_bubble_rounded;
       case DashboardTab.expenses:
@@ -145,13 +149,15 @@ class Sidebar extends StatelessWidget {
         return Icons.assignment;
       case DashboardTab.expenseFormBuilder:
         return Icons.receipt_long;
-    }
+}
   }
 
   static String _labelFor(DashboardTab tab) {
     switch (tab) {
       case DashboardTab.tasks:
         return 'Tasks';
+      case DashboardTab.users:
+        return 'Users';
       case DashboardTab.team:
         return 'Team';
       case DashboardTab.chat:
@@ -177,6 +183,7 @@ class Sidebar extends StatelessWidget {
     // Super Admin has access to everything (but only sees form builders)
     if (isSuperAdminValue) {
       return {
+        'users': true,
         'team': true,
         'chat': true,
         'tasks': true,
@@ -188,6 +195,7 @@ class Sidebar extends StatelessWidget {
     // Admin users have access to all modules (bypass granular permissions)
     if (isAdminValue) {
       return {
+        'users': true,
         'team': true,
         'chat': true,
         'tasks': true,
@@ -197,12 +205,14 @@ class Sidebar extends StatelessWidget {
     }
 
     // Regular users: Check granular permissions
+    final canReadUsers = await RBACUtils.canRead('users');
     final canReadTeam = await RBACUtils.canRead('team');
     final canReadChat = await RBACUtils.canRead('chat');
     final canReadTasks = await RBACUtils.canRead('tasks');
     final canReadExpenses = await RBACUtils.canRead('expenses');
 
     return {
+      'users': canReadUsers,
       'team': canReadTeam,
       'chat': canReadChat,
       'tasks': canReadTasks,

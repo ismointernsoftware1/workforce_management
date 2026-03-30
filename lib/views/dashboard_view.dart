@@ -18,6 +18,7 @@ import 'chat/realtime_chat_view.dart';
 import 'expenses/expenses_view.dart';
 import 'tasks/tasks_view.dart';
 import 'team/team_view.dart';
+import 'users/users_view.dart';
 import 'roles/role_list_page.dart';
 import 'widgets/sidebar.dart';
 import '../features/form_builder/screens/form_builder_screen.dart';
@@ -187,6 +188,8 @@ bool _sidebarOpen = true; // Sidebar open by default on web
     switch (provider.activeTab) {
       case DashboardTab.tasks:
         return TasksView(key: ValueKey('tasks-${provider.activeTab}'));
+      case DashboardTab.users:
+        return const UsersView(key: ValueKey('users'));
       case DashboardTab.team:
         return const TeamView(key: ValueKey('team'));
       case DashboardTab.chat:

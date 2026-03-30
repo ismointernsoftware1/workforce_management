@@ -99,5 +99,32 @@ class RoleService {
       return [];
     }
   }
+
+  /// Get roleId by role name (case-insensitive)
+  Future<String?> getRoleIdByName(String roleName) async {
+    try {
+      // Try exact match first
+      final snapshot = await _firestore
+          .collection(_collection)
+          .where('roleName', isEqualTo: roleName)
+          .limit(1)
+          .get();
+      
+      if (snapshot.docs.isNotEmpty) {
+        return snapshot.docs.first.id;
+      }
+      
+      // Try case-insensitive search by fetching all and filtering
+      final allRoles = await getAllRoles();
+      final matchingRole = allRoles.firstWhere(
+        (r) => r.roleName.toLowerCase() == roleName.toLowerCase(),
+        orElse: () => throw Exception('Role not found'),
+      );
+      return matchingRole.roleId;
+    } catch (e) {
+      debugPrint('Error getting roleId by name "$roleName": $e');
+      return null;
+    }
+  }
 }
 

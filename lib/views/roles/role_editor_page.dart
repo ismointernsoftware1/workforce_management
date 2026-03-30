@@ -31,6 +31,11 @@ class _RoleEditorPageState extends State<RoleEditorPage> {
   bool _teamUpdate = false;
   bool _teamDelete = false;
 
+  bool _userCreate = false;
+  bool _userRead = false;
+  bool _userUpdate = false;
+  bool _userDelete = false;
+
   bool _chatCreate = false;
   bool _chatRead = false;
   bool _chatUpdate = false;
@@ -59,6 +64,11 @@ class _RoleEditorPageState extends State<RoleEditorPage> {
       _teamRead = perms.teamControl.read;
       _teamUpdate = perms.teamControl.update;
       _teamDelete = perms.teamControl.delete;
+
+      _userCreate = perms.userControl.create;
+      _userRead = perms.userControl.read;
+      _userUpdate = perms.userControl.update;
+      _userDelete = perms.userControl.delete;
 
       _chatCreate = perms.chatControl.create;
       _chatRead = perms.chatControl.read;
@@ -183,6 +193,25 @@ class _RoleEditorPageState extends State<RoleEditorPage> {
                         _teamRead = read;
                         _teamUpdate = update;
                         _teamDelete = delete;
+                      });
+                    },
+                  ),
+
+                  const SizedBox(height: AppSpacing.sm),
+
+                  // User Control Permissions
+                  _buildPermissionSection(
+                    title: 'User Control',
+                    create: _userCreate,
+                    read: _userRead,
+                    update: _userUpdate,
+                    delete: _userDelete,
+                    onChanged: (create, read, update, delete) {
+                      setState(() {
+                        _userCreate = create;
+                        _userRead = read;
+                        _userUpdate = update;
+                        _userDelete = delete;
                       });
                     },
                   ),
@@ -419,6 +448,12 @@ class _RoleEditorPageState extends State<RoleEditorPage> {
           read: _teamRead,
           update: _teamUpdate,
           delete: _teamDelete,
+        ),
+        userControl: PermissionSet(
+          create: _userCreate,
+          read: _userRead,
+          update: _userUpdate,
+          delete: _userDelete,
         ),
         chatControl: PermissionSet(
           create: _chatCreate,

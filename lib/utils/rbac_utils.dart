@@ -192,6 +192,9 @@ class RBACUtils {
     switch (resource.toLowerCase()) {
       case 'team':
         return role.permissions.teamControl.read;
+      case 'user':
+      case 'users':
+        return role.permissions.userControl.read;
       case 'chat':
         return role.permissions.chatControl.read;
       case 'task':
@@ -218,6 +221,9 @@ class RBACUtils {
     switch (resource.toLowerCase()) {
       case 'team':
         return role.permissions.teamControl.create;
+      case 'user':
+      case 'users':
+        return role.permissions.userControl.create;
       case 'chat':
         return role.permissions.chatControl.create;
       case 'task':
@@ -244,6 +250,9 @@ class RBACUtils {
     switch (resource.toLowerCase()) {
       case 'team':
         return role.permissions.teamControl.update;
+      case 'user':
+      case 'users':
+        return role.permissions.userControl.update;
       case 'chat':
         return role.permissions.chatControl.update;
       case 'task':
@@ -270,6 +279,9 @@ class RBACUtils {
     switch (resource.toLowerCase()) {
       case 'team':
         return role.permissions.teamControl.delete;
+      case 'user':
+      case 'users':
+        return role.permissions.userControl.delete;
       case 'chat':
         return role.permissions.chatControl.delete;
       case 'task':

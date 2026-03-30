@@ -18,10 +18,7 @@ import '../widgets/add_team_dialog.dart';
 import '../widgets/team_members_dialog.dart';
 
 enum TeamTab {
-  overview,
   team,
-  workload,
-  timesheet,
 }
 
 class TeamDetailPage extends StatefulWidget {
@@ -34,7 +31,7 @@ class TeamDetailPage extends StatefulWidget {
 }
 
 class _TeamDetailPageState extends State<TeamDetailPage> {
-  TeamTab _activeTab = TeamTab.overview;
+  TeamTab _activeTab = TeamTab.team;
   bool _isGridView = true;
   final TextEditingController _searchController = TextEditingController();
   String _statusFilter = 'All';
@@ -382,10 +379,7 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildTabButton(TeamTab.overview, Icons.info_outline, 'Overview'),
                   _buildTabButton(TeamTab.team, Icons.people, 'Team'),
-                  _buildTabButton(TeamTab.workload, Icons.grid_view, 'Workload'),
-                  _buildTabButton(TeamTab.timesheet, Icons.access_time, 'Timesheet'),
                 ],
               ),
             ),
@@ -400,9 +394,6 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
     return GestureDetector(
       onTap: () {
         setState(() => _activeTab = tab);
-        if (tab == TeamTab.timesheet) {
-          _loadTimesheetEntries();
-        }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(
@@ -589,12 +580,6 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
     switch (_activeTab) {
       case TeamTab.team:
         return _buildTeamTab(context, team, provider, members);
-      case TeamTab.overview:
-        return _buildOverviewTab(context, team);
-      case TeamTab.workload:
-        return _buildWorkloadTab(context);
-      case TeamTab.timesheet:
-        return _buildTimesheetTab(context);
     }
   }
 
@@ -1701,20 +1686,6 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
             Icons.task_outlined,
             () => setState(() => _activeTab = TeamTab.team),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          _buildNavCard(
-            context,
-            'Workload',
-            Icons.grid_view,
-            () => setState(() => _activeTab = TeamTab.workload),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _buildNavCard(
-            context,
-            'Timesheet',
-            Icons.access_time,
-            () => setState(() => _activeTab = TeamTab.timesheet),
-          ),
         ],
       ),
     );
@@ -1753,118 +1724,9 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
 
 
 
+  // Removed: Workload tab functionality
   Widget _buildWorkloadTab(BuildContext context) {
-    return Consumer<DashboardProvider>(
-      builder: (context, provider, _) {
-        Team? team;
-        try {
-          team = provider.teams.firstWhere((t) => t.id == widget.teamId);
-        } catch (_) {
-          return const Center(
-            child: Text('Team not found'),
-          );
-        }
-
-        final currentTeam = team;
-        final usersById = {for (final user in provider.allUsers) user.id: user};
-        final members = currentTeam.memberIds
-            .map((id) => usersById[id])
-            .whereType<UserModel>()
-            .toList();
-        
-        // Get tasks for team members
-        final teamMemberIds = members.map((m) => m.id).toSet();
-        var teamTasks = provider.tasks.where((task) => 
-          teamMemberIds.contains(task.assignedTo) || task.assignedTo.isEmpty
-        ).toList();
-        
-        // Apply filters
-        teamTasks = _filterWorkloadTasks(teamTasks);
-        
-        // Apply search
-        if (_workloadSearchController.text.isNotEmpty) {
-          final query = _workloadSearchController.text.toLowerCase();
-          teamTasks = teamTasks.where((task) {
-            return task.title.toLowerCase().contains(query) ||
-                   task.description.toLowerCase().contains(query);
-          }).toList();
-        }
-        
-        // Filter closed tasks
-        if (!_workloadShowClosed) {
-          teamTasks = teamTasks.where((task) => task.status != TaskStatus.completed).toList();
-        }
-        
-        // Calculate date range based on schedule type
-        final daysToShow = _getDaysToShow();
-        final dates = _generateDates(daysToShow);
-        
-        if (_showBacklog) {
-          return _buildBacklogView(context, teamTasks, members);
-        }
-        
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final isMobile = ResponsiveUtils.isMobile(context);
-            final isTablet = ResponsiveUtils.isTablet(context);
-            
-            if (isMobile) {
-              // Mobile: Stack vertically
-              return Column(
-                children: [
-                  // Top controls
-                  _buildWorkloadControls(context),
-                  // Search bar (if visible)
-                  if (_workloadShowSearch)
-                    _buildWorkloadSearchBar(context),
-                  // Date navigation
-                  _buildWorkloadDateNavigation(context, dates),
-                  // Calendar grid
-                  Expanded(
-                    child: _buildWorkloadGrid(context, members, dates, teamTasks, provider),
-                  ),
-                  // Bottom task sidebar (collapsible) - no fixed width on mobile
-                  SizedBox(
-                    height: 300,
-                    child: _buildWorkloadTaskSidebar(context, teamTasks, isMobile: true),
-                  ),
-                ],
-              );
-            } else {
-              // Desktop/Tablet: Side by side
-        return Row(
-          children: [
-            // Main workload area
-                Expanded(
-                    flex: isTablet ? 2 : 3,
-              child: Column(
-                children: [
-                  // Top controls
-                  _buildWorkloadControls(context),
-                  // Search bar (if visible)
-                  if (_workloadShowSearch)
-                    _buildWorkloadSearchBar(context),
-                  // Date navigation
-                  _buildWorkloadDateNavigation(context, dates),
-                  // Calendar grid
-                  Expanded(
-                    child: _buildWorkloadGrid(context, members, dates, teamTasks, provider),
-                  ),
-                ],
-              ),
-            ),
-            // Right sidebar for tasks
-                  SizedBox(
-                    width: isTablet ? 280 : 320,
-                    child: _buildWorkloadTaskSidebar(context, teamTasks, isMobile: false),
-                  ),
-          ],
-              );
-            }
-          },
-        );
-      },
-    );
+    return const SizedBox.shrink();
   }
 
   Widget _buildWorkloadControls(BuildContext context) {
@@ -2738,37 +2600,9 @@ class _TeamDetailPageState extends State<TeamDetailPage> {
     return days[weekday % 7];
   }
 
+  // Removed: Timesheet tab functionality
   Widget _buildTimesheetTab(BuildContext context) {
-    return Consumer<DashboardProvider>(
-      builder: (context, provider, _) {
-        Team? team;
-        try {
-          team = provider.teams.firstWhere((t) => t.id == widget.teamId);
-        } catch (_) {
-          team = null;
-        }
-        if (team == null) return const SizedBox.shrink();
-
-        final usersById = {
-          for (final user in provider.allUsers) user.id: user,
-        };
-        final members = team.memberIds
-            .map((id) => usersById[id])
-            .whereType<UserModel>()
-            .toList();
-
-        return Column(
-          children: [
-            // Header with date range and actions
-            _buildTimesheetHeader(context, team, provider, members),
-            // Timesheet table
-            Expanded(
-              child: _buildTimesheetTable(context, team, provider, members),
-            ),
-          ],
-        );
-      },
-    );
+    return const SizedBox.shrink();
   }
 
   Widget _buildTimesheetHeader(

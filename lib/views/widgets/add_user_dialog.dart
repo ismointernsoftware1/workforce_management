@@ -4,6 +4,8 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../models/user_model.dart';
+import '../../models/role_model.dart';
+import '../../services/role_service.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/shadcn/app_button.dart';
 import '../../widgets/shadcn/app_select.dart';
@@ -16,7 +18,7 @@ class AddUserDialog extends StatefulWidget {
     this.initialUser,
   });
 
-  final Future<void> Function(UserModel user, {String? password}) onSave;
+  final Future<void> Function(UserModel user, {String? password, String? roleId}) onSave;
   final UserModel? initialUser;
 
   @override
@@ -27,11 +29,14 @@ class _AddUserDialogState extends State<AddUserDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _roleController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _roleService = RoleService();
   late String _status;
+  String? _selectedRoleId;
+  List<RoleModel> _roles = [];
   bool _isSaving = false;
   bool _obscurePassword = true;
+  bool _isLoadingRoles = true;
 
   bool get _isEditing => widget.initialUser != null;
 
@@ -41,15 +46,44 @@ class _AddUserDialogState extends State<AddUserDialog> {
     final user = widget.initialUser;
     _nameController.text = user?.name ?? '';
     _emailController.text = user?.email ?? '';
-    _roleController.text = user?.role ?? '';
     _status = user?.status ?? 'Active';
+    _loadRoles();
+  }
+
+  Future<void> _loadRoles() async {
+    try {
+      final roles = await _roleService.getAllRoles();
+      if (mounted) {
+        setState(() {
+          _roles = roles;
+          _isLoadingRoles = false;
+          if (_roles.isNotEmpty) {
+            // If editing, try to find role by name
+            if (widget.initialUser != null) {
+              final roleName = widget.initialUser!.role;
+              final matchingRole = _roles.firstWhere(
+                (r) => r.roleName.toLowerCase() == roleName.toLowerCase(),
+                orElse: () => _roles.first,
+              );
+              _selectedRoleId = matchingRole.roleId;
+            } else {
+              _selectedRoleId = _roles.first.roleId;
+            }
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading roles: $e');
+      if (mounted) {
+        setState(() => _isLoadingRoles = false);
+      }
+    }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
-    _roleController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -72,10 +106,29 @@ class _AddUserDialogState extends State<AddUserDialog> {
       return;
     }
     
+    if (_selectedRoleId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select a role'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+        setState(() => _isSaving = false);
+      }
+      return;
+    }
+
+    // Get role name for UserModel (backward compatibility)
+    final selectedRole = _roles.firstWhere(
+      (r) => r.roleId == _selectedRoleId,
+      orElse: () => _roles.first,
+    );
+
     final user = UserModel(
       id: widget.initialUser?.id ?? '',
       name: _nameController.text.trim(),
-      role: _roleController.text.trim(),
+      role: selectedRole.roleName, // Keep role name for backward compatibility
       email: _emailController.text.trim(),
       status: _status,
       manager: widget.initialUser?.manager,
@@ -83,9 +136,9 @@ class _AddUserDialogState extends State<AddUserDialog> {
     );
     
     try {
-      // Pass password for new users
+      // Pass password and roleId for new users
       final password = _isEditing ? null : _passwordController.text.trim();
-      await widget.onSave(user, password: password);
+      await widget.onSave(user, password: password, roleId: _selectedRoleId);
       if (context.mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -140,14 +193,7 @@ class _AddUserDialogState extends State<AddUserDialog> {
                             : null,
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  _buildShadInputField(
-                    controller: _roleController,
-                    label: 'Role',
-                    validator: (value) =>
-                        value == null || value.trim().isEmpty
-                            ? 'Required'
-                            : null,
-                  ),
+                  _buildRoleSelect(),
                   const SizedBox(height: AppSpacing.md),
                   _buildShadInputField(
                     controller: _emailController,
@@ -190,14 +236,7 @@ class _AddUserDialogState extends State<AddUserDialog> {
                       ),
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
-                        child: _buildShadInputField(
-                          controller: _roleController,
-                          label: 'Role',
-                          validator: (value) =>
-                              value == null || value.trim().isEmpty
-                                  ? 'Required'
-                                  : null,
-                        ),
+                        child: _buildRoleSelect(),
                       ),
                     ],
                   ),
@@ -428,6 +467,83 @@ class _AddUserDialogState extends State<AddUserDialog> {
             color: AppColors.textPrimary,
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildRoleSelect() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+          child: Text(
+            'Role',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+        if (_isLoadingRoles)
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.md + 2,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: AppColors.border.withValues(alpha: 0.5),
+                width: 1,
+              ),
+            ),
+            child: const Row(
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: AppSpacing.sm),
+                Text(
+                  'Loading roles...',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          AppSelect<String>(
+            placeholder: 'Select role',
+            value: _selectedRoleId,
+            options: _roles.map((role) {
+              return SelectOption<String>(
+                value: role.roleId,
+                label: role.roleName,
+              );
+            }).toList(),
+            selectedOptionBuilder: (context, value) {
+              if (value == null || _roles.isEmpty) {
+                return const Text('Select role');
+              }
+              final role = _roles.firstWhere(
+                (r) => r.roleId == value,
+                orElse: () => _roles.first,
+              );
+              return Text(role.roleName);
+            },
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _selectedRoleId = value);
+              }
+            },
+          ),
       ],
     );
   }

@@ -31,12 +31,14 @@ class _CreateRoleDialogState extends State<CreateRoleDialog> {
 
   // Collapsible section states
   bool _teamExpanded = true;
+  bool _userExpanded = true;
   bool _chatExpanded = true;
   bool _taskExpanded = true;
   bool _expenseExpanded = true;
 
   // Selected permissions for each module
   List<String> _teamPermissions = [];
+  List<String> _userPermissions = [];
   List<String> _chatPermissions = [];
   List<String> _taskPermissions = [];
   List<String> _expensePermissions = [];
@@ -55,6 +57,7 @@ class _CreateRoleDialogState extends State<CreateRoleDialog> {
 
   void _populatePermissions(PermissionsModel permissions) {
     _teamPermissions = _getSelectedPermissions(permissions.teamControl);
+    _userPermissions = _getSelectedPermissions(permissions.userControl);
     _chatPermissions = _getSelectedPermissions(permissions.chatControl);
     _taskPermissions = _getSelectedPermissions(permissions.taskControl);
     _expensePermissions = _getSelectedPermissions(permissions.expenseControl);
@@ -95,6 +98,7 @@ class _CreateRoleDialogState extends State<CreateRoleDialog> {
     try {
       final permissions = PermissionsModel(
         teamControl: _getPermissionSet(_teamPermissions),
+        userControl: _getPermissionSet(_userPermissions),
         chatControl: _getPermissionSet(_chatPermissions),
         taskControl: _getPermissionSet(_taskPermissions),
         expenseControl: _getPermissionSet(_expensePermissions),
@@ -373,6 +377,22 @@ class _CreateRoleDialogState extends State<CreateRoleDialog> {
                       selectedPermissions: _teamPermissions,
                       onPermissionsChanged: (permissions) {
                         setState(() => _teamPermissions = permissions);
+                      },
+                    ),
+
+                    SizedBox(height: isMobile ? AppSpacing.sm : AppSpacing.md),
+
+                    // User Control
+                    _buildPermissionModule(
+                      context: context,
+                      title: 'User Control',
+                      isExpanded: _userExpanded,
+                      onExpandedChanged: (expanded) {
+                        setState(() => _userExpanded = expanded);
+                      },
+                      selectedPermissions: _userPermissions,
+                      onPermissionsChanged: (permissions) {
+                        setState(() => _userPermissions = permissions);
                       },
                     ),
 

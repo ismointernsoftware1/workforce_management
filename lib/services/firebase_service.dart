@@ -2,7 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 
+import 'package:flutter/foundation.dart';
+
 import '../firebase_options.dart';
+import '../models/app_user.dart';
 import '../models/chat_models.dart';
 import '../models/task_model.dart';
 import '../models/team_model.dart';
@@ -12,6 +15,7 @@ import '../models/expense_model.dart';
 import '../models/expense_category.dart';
 import '../models/reimbursement_model.dart';
 import '../models/timesheet_entry.dart';
+import 'user_service.dart';
 
 class FirebaseService {
   FirebaseService({FirebaseFirestore? firestore})
@@ -331,7 +335,7 @@ class FirebaseService {
     await _teamsCol.doc(teamId).delete();
   }
 
-  Future<void> addUser(UserModel user, {String? password}) async {
+  Future<void> addUser(UserModel user, {String? password, String? roleId}) async {
     // If password is provided, create Firebase Auth account first
     String userId;
     if (password != null && password.isNotEmpty) {
@@ -349,6 +353,22 @@ class FirebaseService {
           'id': userId,
         });
 
+        // Create AppUser document for RBAC system if roleId is provided
+        if (roleId != null && roleId.isNotEmpty) {
+          try {
+            final userService = UserService();
+            await userService.createAppUser(AppUser(
+              uid: userId,
+              email: user.email,
+              roleId: roleId,
+            ));
+            debugPrint('AppUser created for ${user.email} with roleId: $roleId');
+          } catch (e) {
+            debugPrint('Warning: Failed to create AppUser: $e');
+            // Don't throw - user is created, just AppUser failed
+          }
+        }
+
         await secondaryAuth.signOut();
       } catch (e) {
         throw Exception('Failed to create user account: $e');
@@ -361,6 +381,9 @@ class FirebaseService {
         ...user.toMap(),
         'id': userId,
       });
+      
+      // Note: AppUser cannot be created without Firebase Auth UID
+      // Users created without password need to be migrated manually
     }
   }
 

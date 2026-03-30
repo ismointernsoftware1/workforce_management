@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../controllers/chat_controller.dart';
 import '../controllers/task_controller.dart';
 import '../controllers/team_controller.dart';
-import '../data/sample_data.dart';
+
 import '../models/chat_models.dart';
 import '../models/task_model.dart';
 import '../models/team_member.dart';
@@ -15,7 +15,7 @@ import '../models/search_result.dart';
 import '../models/expense_model.dart';
 import '../utils/rbac_utils.dart';
 
-enum DashboardTab { tasks, team, chat, expenses, roles, formBuilder, taskFormBuilder, expenseFormBuilder }
+enum DashboardTab { tasks, users, team, chat, expenses, roles, formBuilder, taskFormBuilder, expenseFormBuilder }
 
 class DashboardProvider extends ChangeNotifier {
   DashboardProvider({
@@ -73,6 +73,7 @@ class DashboardProvider extends ChangeNotifier {
     } else {
       // Find first available tab based on permissions
       final canReadTasks = await RBACUtils.canRead('tasks');
+      final canReadUsers = await RBACUtils.canRead('users');
       final canReadTeam = await RBACUtils.canRead('team');
       final canReadChat = await RBACUtils.canRead('chat');
       final canReadExpenses = await RBACUtils.canRead('expenses');
@@ -80,6 +81,8 @@ class DashboardProvider extends ChangeNotifier {
       
       if (canReadTasks) {
         activeTab = DashboardTab.tasks;
+      } else if (canReadUsers) {
+        activeTab = DashboardTab.users;
       } else if (canReadTeam) {
         activeTab = DashboardTab.team;
       } else if (canReadChat) {
@@ -181,7 +184,7 @@ class DashboardProvider extends ChangeNotifier {
             .toList();
       }
     } catch (error) {
-      members = SampleData.members();
+      members = [];
       lastError = error.toString();
     }
     notifyListeners();
@@ -200,16 +203,12 @@ class DashboardProvider extends ChangeNotifier {
   Future<void> refreshConversations() async {
     try {
       conversations = await _chatController.fetchConversations();
-      if (conversations.isEmpty) {
-        conversations = SampleData.conversations();
-      }
       selectedConversationId =
           conversations.isNotEmpty ? conversations.first.id : null;
       lastError = null;
     } catch (error) {
-      conversations = SampleData.conversations();
-      selectedConversationId =
-          conversations.isNotEmpty ? conversations.first.id : null;
+      conversations = [];
+      selectedConversationId = null;
       lastError = error.toString();
     }
     notifyListeners();
@@ -309,9 +308,9 @@ class DashboardProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addUser(UserModel user, {String? password}) async {
+  Future<void> addUser(UserModel user, {String? password, String? roleId}) async {
     try {
-      await _teamController.addUser(user, password: password);
+      await _teamController.addUser(user, password: password, roleId: roleId);
       await refreshUsers();
       await refreshMembers();
     } catch (error) {
